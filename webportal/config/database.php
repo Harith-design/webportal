@@ -64,14 +64,14 @@ return [
             'prefix_indexes' => true,
         ],
 
-        // SQL Server connection for SAP
+        // SQL Server connection specifically for SAP
         'sqlsrv_sap' => [
             'driver' => 'sqlsrv',
-            'host' => env('DB_SAP_HOST', '127.0.0.1'),
+            'host' => env('DB_SAP_HOST', '172.27.31.227'),
             'port' => env('DB_SAP_PORT', '1433'),
-            'database' => env('DB_SAP_DATABASE', 'SAP_DB'),
-            'username' => env('DB_SAP_USERNAME', 'sap_user'),
-            'password' => env('DB_SAP_PASSWORD', 'sap_password'),
+            'database' => env('DB_SAP_DATABASE', 'GIIBLIVEDB'),
+            'username' => env('DB_SAP_USERNAME', 'sa'),
+            'password' => env('DB_SAP_PASSWORD', 'SAPB1Admin'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,

@@ -1,20 +1,10 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-| These routes are for your API endpoints.
-| They are automatically prefixed with /api
-| Example: http://127.0.0.1:8000/api/users
-|
-*/
+use App\Http\Controllers\SapController; // <-- added
 
 // ----------------- Public User Routes -----------------
 Route::get('/users', [UserController::class, 'index']);
@@ -27,16 +17,20 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// ----------------- Public Password Routes -----------------
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+Route::post('/password/reset', [AuthController::class, 'resetPassword']);
+
 // ----------------- Protected Routes (require Sanctum token) -----------------
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);   // get logged in user details
     Route::post('/logout', [AuthController::class, 'logout']); // logout
-
-    
-Route::middleware('auth:sanctum')->get('/me', [UserController::class, 'me']);
-
-Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [UserController::class, 'me']);       // alternative way to fetch user
     Route::post('/orders', [OrderController::class, 'store']);
+    
+    // ----------------- SAP B1 Routes (requires token) -----------------
+    Route::post('/sap/bp', [SapController::class, 'createBP']); // create dummy BP
 });
 
-});
+// ----------------- SAP B1 Test Route (no token, for quick testing) -----------------
+Route::post('/sap/bp/test', [SapController::class, 'createBP']); // temporary public route

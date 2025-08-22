@@ -41,12 +41,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | This value controls the number of minutes until an issued token will be
-    | considered expired. If this value is null, personal access tokens do
-    | not expire. This won't tweak the lifetime of first-party sessions.
+    | considered expired. Here, 43200 minutes = 30 days.
     |
     */
 
-    'expiration' => null,
+   'expiration' => 60 * 24 * 30, // 30 days in minutes
+
 
     /*
     |--------------------------------------------------------------------------
