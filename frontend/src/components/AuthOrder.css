@@ -1,0 +1,141 @@
+/* Background gradient animation */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.bg-dark-gradient {
+  background: linear-gradient(135deg, #0a0a0a, #444, #d4af37, #222, #0a0a0a);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* Floating particles animation */
+@keyframes float {
+  0% { transform: translateY(0) translateX(0); opacity: 0.7; }
+  50% { transform: translateY(-20px) translateX(20px); opacity: 0.5; }
+  100% { transform: translateY(0) translateX(0); opacity: 0.7; }
+}
+
+@keyframes float-slow {
+  0% { transform: translateY(0) translateX(0); opacity: 0.7; }
+  50% { transform: translateY(-30px) translateX(-30px); opacity: 0.5; }
+  100% { transform: translateY(0) translateX(0); opacity: 0.7; }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
+
+/* Glass card styles */
+.login-glass-card,
+.signup-glass-card {
+  background: rgba(25, 25, 25, 0.75);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  width: 100%;
+  max-width: 420px;
+}
+
+.order-glass-card {
+  background: rgba(25, 25, 25, 1.25);
+  backdrop-filter: blur(12px);
+  border-radius: 1rem;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.65);
+  width: 100%;
+  max-width: 1000px;
+  padding: 2rem;
+}
+
+/* Inputs */
+.glass-input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  color: #fff;
+  outline: none;
+  transition: border 0.3s, background 0.3s;
+}
+
+.glass-input:focus {
+  border: 1px solid gold;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Buttons */
+.btn-submit,
+.btn-add,
+.btn-remove {
+  background: gold;
+  color: black;
+  font-weight: bold;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.3s;
+}
+
+.btn-submit:hover,
+.btn-add:hover,
+.btn-remove:hover {
+  transform: translateY(-2px);
+  background: #ffdd57;
+}
+
+/* Table styling for order form */
+table {
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 0.5rem 0.8rem;
+}
+
+th {
+  background: rgba(218, 165, 32, 0.35);
+  color: white;
+}
+
+tr:hover td {
+  background: rgba(218, 165, 32, 0.15);
+}
+
+/* Dashboard stat cards */
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+  padding: 1.5rem;
+  color: white;
+  transition: transform 0.3s, background 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 215, 0, 0.2);
+}
+
+/* Top navigation */
+nav a {
+  transition: color 0.3s;
+}
+
+nav a:hover {
+  color: #ffdd57;
+  text-decoration: underline;
+}
+
+/* Neon text */
+.text-neon-purple {
+  color: gold;
+  text-shadow: 0 0 10px gold, 0 0 25px gold;
+}
+
+/* Misc */
+.text-center { text-align: center; }
+.text-white { color: white; }
+.text-green-400 { color: #68d391; }
+.text-gray-300 { color: #d1d5db; }
