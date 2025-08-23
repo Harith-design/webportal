@@ -67,11 +67,11 @@ return [
         // SQL Server connection specifically for SAP
         'sqlsrv_sap' => [
             'driver' => 'sqlsrv',
-            'host' => env('DB_SAP_HOST', '172.27.31.227'),
-            'port' => env('DB_SAP_PORT', '1433'),
-            'database' => env('DB_SAP_DATABASE', 'GIIBLIVEDB'),
-            'username' => env('DB_SAP_USERNAME', 'sa'),
-            'password' => env('DB_SAP_PASSWORD', 'SAPB1Admin'),
+            'host' => env('SAP_DB_HOST', '172.27.31.227'),
+            'port' => env('SAP_DB_PORT', '1433'),
+            'database' => env('SAP_DB_DATABASE', 'GIIBLIVEDB'),
+            'username' => env('SAP_DB_USERNAME', 'sa'),
+            'password' => env('SAP_DB_PASSWORD', 'SAPB1Admin'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,

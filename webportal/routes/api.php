@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\SapController; // <-- added
+use App\Http\Controllers\SapController;
 
 // ----------------- Public User Routes -----------------
 Route::get('/users', [UserController::class, 'index']);
@@ -27,10 +27,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']); // logout
     Route::get('/me', [UserController::class, 'me']);       // alternative way to fetch user
     Route::post('/orders', [OrderController::class, 'store']);
-    
+
     // ----------------- SAP B1 Routes (requires token) -----------------
-    Route::post('/sap/bp', [SapController::class, 'createBP']); // create dummy BP
+    Route::post('/sap/bp', [SapController::class, 'createBP'])
+        ->name('sap.bp'); // optional: naming route for clarity
 });
 
-// ----------------- SAP B1 Test Route (no token, for quick testing) -----------------
-Route::post('/sap/bp/test', [SapController::class, 'createBP']); // temporary public route
+// ----------------- Temporary Public SAP B1 Test Route -----------------
+Route::post('/sap/bp/test', [SapController::class, 'createBP'])
+    ->withoutMiddleware('auth:sanctum'); // public route for testing without token

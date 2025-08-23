@@ -20,7 +20,7 @@ Route::get('/test-sap', function() {
         $partners = DB::connection('sqlsrv_sap')
             ->table('OCRD') // SAP B1 Business Partners table
             ->select('CardCode', 'CardName')
-            ->limit(5)
+            ->limit(20)
             ->get();
 
         return response()->json($partners);

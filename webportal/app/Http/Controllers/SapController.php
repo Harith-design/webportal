@@ -9,24 +9,34 @@ class SapController extends Controller
 {
     public function createBP(Request $request)
     {
-        // Validate input
+        // Simple validation
         $request->validate([
             'CardCode' => 'required|string',
             'CardName' => 'required|string',
             'CardType' => 'required|string|in:C,L,S', // C=Customer, L=Lead, S=Supplier
         ]);
 
-        // Insert into SAP B1 OCRD table
-        $inserted = DB::connection('sqlsrv_sap')->table('OCRD')->insert([
-            'CardCode' => $request->CardCode,
-            'CardName' => $request->CardName,
-            'CardType' => $request->CardType,
-        ]);
+        try {
+            // Attempt to insert into SAP B1 OCRD table
+            DB::connection('sqlsrv_sap')->table('OCRD')->insert([
+                'CardCode' => $request->CardCode,
+                'CardName' => $request->CardName,
+                'CardType' => $request->CardType,
+            ]);
 
-        if ($inserted) {
-            return response()->json(['message' => 'BP created successfully']);
-        } else {
-            return response()->json(['message' => 'Failed to create BP'], 500);
+            return response()->json([
+                'message' => 'BP created successfully',
+                'CardCode' => $request->CardCode,
+                'CardName' => $request->CardName,
+                'CardType' => $request->CardType
+            ]);
+
+        } catch (\Exception $e) {
+            // Return error as JSON
+            return response()->json([
+                'message' => 'Failed to create BP',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
