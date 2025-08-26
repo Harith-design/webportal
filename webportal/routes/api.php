@@ -1,38 +1,43 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\SapController;
+use App\Http\Controllers\SalesOrderController;
+use Illuminate\Support\Facades\Http; // added for debug login
 
-// ----------------- Public User Routes -----------------
-Route::get('/users', [UserController::class, 'index']);
-Route::get('/users/{id}', [UserController::class, 'show']);
-Route::post('/users', [UserController::class, 'store']);
-Route::put('/users/{id}', [UserController::class, 'update']);
-Route::delete('/users/{id}', [UserController::class, 'destroy']);
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|
+*/
 
-// ----------------- Authentication Routes -----------------
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-
-// ----------------- Public Password Routes -----------------
-Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
-Route::post('/password/reset', [AuthController::class, 'resetPassword']);
-
-// ----------------- Protected Routes (require Sanctum token) -----------------
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', [AuthController::class, 'user']);   // get logged in user details
-    Route::post('/logout', [AuthController::class, 'logout']); // logout
-    Route::get('/me', [UserController::class, 'me']);       // alternative way to fetch user
-    Route::post('/orders', [OrderController::class, 'store']);
-
-    // ----------------- SAP B1 Routes (requires token) -----------------
-    Route::post('/sap/bp', [SapController::class, 'createBP'])
-        ->name('sap.bp'); // optional: naming route for clarity
+// Default Laravel example
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
 });
 
-// ----------------- Temporary Public SAP B1 Test Route -----------------
-Route::post('/sap/bp/test', [SapController::class, 'createBP'])
-    ->withoutMiddleware('auth:sanctum'); // public route for testing without token
+// --- Sales Order Routes ---
+Route::get('/sales-order/{docNum}', [SalesOrderController::class, 'show']);
+
+// --- Debug SAP Login Route ---
+Route::get('/sap-debug-login', function () {
+    $payload = [
+        'CompanyDB' => config('sapb1.company_db'),
+        'UserName'  => config('sapb1.username'),
+        'Password'  => config('sapb1.password'),
+    ];
+
+    $res = Http::withOptions(['verify' => config('sapb1.verify_ssl')])
+        ->post(config('sapb1.base_url') . '/Login', $payload);
+
+    return [
+        'payload_sent' => $payload,
+        'response'     => $res->json(),
+        'status'       => $res->status(),
+    ];
+});
