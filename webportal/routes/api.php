@@ -4,25 +4,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SapController;
-use Illuminate\Support\Facades\Http; // added for debug login
+use Illuminate\Support\Facades\Http; // for debug login
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-| These routes are for your backend API (tested via Postman, curl, etc.)
-|--------------------------------------------------------------------------
 */
 
-// Default Laravel example
+// --- Authenticated user route (Sanctum) ---
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
 // --- Sales Order Routes ---
-Route::get('/sales-order/{docNum}', [SalesOrderController::class, 'show']);
+Route::prefix('sales-order')->group(function () {
+    Route::get('/{docNum}', [SalesOrderController::class, 'show']);
+});
 
-// --- Debug SAP Login Route ---
+// --- Debug SAP B1 Login Route ---
 Route::get('/sap-debug-login', function () {
     $payload = [
         'CompanyDB' => config('sapb1.company_db'),
@@ -40,11 +40,17 @@ Route::get('/sap-debug-login', function () {
     ];
 });
 
-// ----------------- SAP B1 Customers (CRUD) -----------------
+// --- SAP B1 Business Partners CRUD Routes ---
 Route::prefix('sap')->group(function () {
-    // Customers
-    Route::get('/customers', [SapController::class, 'getCustomers']);               // Read all
-    Route::post('/customers', [SapController::class, 'createCustomer']);            // Create
-    Route::put('/customers/{CardCode}', [SapController::class, 'updateCustomer']);  // Update
-    Route::delete('/customers/{CardCode}', [SapController::class, 'deleteCustomer']); // Delete
+    // Read all business partners
+    Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
+
+    // Create a new business partner (customer or supplier)
+    Route::post('/business-partners', [SapController::class, 'createBusinessPartner']);
+
+    // Update an existing business partner
+    Route::put('/business-partners/{CardCode}', [SapController::class, 'updateBusinessPartner']);
+
+    // Delete a business partner
+    Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
 });
