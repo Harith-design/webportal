@@ -1,116 +1,256 @@
-import React, { useState, useEffect } from "react";
-import "./AuthOrder.css";
+import React, { useState } from "react";
+import { Trash2, Search } from "lucide-react";
+import "./OrderForm.css"; // import your CSS
 
-function OrderForm() {
-  const [header, setHeader] = useState({
-    customer: "",
-    orderDate: new Date().toISOString().split("T")[0],
+function PlaceOrderPage() {
+  const [order, setOrder] = useState({
+    ponum: "",
     deliveryDate: "",
-    comments: "",
+    billingAddress: "",
+    shippingAddress: "",
   });
-  const [lines, setLines] = useState([{ itemCode: "", description: "", quantity: 1, price: 0, warehouse: "", lineTotal: 0 }]);
-  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    if (!localStorage.getItem("token")) window.location.href = "/login";
-  }, []);
+  // ✅ Rows state
+  const [rows, setRows] = useState([
+    { product: "", catalogue: "", quantity: "", price: "", total: "", active: true },
+    { product: "", catalogue: "", quantity: "", price: "", total: "", active: false },
+  ]);
 
-  const handleHeaderChange = (e) => setHeader({ ...header, [e.target.name]: e.target.value });
+  // ✅ Handle row edits
+  const handleChange = (index, field, value) => {
+    const updated = [...rows];
+    updated[index][field] = value;
 
-  const handleLineChange = (index, e) => {
-    const newLines = [...lines];
-    newLines[index][e.target.name] = e.target.value;
-    if (e.target.name === "quantity" || e.target.name === "price") {
-      newLines[index].lineTotal = (parseFloat(newLines[index].quantity) || 0) * (parseFloat(newLines[index].price) || 0);
+    // auto calculate line total
+    if (field === "quantity" || field === "price") {
+      const qty = parseFloat(updated[index].quantity) || 0;
+      const price = parseFloat(updated[index].price) || 0;
+      updated[index].total = (qty * price).toFixed(2);
     }
-    setLines(newLines);
+
+    setRows(updated);
   };
 
-  const addLine = () => setLines([...lines, { itemCode: "", description: "", quantity: 1, price: 0, warehouse: "", lineTotal: 0 }]);
-  const removeLine = (index) => setLines(lines.filter((_, i) => i !== index));
-
-  const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
-  const tax = subtotal * 0.1;
-  const grandTotal = subtotal + tax;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://127.0.0.1:8000/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ header, lines }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessage("✅ Order placed successfully!");
-        setHeader({ customer: "", orderDate: new Date().toISOString().split("T")[0], deliveryDate: "", comments: "" });
-        setLines([{ itemCode: "", description: "", quantity: 1, price: 0, warehouse: "", lineTotal: 0 }]);
-      } else setMessage("❌ " + (data.message || "Order failed"));
-    } catch (error) {
-      setMessage("⚠️ " + error.message);
+  // ✅ Activate row on focus
+  const activateRow = (index) => {
+    if (!rows[index].active) {
+      const updated = [...rows];
+      updated[index].active = true;
+      setRows([
+        ...updated,
+        { product: "", catalogue: "", quantity: "", price: "", total: "", active: false },
+      ]);
     }
+  };
+
+  // ✅ Delete row
+  const handleDelete = (index) => {
+    setRows(rows.filter((_, i) => i !== index));
+  };
+
+  // ✅ Submit
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Order submitted:", order, rows);
+    alert("Order submitted! Check console for details.");
   };
 
   return (
-    <div className="relative min-h-screen flex justify-center items-start p-8 bg-dark-gradient overflow-hidden">
-      {/* Floating particles */}
-      <div className="absolute w-48 h-48 bg-gold/30 rounded-full animate-float top-20 left-10"></div>
-      <div className="absolute w-64 h-64 bg-gold/20 rounded-full animate-float-slow bottom-10 right-20"></div>
+    <div className="p-6 bg-white rounded-xl shadow-md">
+      {/* Flex container: form left, box right */}
+      <div className="flex justify-between gap-8">
+        {/* Form (left) */}
+        <form onSubmit={handleSubmit} className="space-y-4 flex-1">
+          {/* Requested Delivery Date */}
+          <div className="flex items-center gap-4">
+            <label className="min-w-[150px] text-xs">Requested Delivery Date</label>
+            <input
+              type="date"
+              name="deliveryDate"
+              value={order.deliveryDate}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 min-w-[250px] border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+              required
+            />
+          </div>
 
-      <form className="relative order-glass-card p-8 text-white" onSubmit={handleSubmit}>
-        <h2 className="text-4xl font-bold mb-6 text-center text-neon-purple">Create Sales Order</h2>
+          {/* PO No */}
+          <div className="flex items-center gap-4 w-80">
+            <label className="min-w-[150px] text-xs">PO No.</label>
+            <input
+              type="text"
+              name="ponum"
+              value={order.ponum}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 min-w-[250px] border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+              required
+            />
+          </div>
 
-        {/* Header */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          {["customer","orderDate","deliveryDate","comments"].map((name) => (
-            <div key={name} className="flex flex-col">
-              <label className="mb-1 text-sm font-semibold text-gray-300">{name.charAt(0).toUpperCase() + name.slice(1)}</label>
-              <input type={name==="orderDate"||name==="deliveryDate"?"date":"text"} name={name} value={header[name]} onChange={handleHeaderChange} className="glass-input" required={name==="customer"||name==="orderDate"} />
+          {/* Billing Address */}
+          <div className="flex items-center gap-4 w-80">
+            <label className="min-w-[150px] text-xs">Billing Address</label>
+            <select
+              name="billingAddress"
+              value={order.billingAddress}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 min-w-[250px] border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+            >
+              <option value="address1">Address 1</option>
+              <option value="address2">Address 2</option>
+              <option value="address3">Address 3</option>
+            </select>
+          </div>
+
+          {/* Shipping Address */}
+          <div className="flex items-center gap-4 w-80">
+            <label className="min-w-[150px] text-xs">Shipping Address</label>
+            <select
+              name="shippingAddress"
+              value={order.shippingAddress}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 min-w-[250px] border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+            >
+              <option value="address1">Address 1</option>
+              <option value="address2">Address 2</option>
+              <option value="address3">Address 3</option>
+            </select>
+          </div>
+        </form>
+
+        {/* Right side: Addresses box */}
+        <div className="w-96 p-4 border rounded-lg shadow-sm bg-gray-50">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-semibold mb-1">Billing Address</p>
+              <p className="text-xs">{order.billingAddress || "Select from form"}</p>
             </div>
-          ))}
+            <div>
+              <p className="text-sm font-semibold mb-1">Shipping Address</p>
+              <p className="text-xs">{order.shippingAddress || "Select from form"}</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Order Lines */}
-        <div className="overflow-x-auto mb-4">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gold/30 text-white">
-                {["Item Code","Description","Qty","Price","Warehouse","Line Total","Action"].map((col) => <th key={col} className="p-2 text-left">{col}</th>)}
+      {/* Table */}
+      <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto mt-6">
+        <table className="table-auto w-full border-collapse">
+          <thead>
+            <tr className="text-xs font-semibold border-b text-center align-middle">
+              <th className="px-4 py-2 text-left">Product Lookup</th>
+              <th className="px-4 py-2">Catalogue</th>
+              <th className="px-4 py-2">Quantity</th>
+              <th className="px-4 py-2">Item Price</th>
+              <th className="px-4 py-2">Line Total</th>
+              <th className="px-4 py-2">Delete</th>
+            </tr>
+          </thead>
+          <tbody className="text-xs">
+            {rows.map((row, index) => (
+              <tr
+                key={index}
+                className={`text-center align-middle ${
+                  row.active ? "bg-white text-black" : "text-gray-400"
+                }`}
+              >
+                {/* Product Lookup */}
+                <td className="px-4 py-2 text-left">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search"
+                      value={row.product}
+                      onChange={(e) => handleChange(index, "product", e.target.value)}
+                      onFocus={() => activateRow(index)}
+                      readOnly={!row.active}
+                      className={`w-full border rounded pl-2 pr-8 py-1 text-xs ${
+                        row.active
+                          ? "focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                          : "cursor-pointer"
+                      }`}
+                    />
+                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                      <Search size={14} />
+                    </span>
+                  </div>
+                </td>
+
+                {/* Catalogue */}
+                <td className="px-4 py-2">
+                  <input
+                    type="text"
+                    value={row.catalogue}
+                    onChange={(e) => handleChange(index, "catalogue", e.target.value)}
+                    onFocus={() => activateRow(index)}
+                    readOnly={!row.active}
+                    className={`w-full border rounded px-2 py-1 text-xs ${
+                      row.active ? "bg-white" : "cursor-pointer"
+                    }`}
+                  />
+                </td>
+
+                {/* Quantity */}
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    value={row.quantity}
+                    onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                    onFocus={() => activateRow(index)}
+                    readOnly={!row.active}
+                    className={`w-full border rounded px-2 py-1 text-xs text-right ${
+                      row.active ? "bg-white" : "cursor-pointer"
+                    }`}
+                  />
+                </td>
+
+                {/* Item Price */}
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    value={row.price}
+                    onChange={(e) => handleChange(index, "price", e.target.value)}
+                    onFocus={() => activateRow(index)}
+                    readOnly={!row.active}
+                    className={`w-full border rounded px-2 py-1 text-xs text-right ${
+                      row.active ? "bg-white" : "cursor-pointer"
+                    }`}
+                  />
+                </td>
+
+                {/* Line Total */}
+                <td className="px-4 py-2 text-right">{row.total}</td>
+
+                {/* Delete */}
+                <td className="px-4 py-2 flex justify-center items-center">
+                  {row.active && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(index)}
+                      className="p-2 text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, idx) => (
-                <tr key={idx} className="hover:bg-gold/10 transition-colors">
-                  <td className="p-2"><input type="text" name="itemCode" value={line.itemCode} onChange={(e) => handleLineChange(idx,e)} className="glass-input" required/></td>
-                  <td className="p-2"><input type="text" name="description" value={line.description} onChange={(e) => handleLineChange(idx,e)} className="glass-input"/></td>
-                  <td className="p-2"><input type="number" name="quantity" value={line.quantity} onChange={(e) => handleLineChange(idx,e)} className="glass-input" min="1" required/></td>
-                  <td className="p-2"><input type="number" name="price" value={line.price} onChange={(e) => handleLineChange(idx,e)} className="glass-input" min="0" required/></td>
-                  <td className="p-2"><input type="text" name="warehouse" value={line.warehouse} onChange={(e) => handleLineChange(idx,e)} className="glass-input"/></td>
-                  <td className="p-2 text-right font-semibold">{line.lineTotal.toFixed(2)}</td>
-                  <td className="p-2"><button type="button" onClick={()=>removeLine(idx)} className="btn-remove">Remove</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <button type="button" onClick={addLine} className="btn-add mb-4">+ Add Item</button>
-
-        {/* Totals */}
-        <div className="flex justify-end gap-8 mt-4 mb-6 font-semibold">
-          <div>Subtotal: {subtotal.toFixed(2)}</div>
-          <div>Tax: {tax.toFixed(2)}</div>
-          <div className="text-neon-purple text-lg">Grand Total: {grandTotal.toFixed(2)}</div>
-        </div>
-
-        <button type="submit" className="btn-submit w-full">Submit Order</button>
-
-        {message && <p className="mt-3 text-center text-green-400">{message}</p>}
-      </form>
+      {/* Submit Button */}
+      <div className="flex justify-end mt-6">
+        <button
+          type="submit"
+          onClick={handleSubmit}
+          className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+        >
+          Submit Order
+        </button>
+      </div>
     </div>
   );
 }
 
-export default OrderForm;
+export default PlaceOrderPage;

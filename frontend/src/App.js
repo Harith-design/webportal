@@ -1,29 +1,32 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar"; // Import the Navbar
 import SignUp from "./components/Signup";
 import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
-import OrderForm from "./components/OrderForm";
-import CustomerList from "./components/CustomerList"; // Import CustomerList page
+import DashboardPage from "./components/DashboardPage";
+import CustomerList from "./components/CustomerList";
+import DashboardLayout from "./components/DashboardLayout";
+import OrdersPage from "./components/Orders";
+import PlaceOrderPage from "./components/OrderForm";
 
 function App() {
   return (
     <Router>
-      {/* Navbar will be displayed on all pages */}
-      <Navbar />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/login" element={<Login />} />
 
-      {/* Page content */}
-      <div className="p-4">
-        <Routes>
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/orderform" element={<OrderForm />} />
+        {/* Dashboard routes with layout */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboardpage" element={<DashboardPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orderform" element={<PlaceOrderPage />} />
           <Route path="/customers" element={<CustomerList />} />
-          <Route path="*" element={<Dashboard />} /> {/* Default to dashboard */}
-        </Routes>
-      </div>
+        </Route>
+
+        {/* Default route */}
+        <Route path="*" element={<Login />} />
+      </Routes>
     </Router>
   );
 }

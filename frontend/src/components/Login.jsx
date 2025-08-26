@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import "./AuthOrder.css";
+import { useNavigate } from "react-router-dom";  // ✅ import navigate hook
+import "./Login.css";
 
 function Login() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ userId: "", password: "" });
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();  // ✅ initialize
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +21,7 @@ function Login() {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("token", data.token);
-        window.location.href = "/dashboard";
+        navigate("/dashboardpage");   // ✅ use navigate instead of window.location.href
       } else setMessage("❌ " + (data.message || "Login failed"));
     } catch (error) {
       setMessage("⚠️ " + error.message);
@@ -26,41 +29,55 @@ function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex justify-center items-center bg-dark-gradient overflow-hidden p-8">
-      {/* Floating particles */}
-      <div className="absolute w-48 h-48 bg-gold/30 rounded-full animate-float top-20 left-10"></div>
-      <div className="absolute w-64 h-64 bg-gold/20 rounded-full animate-float-slow bottom-10 right-20"></div>
+    <div className="page-wrapper">
+      <div className="login-container">
+        {/* Left side */}
+        <div className="login-left">
+          <h1>Welcome to GIIB Customer Portal</h1>
+          {/* <p>Your company tagline or logo goes here.</p> */}
+        </div>
 
-      <form className="relative login-glass-card p-8 text-white" onSubmit={handleSubmit}>
-        <h2 className="text-4xl font-bold mb-6 text-center text-neon-purple">Login</h2>
+        {/* Right side */}
+        <div className="login-right">
+          <form onSubmit={handleSubmit}>
+            <h2>User Login</h2>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          className="glass-input mb-4 w-full"
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          className="glass-input mb-4 w-full"
-          required
-        />
+            <input
+              type="text"
+              name="userId"
+              placeholder="User ID"
+              value={formData.userId}
+              onChange={handleChange}
+              className="glass-input"
+              required
+            />
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
+              className="glass-input"
+              required
+            />
 
-        <button type="submit" className="btn-submit w-full mb-4">Login</button>
+            <button type="submit" className="btn-submit">Login</button>
 
-        {message && <p className="mt-3 text-center text-green-400">{message}</p>}
+            {message && <p className="error-text">{message}</p>}
 
-        <p className="text-center text-gray-300 mt-2">
-          Don't have an account? <a href="/signup" className="text-neon-purple hover:underline">Sign Up</a>
-        </p>
-      </form>
+            <div class="login-options">
+              <label class="remember-me">
+                <input type="checkbox" /> Remember me
+              </label>
+              <a href="#" class="forgot-password">Forgot password?</a>
+            </div>
+
+            <p className="signup-text">
+              Don't have an account? <a href="/signup">Create Account</a>
+            </p>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ function Navbar() {
 
   return (
     <nav className="bg-black bg-opacity-80 backdrop-blur-md p-4 flex space-x-4">
-      <Link to="/dashboard" className={linkClasses("/dashboard")}>
+      <Link to="/dashboard2" className={linkClasses("/dashboard2")}>
         Dashboard
       </Link>
       <Link to="/orderform" className={linkClasses("/orderform")}>

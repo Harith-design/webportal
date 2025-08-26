@@ -28,7 +28,7 @@
 .animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
 
 /* Glass card styles */
-.login-glass-card,
+/* .login-glass-card,
 .signup-glass-card {
   background: rgba(25, 25, 25, 0.75);
   backdrop-filter: blur(10px);
@@ -36,7 +36,7 @@
   box-shadow: 0 10px 25px rgba(0,0,0,0.6);
   width: 100%;
   max-width: 420px;
-}
+} */
 
 .order-glass-card {
   background: rgba(25, 25, 25, 1.25);
@@ -51,16 +51,16 @@
 /* Inputs */
 .glass-input {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(92, 92, 92, 0.25);
   padding: 0.6rem 0.8rem;
   border-radius: 0.5rem;
-  color: #fff;
-  outline: none;
+  color: #000000;
+  /* outline: 1px solid rgba(255, 255, 255, 0.25); */
   transition: border 0.3s, background 0.3s;
 }
 
 .glass-input:focus {
-  border: 1px solid gold;
+  border: 1px solid #1e40af;
   background: rgba(255, 255, 255, 0.15);
 }
 
@@ -68,21 +68,25 @@
 .btn-submit,
 .btn-add,
 .btn-remove {
-  background: gold;
-  color: black;
-  font-weight: bold;
-  border-radius: 0.5rem;
-  padding: 0.6rem 1rem;
+  color: white;
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: transform 0.2s, background 0.3s;
+  transition: background 0.3s;
+}
+
+.btn-submit {
+  background: #2563eb;
 }
 
 .btn-submit:hover,
 .btn-add:hover,
 .btn-remove:hover {
-  transform: translateY(-2px);
-  background: #ffdd57;
+  .btn-submit:hover {
+  background: #1e40af;
+}
 }
 
 /* Table styling for order form */
@@ -94,14 +98,16 @@ th, td {
   padding: 0.5rem 0.8rem;
 }
 
-th {
+/* th {
   background: rgba(218, 165, 32, 0.35);
   color: white;
-}
+} */
 
 tr:hover td {
-  background: rgba(218, 165, 32, 0.15);
+  background: rgba(163, 164, 165, 0.15);
 }
+
+
 
 /* Dashboard stat cards */
 .stat-card {
@@ -124,8 +130,8 @@ nav a {
 }
 
 nav a:hover {
-  color: #ffdd57;
-  text-decoration: underline;
+  color: #2563eb;
+  /* text-decoration: underline; */
 }
 
 /* Neon text */
