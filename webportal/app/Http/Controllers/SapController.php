@@ -9,13 +9,13 @@ use Illuminate\Support\Facades\Cache;
 
 class SapController extends Controller
 {
-    // ----------------- DIRECT SQL INSERT (Existing) -----------------
+    // ----------------- DIRECT SQL INSERT (Legacy Example) -----------------
     public function createBP(Request $request)
     {
         $request->validate([
             'CardCode' => 'required|string',
             'CardName' => 'required|string',
-            'CardType' => 'required|string|in:C,L,S', // C=Customer, L=Lead, S=Supplier
+            'CardType' => 'required|string|in:C,L,S',
         ]);
 
         try {
@@ -26,7 +26,7 @@ class SapController extends Controller
             ]);
 
             return response()->json([
-                'message'  => 'BP created successfully',
+                'message'  => 'BP created successfully (direct SQL)',
                 'CardCode' => $request->CardCode,
                 'CardName' => $request->CardName,
                 'CardType' => $request->CardType
@@ -79,7 +79,10 @@ class SapController extends Controller
         return $response->json()['value'] ?? [];
     }
 
-    // ----------------- SERVICE LAYER ENDPOINTS -----------------
+    // =====================================================
+    // ----------------- CUSTOMERS CRUD --------------------
+    // =====================================================
+
     public function getCustomers()
     {
         $customers = $this->fetchFromServiceLayer("BusinessPartners?\$filter=CardType eq 'C'");
@@ -101,17 +104,111 @@ class SapController extends Controller
         ]);
     }
 
-    public function getSuppliers()
+    public function createCustomer(Request $request)
     {
-        $suppliers = $this->fetchFromServiceLayer("BusinessPartners?\$filter=CardType eq 'S'");
+        $sessionId = $this->getSession();
 
-        $cleaned = collect($suppliers)->map(function ($s) {
+        $data = $request->validate([
+            'CardCode' => 'required|string',
+            'CardName' => 'required|string',
+            'Phone'    => 'nullable|string',
+            'City'     => 'nullable|string',
+            'Country'  => 'nullable|string',
+        ]);
+
+        $payload = [
+            'CardCode' => $data['CardCode'],
+            'CardName' => $data['CardName'],
+            'CardType' => 'C',
+            'Phone1'   => $data['Phone'] ?? '',
+            'City'     => $data['City'] ?? '',
+            'Country'  => $data['Country'] ?? '',
+        ];
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->post("https://172.27.31.227:50000/b1s/v1/BusinessPartners", $payload);
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to create customer',
+                'details' => $response->body(),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $response->json(),
+        ]);
+    }
+
+    public function updateCustomer(Request $request, $cardCode)
+    {
+        $sessionId = $this->getSession();
+
+        $data = $request->only(['CardName', 'Phone', 'City', 'Country']);
+
+        $payload = array_filter([
+            'CardName' => $data['CardName'] ?? null,
+            'Phone1'   => $data['Phone'] ?? null,
+            'City'     => $data['City'] ?? null,
+            'Country'  => $data['Country'] ?? null,
+        ]);
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->patch("https://172.27.31.227:50000/b1s/v1/BusinessPartners('$cardCode')", $payload);
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to update customer',
+                'details' => $response->body(),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $response->json(),
+        ]);
+    }
+
+    public function deleteCustomer($cardCode)
+    {
+        $sessionId = $this->getSession();
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->delete("https://172.27.31.227:50000/b1s/v1/BusinessPartners('$cardCode')");
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to delete customer',
+                'details' => $response->body(),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Customer $cardCode deleted successfully"
+        ]);
+    }
+
+    // =====================================================
+    // ----------------- ITEMS CRUD ------------------------
+    // =====================================================
+
+    public function getItems()
+    {
+        $items = $this->fetchFromServiceLayer("Items");
+
+        $cleaned = collect($items)->map(function ($i) {
             return [
-                'CardCode' => $s['CardCode'] ?? null,
-                'CardName' => $s['CardName'] ?? null,
-                'Phone'    => $s['Phone1'] ?? null,
-                'City'     => $s['City'] ?? null,
-                'Country'  => $s['Country'] ?? null,
+                'ItemCode'    => $i['ItemCode'] ?? null,
+                'ItemName'    => $i['ItemName'] ?? null,
+                'ForeignName' => $i['ForeignName'] ?? null,
+                'OnHand'      => $i['OnHand'] ?? 0,
+                'Price'       => $i['ItemPrices'][0]['Price'] ?? null,
+                'Currency'    => $i['ItemPrices'][0]['Currency'] ?? null,
             ];
         });
 
@@ -122,25 +219,86 @@ class SapController extends Controller
         ]);
     }
 
-    public function getItems()
+    public function createItem(Request $request)
     {
-        $items = $this->fetchFromServiceLayer("Items");
+        $sessionId = $this->getSession();
 
-        $cleaned = collect($items)->map(function ($i) {
-            return [
-                'ItemCode' => $i['ItemCode'] ?? null,
-                'ItemName' => $i['ItemName'] ?? null,
-                'ForeignName' => $i['ForeignName'] ?? null,
-                'OnHand'   => $i['OnHand'] ?? 0,
-                'Price'    => $i['ItemPrices'][0]['Price'] ?? null,
-                'Currency' => $i['ItemPrices'][0]['Currency'] ?? null,
-            ];
-        });
+        $data = $request->validate([
+            'ItemCode' => 'required|string',
+            'ItemName' => 'required|string',
+            'ForeignName' => 'nullable|string',
+        ]);
+
+        $payload = [
+            'ItemCode'    => $data['ItemCode'],
+            'ItemName'    => $data['ItemName'],
+            'ForeignName' => $data['ForeignName'] ?? '',
+            'ItemType'    => 'itItems',
+        ];
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->post("https://172.27.31.227:50000/b1s/v1/Items", $payload);
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to create item',
+                'details' => $response->body(),
+            ], $response->status());
+        }
 
         return response()->json([
             'status' => 'success',
-            'count'  => $cleaned->count(),
-            'data'   => $cleaned,
+            'data'   => $response->json(),
+        ]);
+    }
+
+    public function updateItem(Request $request, $itemCode)
+    {
+        $sessionId = $this->getSession();
+
+        $data = $request->only(['ItemName', 'ForeignName']);
+
+        $payload = array_filter([
+            'ItemName'    => $data['ItemName'] ?? null,
+            'ForeignName' => $data['ForeignName'] ?? null,
+        ]);
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->patch("https://172.27.31.227:50000/b1s/v1/Items('$itemCode')", $payload);
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to update item',
+                'details' => $response->body(),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $response->json(),
+        ]);
+    }
+
+    public function deleteItem($itemCode)
+    {
+        $sessionId = $this->getSession();
+
+        $response = Http::withoutVerifying()->withHeaders([
+            'Cookie' => "B1SESSION=$sessionId",
+        ])->delete("https://172.27.31.227:50000/b1s/v1/Items('$itemCode')");
+
+        if ($response->failed()) {
+            return response()->json([
+                'error'   => 'Failed to delete item',
+                'details' => $response->body(),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Item $itemCode deleted successfully"
         ]);
     }
 }

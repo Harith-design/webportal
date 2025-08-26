@@ -3,17 +3,15 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\SapController;
 use Illuminate\Support\Facades\Http; // added for debug login
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
+| These routes are for your backend API (tested via Postman, curl, etc.)
+|--------------------------------------------------------------------------
 */
 
 // Default Laravel example
@@ -40,4 +38,13 @@ Route::get('/sap-debug-login', function () {
         'response'     => $res->json(),
         'status'       => $res->status(),
     ];
+});
+
+// ----------------- SAP B1 Customers (CRUD) -----------------
+Route::prefix('sap')->group(function () {
+    // Customers
+    Route::get('/customers', [SapController::class, 'getCustomers']);               // Read all
+    Route::post('/customers', [SapController::class, 'createCustomer']);            // Create
+    Route::put('/customers/{CardCode}', [SapController::class, 'updateCustomer']);  // Update
+    Route::delete('/customers/{CardCode}', [SapController::class, 'deleteCustomer']); // Delete
 });

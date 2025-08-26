@@ -14,3 +14,6 @@ Route::post('/sap/create-bp', [SapController::class, 'createBP']);
 
 // Service Layer - Get Customers
 Route::get('/sap/customers', [SapController::class, 'getCustomers']);
+
+// Create new customer in SAP
+Route::post('/sap/customers', [SapController::class, 'createCustomer']);
