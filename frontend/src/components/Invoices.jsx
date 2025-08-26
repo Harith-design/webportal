@@ -1,15 +1,11 @@
 import React from "react";
 import { Package, Truck, Clock } from "lucide-react";
-import { Link } from "react-router-dom"; // import Link
 
-function OrdersPage() {
+function InvoicesPage() {
   const orders = [
     {
       id: 1001,
-      poNo: "PO-2025-001",
-      customer: "ABC Trading",
-      billTo: "ABC Trading HQ, KL",
-      shipTo: "ABC Trading Warehouse, Penang",
+      ponum: "ABC Trading",
       orderDate: "25-08-2025",
       dueDate: "30-08-2025",
       total: 1200,
@@ -18,10 +14,7 @@ function OrdersPage() {
     },
     {
       id: 1002,
-      poNo: "PO-2025-002",
-      customer: "XYZ Supplies",
-      billTo: "XYZ Supplies HQ, JB",
-      shipTo: "XYZ Supplies Warehouse, Melaka",
+      ponum: "XYZ Supplies",
       orderDate: "24-08-2025",
       dueDate: "29-08-2025",
       total: 800,
@@ -30,10 +23,7 @@ function OrdersPage() {
     },
     {
       id: 1003,
-      poNo: "PO-2025-003",
-      customer: "Global Parts",
-      billTo: "Global Parts HQ, Selangor",
-      shipTo: "Global Parts Logistic Hub, Johor",
+      ponum: "Global Parts",
       orderDate: "23-08-2025",
       dueDate: "28-08-2025",
       total: 500,
@@ -42,10 +32,7 @@ function OrdersPage() {
     },
     {
       id: 1004,
-      poNo: "PO-2025-004",
-      customer: "BestMart",
-      billTo: "BestMart HQ, KL",
-      shipTo: "BestMart Outlet, Ipoh",
+      ponum: "BestMart",
       orderDate: "22-08-2025",
       dueDate: "27-08-2025",
       total: 1500,
@@ -85,9 +72,9 @@ function OrdersPage() {
         <table className="table-auto w-full border-collapse">
           <thead>
             <tr className="text-left text-sm text-gray-500 border-b">
-              <th className="px-4 py-2 font-normal">Sales No.</th>
+              <th className="px-4 py-2 font-normal">Invoice No.</th>
               <th className="px-4 py-2 font-normal">PO No.</th>
-              <th className="px-4 py-2 font-normal">Order Date</th>
+              <th className="px-4 py-2 font-normal">Posting Date</th>
               <th className="px-4 py-2 font-normal">Due Date</th>
               <th className="px-4 py-2 font-normal">Total</th>
               <th className="px-4 py-2 font-normal">Currency</th>
@@ -98,11 +85,8 @@ function OrdersPage() {
           <tbody className="text-xs">
             {orders.map((order) => (
               <tr key={order.id} className="bg-white even:bg-gray-50">
-                <td className="px-4 py-2 text-blue-600 hover:underline">
-                  {/* Make Sales No. a link */}
-                  <Link to={`/orders/${order.id}`}>{order.id}</Link>
-                </td>
-                <td className="px-4 py-2">{order.poNo}</td>
+                <td className="px-4 py-2">{order.id}</td>
+                <td className="px-4 py-2">{order.ponum}</td>
                 <td className="px-4 py-2">{order.orderDate}</td>
                 <td className="px-4 py-2">{order.dueDate}</td>
                 <td className="px-4 py-2">{order.total}</td>
@@ -120,4 +104,4 @@ function OrdersPage() {
   );
 }
 
-export default OrdersPage;
+export default InvoicesPage;

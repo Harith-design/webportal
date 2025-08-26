@@ -24,7 +24,7 @@ function Sidebar() {
         <Link to="/customers" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
           <Truck size={16} /> <span>Deliveries</span>
         </Link>
-        <Link to="/dashboard2" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
+        <Link to="/invoices" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
           <FileText size={16} /> <span>Invoices</span>
         </Link>
         <Link to="/orderform" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">

@@ -1,19 +1,19 @@
 import React from "react";
 import Sidebar from "./Sidebar";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useParams } from "react-router-dom";
 
 function DashboardLayout() {
   const location = useLocation();
 
-  const pageTitles = {
-    "/dashboardpage": "Dashboard",
-    "/orders": "Orders",
-    "/orderform": "Place an Order",
-    "/dashboard2": "Invoices",
-    "/settings": "Settings",
-  };
+  let title = "Page";
+  const { id } = useParams(); // capture route params if any
 
-  const title = pageTitles[location.pathname] || "Page";
+  if (location.pathname === "/dashboardpage") title = "Dashboard";
+  else if (location.pathname === "/orders") title = "Orders";
+  else if (location.pathname.startsWith("/orders/")) title = `Order #${id}`;
+  else if (location.pathname === "/orderform") title = "Place an Order";
+  else if (location.pathname === "/invoices") title = "Invoices";
+  else if (location.pathname === "/settings") title = "Settings";
 
   const user = {
     name: "John Doe",   // Later can be pulled from auth

@@ -12,8 +12,8 @@ function PlaceOrderPage() {
 
   // ✅ Rows state
   const [rows, setRows] = useState([
-    { product: "", catalogue: "", quantity: "", price: "", total: "", active: true },
-    { product: "", catalogue: "", quantity: "", price: "", total: "", active: false },
+    { product: "", catalogue: "", quantity: "", price: "0.00", total: "0.00", active: true },
+    { product: "", catalogue: "", quantity: "", price: "0.00", total: "0.00", active: false },
   ]);
 
   // ✅ Handle row edits
@@ -56,7 +56,7 @@ function PlaceOrderPage() {
   };
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-md">
+    <div className="p-6 bg-white rounded-xl shadow-md order-form-page">
       {/* Flex container: form left, box right */}
       <div className="flex justify-between gap-8">
         {/* Form (left) */}
@@ -135,7 +135,7 @@ function PlaceOrderPage() {
 
       {/* Table */}
       <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto mt-6">
-        <table className="table-auto w-full border-collapse">
+        <table className="table-auto w-full border-collapse OrderForm">
           <thead>
             <tr className="text-xs font-semibold border-b text-center align-middle">
               <th className="px-4 py-2 text-left">Product Lookup</th>
@@ -164,13 +164,17 @@ function PlaceOrderPage() {
                       onChange={(e) => handleChange(index, "product", e.target.value)}
                       onFocus={() => activateRow(index)}
                       readOnly={!row.active}
-                      className={`w-full border rounded pl-2 pr-8 py-1 text-xs ${
+                       className={`w-full border rounded pl-2 pr-8 py-1 text-xs ${
                         row.active
-                          ? "focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-                          : "cursor-pointer"
+                          ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          : "placeholder-gray-300 cursor-pointer"
                       }`}
                     />
-                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <span
+                      className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${
+                        row.active ? "text-gray-400" : "text-gray-300"
+                      }`}
+                    >
                       <Search size={14} />
                     </span>
                   </div>
@@ -185,7 +189,7 @@ function PlaceOrderPage() {
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
                     className={`w-full border rounded px-2 py-1 text-xs ${
-                      row.active ? "bg-white" : "cursor-pointer"
+                      row.active ? "bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "cursor-pointer"
                     }`}
                   />
                 </td>
@@ -194,44 +198,49 @@ function PlaceOrderPage() {
                 <td className="px-4 py-2">
                   <input
                     type="number"
+                    placeholder="No."
                     value={row.quantity}
                     onChange={(e) => handleChange(index, "quantity", e.target.value)}
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
-                    className={`w-full border rounded px-2 py-1 text-xs text-right ${
-                      row.active ? "bg-white" : "cursor-pointer"
+                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
+                      row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
                     }`}
                   />
                 </td>
 
                 {/* Item Price */}
-                <td className="px-4 py-2">
+                {/* <td className="px-4 py-2">
                   <input
                     type="number"
                     value={row.price}
                     onChange={(e) => handleChange(index, "price", e.target.value)}
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
-                    className={`w-full border rounded px-2 py-1 text-xs text-right ${
-                      row.active ? "bg-white" : "cursor-pointer"
+                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
+                      row.active ? "bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "cursor-pointer"
                     }`}
                   />
-                </td>
+                </td> */}
+                <td className="w-1/6 px-4 py-2">{row.price}</td>
 
                 {/* Line Total */}
-                <td className="px-4 py-2 text-right">{row.total}</td>
+                <td className="w-1/6 px-4 py-2">{row.total}</td>
 
                 {/* Delete */}
                 <td className="px-4 py-2 flex justify-center items-center">
-                  {row.active && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(index)}
-                      className="p-2 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => row.active && handleDelete(index)}
+                    disabled={!row.active}
+                    className={`p-2 ${
+                      row.active
+                        ? "text-red-500 hover:text-red-700"
+                        : "text-gray-300 cursor-not-allowed"
+                    }`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </td>
               </tr>
             ))}

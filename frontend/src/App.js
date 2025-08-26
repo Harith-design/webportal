@@ -7,6 +7,8 @@ import CustomerList from "./components/CustomerList";
 import DashboardLayout from "./components/DashboardLayout";
 import OrdersPage from "./components/Orders";
 import PlaceOrderPage from "./components/OrderForm";
+import InvoicesPage from "./components/Invoices";
+import OrderDetails from "./components/OrderDetails"; 
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           <Route path="/dashboardpage" element={<DashboardPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/orderform" element={<PlaceOrderPage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/orders/:id" element={<OrderDetails />} />
           <Route path="/customers" element={<CustomerList />} />
         </Route>
 
