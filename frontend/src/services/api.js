@@ -7,9 +7,10 @@ const API = axios.create({
   },
 });
 
-// ✅ Attach token to every request if exists
+// ✅ Attach token from localStorage OR sessionStorage
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,7 +23,7 @@ export const login = (data) => API.post("/login", data);
 export const logout = () => API.post("/logout");
 export const getCurrentUser = () => API.get("/user"); // ✅ matches Laravel route
 
-// ---------- USERS (⚠️ check if you really have these routes in Laravel) ----------
+// ---------- USERS ----------
 export const getUsers = () => API.get("/users");
 export const createUser = (data) => API.post("/users", data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);

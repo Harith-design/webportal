@@ -1,13 +1,21 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+// Public pages
 import SignUp from "./components/Signup";
 import Login from "./components/Login";
+
+// Protected pages
 import DashboardPage from "./components/DashboardPage";
-import CustomerList from "./components/CustomerList";
-import DashboardLayout from "./components/DashboardLayout";
 import OrdersPage from "./components/Orders";
 import PlaceOrderPage from "./components/OrderForm";
-import ProtectedRoute from "./components/ProtectedRoute"; // ✅ import
+import CustomerList from "./components/CustomerList";
+import InvoicesPage from "./components/Invoices"; // ✅ added
+import OrderDetails from "./components/OrderDetails"; // ✅ added
+
+// Layout & helpers
+import DashboardLayout from "./components/DashboardLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (

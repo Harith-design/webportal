@@ -1,11 +1,12 @@
+// src/components/ProtectedRoute.jsx
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { isTokenValid, clearToken } from "../helpers/auth";
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem("token"); // ✅ check if token exists
-
-  if (!token) {
-    return <Navigate to="/login" replace />; // 🚪 redirect if not logged in
+  if (!isTokenValid()) {
+    clearToken(); // remove invalid/expired token
+    return <Navigate to="/login" replace />; // redirect to login
   }
 
   return children;

@@ -1,36 +1,53 @@
+// src/components/DashboardLayout.jsx
 import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { getCurrentUser } from "../services/api"; // ✅ use helper
+import { getCurrentUser } from "../services/api";
+import { isTokenValid, clearToken } from "../helpers/auth";
 
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
-  // 🔹 Check token on mount + fetch user profile
+  // 🔹 Logout helper
+  const handleLogout = () => {
+    clearToken();
+    navigate("/login");
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-    } else {
-      getCurrentUser()
-        .then((res) => {
-          setUser(res.data); // ✅ res.data = { id, name, email, role? }
-        })
-        .catch((err) => {
-          console.error("Error fetching user:", err);
-          localStorage.removeItem("token");
-          navigate("/login"); // force re-login if expired
-        });
+    if (!isTokenValid()) {
+      handleLogout();
+      return;
     }
+
+    // 🔹 Set auto-logout timer
+    const expiry =
+      parseInt(localStorage.getItem("token_expiry")) ||
+      parseInt(sessionStorage.getItem("token_expiry"));
+    const now = new Date().getTime();
+    const timeout = setTimeout(() => {
+      handleLogout();
+    }, expiry - now);
+
+    // 🔹 Fetch user profile
+    getCurrentUser()
+      .then((res) => setUser(res.data))
+      .catch((err) => {
+        console.error("Error fetching user:", err);
+        handleLogout();
+      });
+
+    // 🔹 Cleanup timeout on unmount
+    return () => clearTimeout(timeout);
   }, [navigate]);
 
   const pageTitles = {
     "/dashboardpage": "Dashboard",
     "/orders": "Orders",
     "/orderform": "Place an Order",
-    "/dashboard2": "Invoices",
+    "/invoices": "Invoices",
     "/settings": "Settings",
   };
 
@@ -79,9 +96,7 @@ function DashboardLayout() {
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-gray-500">
-                  {user.role || "User"} {/* ✅ fallback if no role */}
-                </p>
+                <p className="text-xs text-gray-500">{user.role || "User"}</p>
               </div>
             </div>
           )}
