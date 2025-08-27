@@ -7,8 +7,7 @@ import CustomerList from "./components/CustomerList";
 import DashboardLayout from "./components/DashboardLayout";
 import OrdersPage from "./components/Orders";
 import PlaceOrderPage from "./components/OrderForm";
-import InvoicesPage from "./components/Invoices";
-import OrderDetails from "./components/OrderDetails"; 
+import ProtectedRoute from "./components/ProtectedRoute"; // ✅ import
 
 function App() {
   return (
@@ -18,8 +17,14 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
 
-        {/* Dashboard routes with layout */}
-        <Route element={<DashboardLayout />}>
+        {/* Protected Dashboard routes */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/dashboardpage" element={<DashboardPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/orderform" element={<PlaceOrderPage />} />

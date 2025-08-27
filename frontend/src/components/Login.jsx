@@ -1,30 +1,38 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";  // ✅ import navigate hook
+import { useNavigate } from "react-router-dom";
+import { login } from "../services/api"; // ✅ use login() from services/api
 import "./Login.css";
 
 function Login() {
-  const [formData, setFormData] = useState({ userId: "", password: "" });
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [rememberMe, setRememberMe] = useState(false); // ✅ add state
   const [message, setMessage] = useState("");
-  const navigate = useNavigate();  // ✅ initialize
+  const navigate = useNavigate();
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleCheckbox = (e) => setRememberMe(e.target.checked); // ✅ handle checkbox
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const response = await login({ 
+        ...formData, 
+        remember_me: rememberMe // ✅ send remember_me to backend
       });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        navigate("/dashboardpage");   // ✅ use navigate instead of window.location.href
-      } else setMessage("❌ " + (data.message || "Login failed"));
+
+      // save token
+      localStorage.setItem("token", response.data.token);
+
+      // redirect to dashboard
+      navigate("/dashboardpage");
     } catch (error) {
-      setMessage("⚠️ " + error.message);
+      if (error.response && error.response.data) {
+        setMessage("❌ " + (error.response.data.message || "Login failed"));
+      } else {
+        setMessage("⚠️ " + error.message);
+      }
     }
   };
 
@@ -34,7 +42,6 @@ function Login() {
         {/* Left side */}
         <div className="login-left">
           <h1>Welcome to GIIB Customer Portal</h1>
-          {/* <p>Your company tagline or logo goes here.</p> */}
         </div>
 
         {/* Right side */}
@@ -43,14 +50,15 @@ function Login() {
             <h2>User Login</h2>
 
             <input
-              type="text"
-              name="userId"
-              placeholder="User ID"
-              value={formData.userId}
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
               onChange={handleChange}
               className="glass-input"
               required
             />
+
             <input
               type="password"
               name="password"
@@ -65,11 +73,15 @@ function Login() {
 
             {message && <p className="error-text">{message}</p>}
 
-            <div class="login-options">
-              <label class="remember-me">
-                <input type="checkbox" /> Remember me
+            <div className="login-options">
+              <label className="remember-me">
+                <input 
+                  type="checkbox" 
+                  checked={rememberMe} 
+                  onChange={handleCheckbox} 
+                /> Remember me
               </label>
-              <a href="#" class="forgot-password">Forgot password?</a>
+              <a href="#" className="forgot-password">Forgot password?</a>
             </div>
 
             <p className="signup-text">

@@ -1,35 +1,48 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
-import { Outlet, useLocation, useParams } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { getCurrentUser } from "../services/api"; // ✅ use helper
 
 function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
 
-  let title = "Page";
-  const { id } = useParams(); // capture route params if any
+  // 🔹 Check token on mount + fetch user profile
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+    } else {
+      getCurrentUser()
+        .then((res) => {
+          setUser(res.data); // ✅ res.data = { id, name, email, role? }
+        })
+        .catch((err) => {
+          console.error("Error fetching user:", err);
+          localStorage.removeItem("token");
+          navigate("/login"); // force re-login if expired
+        });
+    }
+  }, [navigate]);
 
-  if (location.pathname === "/dashboardpage") title = "Dashboard";
-  else if (location.pathname === "/orders") title = "Orders";
-  else if (location.pathname.startsWith("/orders/")) title = `Order #${id}`;
-  else if (location.pathname === "/orderform") title = "Place an Order";
-  else if (location.pathname === "/invoices") title = "Invoices";
-  else if (location.pathname === "/settings") title = "Settings";
-
-  const user = {
-    name: "John Doe",   // Later can be pulled from auth
-    role: "CUSTOMER #008177",
+  const pageTitles = {
+    "/dashboardpage": "Dashboard",
+    "/orders": "Orders",
+    "/orderform": "Place an Order",
+    "/dashboard2": "Invoices",
+    "/settings": "Settings",
   };
 
-  // ✅ Get initials from username
-  const getInitials = (name) => {
-    return name
+  const title = pageTitles[location.pathname] || "Page";
+
+  const getInitials = (name) =>
+    name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
-  };
 
-  // ✅ Generate a consistent color from username
   const getColorFromName = (name) => {
     const colors = [
       "bg-red-500",
@@ -52,26 +65,26 @@ function DashboardLayout() {
     <div className="min-h-screen w-screen flex">
       <Sidebar />
       <div className="ml-64 flex flex-col min-h-screen flex-1">
-        
-        {/* 🔹 Top Navbar */}
         <header className="flex justify-between items-center px-6 py-3">
           <h1 className="text-2xl font-semibold">{title}</h1>
-          <div className="flex items-center space-x-3">
-            
-            {/* Circle with initials + dynamic color */}
-            <div
-              className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold ${getColorFromName(
-                user.name
-              )}`}
-            >
-              {getInitials(user.name)}
-            </div>
 
-            <div className="text-right">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
+          {user && (
+            <div className="flex items-center space-x-3">
+              <div
+                className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold ${getColorFromName(
+                  user.name
+                )}`}
+              >
+                {getInitials(user.name)}
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium">{user.name}</p>
+                <p className="text-xs text-gray-500">
+                  {user.role || "User"} {/* ✅ fallback if no role */}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </header>
 
         <main className="flex-1 px-6 pt-4 pb-6 overflow-y-auto">
