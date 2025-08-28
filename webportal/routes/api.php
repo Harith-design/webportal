@@ -4,7 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SapController;
-use Illuminate\Support\Facades\Http; // for debug login
+use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Http;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,17 +13,23 @@ use Illuminate\Support\Facades\Http; // for debug login
 |--------------------------------------------------------------------------
 */
 
-// --- Authenticated user route (Sanctum) ---
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// ------------------- Authentication Routes -------------------
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
-// --- Sales Order Routes ---
+// ------------------- Sales Order Routes -------------------
 Route::prefix('sales-order')->group(function () {
     Route::get('/{docNum}', [SalesOrderController::class, 'show']);
 });
 
-// --- Debug SAP B1 Login Route ---
+// ------------------- Debug SAP B1 Login Route -------------------
 Route::get('/sap-debug-login', function () {
     $payload = [
         'CompanyDB' => config('sapb1.company_db'),
@@ -40,7 +47,7 @@ Route::get('/sap-debug-login', function () {
     ];
 });
 
-// --- SAP B1 Business Partners CRUD Routes ---
+// ------------------- SAP B1 Business Partners CRUD Routes -------------------
 Route::prefix('sap')->group(function () {
     // Read all business partners
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);

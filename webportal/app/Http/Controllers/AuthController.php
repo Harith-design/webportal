@@ -40,7 +40,7 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
-            'remember_me' => 'sometimes|boolean', // optional
+            'remember_me' => 'sometimes|boolean',
         ]);
 
         if (!Auth::attempt($request->only('email', 'password'))) {
@@ -49,10 +49,9 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->firstOrFail();
 
-        // Set token expiration: 30 days if remember_me = true
-        $expiration = $request->remember_me ? 60 * 24 * 30 : null; // minutes
-
-        $token = $user->createToken('auth_token', [], $expiration)->plainTextToken;
+        // ------------------- Handle Remember Me -------------------
+        $tokenName = 'auth_token';
+        $token = $user->createToken($tokenName, [], $request->remember_me ? now()->addWeeks(2) : now()->addHours(2))->plainTextToken;
 
         return response()->json([
             'user' => $user,
@@ -83,7 +82,6 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        // Always return success for security
         if (!$user) {
             return response()->json([
                 'message' => 'If this email exists, a password reset link has been sent.'
