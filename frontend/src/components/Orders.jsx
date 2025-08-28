@@ -1,5 +1,5 @@
 import React from "react";
-import { Package, Truck, Clock } from "lucide-react";
+import { Package, Truck, Clock, FileDown } from "lucide-react";
 import { Link } from "react-router-dom"; // import Link
 
 function OrdersPage() {
@@ -109,7 +109,14 @@ function OrdersPage() {
                 <td className="px-4 py-2">{order.currency}</td>
                 <td className="px-4 py-2">{renderStatus(order.status)}</td>
                 <td className="px-4 py-2">
-                  <button className="text-blue-600 hover:underline">Download</button>
+                 <a 
+                    href="/path/to/file.pdf" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 flex justify-center"
+                  >
+                    <FileDown className="w-5 h-5" />
+                  </a>
                 </td>
               </tr>
             ))}

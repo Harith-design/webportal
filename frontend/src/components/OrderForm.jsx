@@ -55,6 +55,9 @@ function PlaceOrderPage() {
     alert("Order submitted! Check console for details.");
   };
 
+  const orderTotal = rows.reduce((sum, row) => sum + parseFloat(row.total || 0), 0).toFixed(2);
+
+
   return (
     <div className="p-6 bg-white rounded-xl shadow-md order-form-page">
       {/* Flex container: form left, box right */}
@@ -246,6 +249,13 @@ function PlaceOrderPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Order Total */}
+      <div className="flex justify-end mt-6 pr-4">
+        <p className="text-sm">
+          Total Order: <span className="ml-2">RM {orderTotal}</span>
+        </p>
       </div>
 
       {/* Submit Button */}

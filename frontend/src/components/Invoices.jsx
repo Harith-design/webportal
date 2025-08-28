@@ -1,5 +1,6 @@
 import React from "react";
 import { Package, Truck, Clock } from "lucide-react";
+import { Link } from "react-router-dom"; // import Link
 
 function InvoicesPage() {
   const orders = [
@@ -85,7 +86,10 @@ function InvoicesPage() {
           <tbody className="text-xs">
             {orders.map((order) => (
               <tr key={order.id} className="bg-white even:bg-gray-50">
-                <td className="px-4 py-2">{order.id}</td>
+                <td className="px-4 py-2 text-blue-600 hover:underline">
+                  {/* Make Sales No. a link */}
+                  <Link to={`/invoices/${order.id}`}>{order.id}</Link>
+                </td>
                 <td className="px-4 py-2">{order.ponum}</td>
                 <td className="px-4 py-2">{order.orderDate}</td>
                 <td className="px-4 py-2">{order.dueDate}</td>

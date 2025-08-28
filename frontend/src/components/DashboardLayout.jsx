@@ -11,6 +11,7 @@ function DashboardLayout() {
   if (location.pathname === "/dashboardpage") title = "Dashboard";
   else if (location.pathname === "/orders") title = "Orders";
   else if (location.pathname.startsWith("/orders/")) title = `Order #${id}`;
+  else if (location.pathname.startsWith("/invoices/")) title = `Invoice #${id}`;
   else if (location.pathname === "/orderform") title = "Place an Order";
   else if (location.pathname === "/invoices") title = "Invoices";
   else if (location.pathname === "/settings") title = "Settings";

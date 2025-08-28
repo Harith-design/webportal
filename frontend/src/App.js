@@ -9,6 +9,7 @@ import OrdersPage from "./components/Orders";
 import PlaceOrderPage from "./components/OrderForm";
 import InvoicesPage from "./components/Invoices";
 import OrderDetails from "./components/OrderDetails"; 
+import InvoiceDetails from "./components/InvoiceDetails"; 
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/orderform" element={<PlaceOrderPage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
           <Route path="/orders/:id" element={<OrderDetails />} />
+          <Route path="/invoices/:id" element={<InvoiceDetails />} />
           <Route path="/customers" element={<CustomerList />} />
         </Route>
 
