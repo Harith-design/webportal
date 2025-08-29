@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 // Public pages
 import SignUp from "./components/Signup";
 import Login from "./components/Login";
+import ForgotPassword from "./components/ForgotPassword";
 
 // Protected pages
 import DashboardPage from "./components/DashboardPage";
@@ -12,6 +13,7 @@ import PlaceOrderPage from "./components/OrderForm";
 import CustomerList from "./components/CustomerList";
 import InvoicesPage from "./components/Invoices"; // ✅ added
 import OrderDetails from "./components/OrderDetails"; // ✅ added
+import InvoiceDetails from "./components/InvoiceDetails"; // ✅ added
 
 // Layout & helpers
 import DashboardLayout from "./components/DashboardLayout";
@@ -24,6 +26,7 @@ function App() {
         {/* Public routes */}
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} />
 
         {/* Protected Dashboard routes */}
         <Route

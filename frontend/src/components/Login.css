@@ -32,7 +32,7 @@ body, html {
 /* Left side */
 .login-left {
   flex: 1;
-  background: linear-gradient(135deg, #2563eb, #1e3a8a);
+  background: linear-gradient(135deg, #2563eb, #b90e0a);
   color: white;
   display: flex;
   flex-direction: column;
@@ -60,7 +60,7 @@ body, html {
 
 form {
   width: 100%;
-  max-width: 300px;
+  max-width: 500pxpx;
   display: flex;
   flex-direction: column;
 }

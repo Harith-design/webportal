@@ -90,7 +90,7 @@ function Login() {
                 />{" "}
                 Remember me
               </label>
-              <a href="#" className="forgot-password">
+              <a href="/forgotpassword" className="forgot-password">
                 Forgot password?
               </a>
             </div>

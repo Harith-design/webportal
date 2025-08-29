@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api", // Laravel backend
+  baseURL: "http://192.168.100.164:8000/api", // 👈 use Harith's backend server IP
   headers: {
     "Content-Type": "application/json",
   },
@@ -12,7 +12,7 @@ API.interceptors.request.use((config) => {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`; // ✅ correct template string
   }
   return config;
 });
@@ -26,16 +26,16 @@ export const getCurrentUser = () => API.get("/user"); // ✅ matches Laravel rou
 // ---------- USERS ----------
 export const getUsers = () => API.get("/users");
 export const createUser = (data) => API.post("/users", data);
-export const updateUser = (id, data) => API.put(`/users/${id}`, data);
-export const deleteUser = (id) => API.delete(`/users/${id}`);
+export const updateUser = (id, data) => API.put(`/users/${id}`, data); // ✅ fixed
+export const deleteUser = (id) => API.delete(`/users/${id}`); // ✅ fixed
 
 // ---------- SAP / Business Partners ----------
 export const getBusinessPartners = () => API.get("/sap/business-partners");
 export const createBusinessPartner = (data) =>
   API.post("/sap/business-partners", data);
 export const updateBusinessPartner = (cardCode, data) =>
-  API.put(`/sap/business-partners/${cardCode}`, data);
+  API.put(`/sap/business-partners/${cardCode}`, data); // ✅ fixed
 export const deleteBusinessPartner = (cardCode) =>
-  API.delete(`/sap/business-partners/${cardCode}`);
+  API.delete(`/sap/business-partners/${cardCode}`); // ✅ fixed
 
 export default API;
