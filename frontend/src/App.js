@@ -13,7 +13,7 @@ import PlaceOrderPage from "./components/OrderForm";
 import CustomerList from "./components/CustomerList";
 import InvoicesPage from "./components/Invoices"; // ✅ added
 import OrderDetails from "./components/OrderDetails"; // ✅ added
-import InvoiceDetails from "./components/InvoiceDetails"; // ✅ added
+import InvoiceDetails from "./components/InvoiceDetails";
 
 // Layout & helpers
 import DashboardLayout from "./components/DashboardLayout";
