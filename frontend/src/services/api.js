@@ -1,11 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-<<<<<<< HEAD
   baseURL: "http://192.168.100.164:8000/api", // 👈 use Harith's backend server IP
-=======
-  baseURL: "http://192.168.100.164:8000/api", // LAN IP of your ba
->>>>>>> d94986e5e55bfa1eb8c1871014550251457d63ef
   headers: {
     "Content-Type": "application/json",
   },
