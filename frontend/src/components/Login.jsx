@@ -52,7 +52,7 @@ function Login() {
         </div>
 
         <div className="login-right">
-          <form onSubmit={handleSubmit}>
+          <form className="max-w-[300px]" onSubmit={handleSubmit}>
             <h2>User Login</h2>
 
             <input
