@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { LoadingProvider } from "./context/LoadingContext";
 
 // Public pages
 import SignUp from "./components/Signup";
@@ -22,32 +23,34 @@ import ProtectedRoute from "./components/ProtectedRoute";
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgotpassword" element={<ForgotPassword />} />
+      <LoadingProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgotpassword" element={<ForgotPassword />} />
 
-        {/* Protected Dashboard routes */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/dashboardpage" element={<DashboardPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/orderform" element={<PlaceOrderPage />} />
-          <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/orders/:id" element={<OrderDetails />} />
-          <Route path="/invoices/:id" element={<InvoiceDetails />} />
-          <Route path="/customers" element={<CustomerList />} />
-        </Route>
+          {/* Protected Dashboard routes */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/dashboardpage" element={<DashboardPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orderform" element={<PlaceOrderPage />} />
+            <Route path="/invoices" element={<InvoicesPage />} />
+            <Route path="/orders/:id" element={<OrderDetails />} />
+            <Route path="/invoices/:id" element={<InvoiceDetails />} />
+            <Route path="/customers" element={<CustomerList />} />
+          </Route>
 
-        {/* Default route */}
-        <Route path="*" element={<Login />} />
-      </Routes>
+          {/* Default route */}
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </LoadingProvider>
     </Router>
   );
 }

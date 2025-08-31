@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
+
 body, html {
   height: 100%;
   margin: 0;
@@ -32,30 +33,43 @@ body, html {
 /* Left side */
 .login-left {
   flex: 1;
-  background: linear-gradient(135deg, #2563eb, #b90e0a);
+  background: radial-gradient(circle at 10% 60%, #f90000, #0750e4);
+  background-size: cover, 200px; /* gradient covers all, texture repeats every 200px */
+  background-blend-mode: overlay; /* makes the gradient blend with texture */
   color: white;
   display: flex;
-  flex-direction: column;
-  /* justify-content: center;
-  align-items: center;
-  text-align: center; */
-  /* border: 1px solid black; */
-  padding: 2rem;
+  flex-direction: row;   /* 👈 side by side */
+  padding: 1rem;
+  justify-content: center; /* horizontal center */
+  align-items: center;     /* vertical center */
+  flex-direction: column;  /* so text stays stacked */
 }
 
 .login-left h1 {
     /* border: 1px solid white; */
-    font-size: 40px;
+    /* font-size: 40px; */
     width: 20rem;
+    /* display: flex;
+    flex: row; */
+    /* align-items: center; */
+    /* margin-top: auto; */
 }
 
 /* Right side */
 .login-right {
   flex: 1;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background: #ffffff;
+  position: relative; /* ✅ allows absolute positioning inside */
+}
+
+.login-right img {
+  position: absolute;
+  top: 1rem;   /* adjust spacing */
+  right: 1rem; /* pushes logo to the very right */
 }
 
 form {

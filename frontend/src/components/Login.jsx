@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/api";
 import "./Login.css";
+import { useLoading } from "../context/LoadingContext";
 
 function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [rememberMe, setRememberMe] = useState(false);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
+  const { setLoading } = useLoading();
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -17,6 +19,7 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setLoading(true); // ✅ show loader
       const response = await login({
         ...formData,
         remember_me: rememberMe,
@@ -41,17 +44,23 @@ function Login() {
       } else {
         setMessage("⚠️ " + error.message);
       }
-    }
+    } finally {
+        setLoading(false); // always hide loader
+}
   };
 
   return (
     <div className="page-wrapper">
       <div className="login-container">
         <div className="login-left">
-          <h1>Welcome to GIIB Customer Portal</h1>
+          <h1>
+            <span className="block text-5xl font-bold">Welcome to</span>
+            <span className="block text-2xl font-light">GIIB Customer Portal</span>
+          </h1>
         </div>
-
         <div className="login-right">
+          
+      <img src="/giib-logo.png" alt="GIIB Logo" className="h-11 w-10" />
           <form className="max-w-[300px]" onSubmit={handleSubmit}>
             <h2>User Login</h2>
 
@@ -99,6 +108,7 @@ function Login() {
               Don't have an account? <a href="/signup">Create Account</a>
             </p>
           </form>
+            
         </div>
       </div>
     </div>
