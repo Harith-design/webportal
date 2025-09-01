@@ -14,10 +14,10 @@ function DashboardPage() {
       {/* Row 1 - Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" >
         {[
-          { title: "Total Orders", value: "201", icon: <ShoppingCart size={20} />, bg: "radial-gradient(circle at 30% 70%, #ffd7d7ff, #f8faffff)" },
-          { title: "Past Due", value: "RM 2,100.50", icon: <ClockAlert size={20} />, bg: "radial-gradient(circle at 30% 70%, #9ce9d9ff, #fefff7ff)"},
-          { title: "Due Soon", value: "RM 369.22", icon: <ClockFading size={20} />, bg: "radial-gradient(circle at 30% 70%, #cfdfffff, #fffbf7ff)"},
-          { title: "Total Outstanding", value: "RM 1,568.50", icon: <Flag size={20} />, bg: "radial-gradient(circle at 30% 70%, #f8fcd0ff, #fdfcfdff)" },
+          { title: "Total Orders", value: "201", icon: <ShoppingCart size={20} color="#e63946"/>, bg: "radial-gradient(circle at 30% 70%, #ffd7d7ff, #f8faffff)" },
+          { title: "Past Due", value: "RM 2,100.50", icon: <ClockAlert size={20} color="green" />, bg: "radial-gradient(circle at 30% 70%, #9ce9d9ff, #fefff7ff)"},
+          { title: "Due Soon", value: "RM 369.22", icon: <ClockFading size={20} color="blue"/>, bg: "radial-gradient(circle at 30% 70%, #cfdfffff, #fffbf7ff)"},
+          { title: "Total Outstanding", value: "RM 1,568.50", icon: <Flag size={20} color="#d2e318ff" />, bg: "radial-gradient(circle at 30% 70%, #f8fcd0ff, #fdfcfdff)" },
         ].map((card) => (
           <div key={card.title} className="bg-white p-4 rounded-xl shadow-md min-h-30 w-72" style={{ background: card.bg }}>
             <div className="flex justify-between items-center">

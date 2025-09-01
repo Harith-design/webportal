@@ -65,7 +65,7 @@ function PlaceOrderPage() {
         {/* Form (left) */}
         <form onSubmit={handleSubmit} className="space-y-4 flex-1">
           {/* Requested Delivery Date */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 w-80">
             <label className="min-w-[150px] text-xs">Requested Delivery Date</label>
             <input
               type="date"
