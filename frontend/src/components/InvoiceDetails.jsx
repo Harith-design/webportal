@@ -70,16 +70,20 @@ function InvoiceDetails() {
           </p>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-gray-700">Bill To</h3>
-          <p className="text-xs">{invoice.billTo}</p>
+        <div className="flex justify-end">
+          <div className="text-left">
+            <h3 className="font-semibold text-sm">Bill To</h3>
+            <p className="text-xs">{invoice.billTo}</p>
+          </div>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-gray-700">Ship To</h3>
-          <p className="text-xs">{invoice.shipTo}</p>
+        <div className="flex justify-end ">
+          <div className="text-left pr-6">
+              <h3 className="font-semibold text-sm">Ship To</h3>
+              <p className="text-xs">{invoice.shipTo}</p>
+          </div>
         </div>
-      </div>
+       </div> 
 
       {/* Section 2: Items Table */}
       <div className="overflow-x-auto">

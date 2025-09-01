@@ -1,13 +1,14 @@
 // src/components/DashboardLayout.jsx
 import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
 import { isTokenValid, clearToken } from "../helpers/auth";
 
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { id } = useParams(); // ✅ grab dynamic params (like :id)
   const [user, setUser] = useState(null);
 
   // 🔹 Logout helper
@@ -43,15 +44,38 @@ function DashboardLayout() {
     return () => clearTimeout(timeout);
   }, [navigate]);
 
+  // 🔹 Page title patterns
   const pageTitles = {
     "/dashboardpage": "Dashboard",
     "/orders": "Orders",
+    "/orders/:id": "Order #{id}",     // ✅ dynamic pattern
     "/orderform": "Place an Order",
     "/invoices": "Invoices",
+    "/invoices/:id": "Invoice #{id}", // ✅ dynamic pattern
     "/settings": "Settings",
+    "/customers": "Customers",
   };
 
-  const title = pageTitles[location.pathname] || "Page";
+  const getPageTitle = (pathname, id) => {
+    // Exact match first
+    if (pageTitles[pathname]) {
+      return pageTitles[pathname];
+    }
+
+    // Match patterns like /orders/:id
+    for (const pattern in pageTitles) {
+      if (pattern.includes(":id")) {
+        const base = pattern.replace("/:id", "");
+        if (pathname.startsWith(base + "/") && id) {
+          return pageTitles[pattern].replace("{id}", id);
+        }
+      }
+    }
+
+    return "Page";
+  };
+
+  const title = getPageTitle(location.pathname, id);
 
   const getInitials = (name) =>
     name

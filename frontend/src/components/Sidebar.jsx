@@ -9,10 +9,11 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import "./Sidebar.css";
 
 function Sidebar() {
   return (
-    <aside className="w-64 h-screen bg-white shadow-lg p-4 fixed left-0 top-0">
+    <aside className="w-64 bg-white h-screen shadow-lg p-4 fixed left-0 top-0">
       <h1 className="text-xl font-bold mb-6">My Portal</h1>
       <nav className="space-y-3">
         <Link to="/dashboardpage" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">

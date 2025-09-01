@@ -53,19 +53,25 @@ function OrderDetails() {
   const finalTotal = subtotal - order.discount + order.vat;
 
   return (
-    <div className="p-6 space-y-6 bg-white p-4 rounded-xl shadow-md overflow-x-auto">
+    <div className="p-6 space-y-8 bg-white rounded-xl shadow-md">
       {/* Section 1: Sales Order Number */}
       {/* <div>
         <h2 className="text-2xl font-bold">Sales Order #{order.id}</h2>
       </div> */}
 
       {/* Section 2: Order Info, Bill To, Ship To */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="text-xs px-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+        <div className="space-y-1">
           <p><span className="font-semibold">SO Number:</span> {order.id}</p>
           <p><span className="font-semibold">PO Number:</span> {order.ponum}</p>
           <p><span className="font-semibold">Order Date:</span> {order.orderDate}</p>
-          <p><span className="font-semibold">Status:</span> {order.status}</p>
+          <p><span className="font-semibold">Status:</span> {order.status}
+            <span className={`ml-1 px-2 py-0.5 rounded text-xs ${
+              order.status === "Paid" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"
+            }`}>
+              {order.status}
+            </span>
+          </p>
         </div>
         <div className="flex justify-end">
           <div className="text-left">
@@ -111,7 +117,7 @@ function OrderDetails() {
       </div>
 
       {/* Section 4: Totals */}
-      <div className="p-4 max-w-md ml-auto text-xs">
+      <div className="max-w-sm ml-auto text-sm space-y-1">
         <div className="flex justify-between">
           <span>Subtotal:</span>
           <span>{order.currency} {subtotal}</span>
@@ -124,7 +130,7 @@ function OrderDetails() {
           <span>VAT:</span>
           <span>+ {order.currency} {order.vat}</span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between font-semibold text-gray-800 border-t pt-2">
           <span>Final Amount:</span>
           <span>{order.currency} {finalTotal}</span>
         </div>
