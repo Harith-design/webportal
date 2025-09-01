@@ -6,6 +6,7 @@ import { LoadingProvider } from "./context/LoadingContext";
 import SignUp from "./components/Signup";
 import Login from "./components/Login";
 import ForgotPassword from "./components/ForgotPassword";
+import CreateNewPassword from "./components/CreateNewPassword";
 
 // Protected pages
 import DashboardPage from "./components/DashboardPage";
@@ -29,13 +30,14 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
+          <Route path="/createpassword" element={<CreateNewPassword />} />
 
           {/* Protected Dashboard routes */}
           <Route
             element={
-              <ProtectedRoute>
+              
                 <DashboardLayout />
-              </ProtectedRoute>
+              
             }
           >
             <Route path="/dashboardpage" element={<DashboardPage />} />
