@@ -65,9 +65,9 @@ function OrderDetails() {
           <p><span className="font-semibold">SO Number:</span> {order.id}</p>
           <p><span className="font-semibold">PO Number:</span> {order.ponum}</p>
           <p><span className="font-semibold">Order Date:</span> {order.orderDate}</p>
-          <p><span className="font-semibold">Status:</span> {order.status}
+          <p><span className="font-semibold">Status:</span>
             <span className={`ml-1 px-2 py-0.5 rounded text-xs ${
-              order.status === "Paid" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"
+              order.status === "Delivered" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"
             }`}>
               {order.status}
             </span>
