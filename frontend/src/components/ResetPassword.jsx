@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { KeyRound } from "lucide-react"; // ✅ Import key icon
 
-function CreateNewPassword() {
+function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -75,4 +75,4 @@ function CreateNewPassword() {
   );
 }
 
-export default CreateNewPassword;
+export default ResetPassword;
