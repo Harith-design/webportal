@@ -110,6 +110,7 @@ function DashboardLayout() {
           <h1 className="text-2xl font-semibold">{title}</h1>
 
           {user && (
+          <div className="relative">
             <div className="flex items-center space-x-3">
               <div
                 className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold ${getColorFromName(
@@ -123,9 +124,9 @@ function DashboardLayout() {
                 <p className="text-xs text-gray-500">{user.role || "User"}</p>
               </div>
             </div>
+        </div>
           )}
         </header>
-
         <main className="flex-1 px-6 pt-4 pb-6 overflow-y-auto">
           <Outlet />
         </main>

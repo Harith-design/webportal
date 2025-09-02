@@ -17,26 +17,26 @@ function DashboardPage() {
           {
             title: "Total Orders",
             value: "201",
-            icon: <ShoppingCart size={20} color="blue" />,
-            bg: "radial-gradient(circle at 30% 70%, #cfdfffff, #fffbf7ff)",
+            icon: <ShoppingCart size={20} color="black" />,
+            bg: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
           },
           {
             title: "Past Due",
             value: "RM 2,100.50",
-            icon: <ClockAlert size={20} color="#e63946" />,
-            bg: "radial-gradient(circle at 30% 70%, #ffd7d7ff, #f8faffff)",
+            icon: <ClockAlert size={20} color="black" />,
+            bg: "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
           },
           {
             title: "Due Soon",
             value: "RM 369.22",
-            icon: <ClockFading size={20} color="green" />,
-            bg: "radial-gradient(circle at 30% 70%, #9ce9d9ff, #fefff7ff)",
+            icon: <ClockFading size={20} color="black" />,
+            bg: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
           },
           {
             title: "Total Outstanding",
             value: "RM 1,568.50",
-            icon: <Flag size={20} color="#d2e318ff" />,
-            bg: "radial-gradient(circle at 30% 70%, #f8fcd0ff, #fdfcfdff)",
+            icon: <Flag size={20} color="black" />,
+            bg: "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)",
           },
         ].map((card) => (
           <div
