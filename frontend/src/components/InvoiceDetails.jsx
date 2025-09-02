@@ -30,7 +30,7 @@ function InvoiceDetails() {
       dueDate: "29-08-2025",
       total: 800,
       currency: "RM",
-      status: "Paid",
+      status: "Delivered",
       billTo: "XYZ Corp, Penang",
       shipTo: "Port Klang, Selangor",
       items: [
@@ -63,23 +63,27 @@ function InvoiceDetails() {
           <p><span className="font-semibold">Due Date:</span> {invoice.dueDate}</p>
           <p><span className="font-semibold">Status:</span> 
             <span className={`ml-1 px-2 py-0.5 rounded text-xs ${
-              invoice.status === "Paid" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"
+              invoice.status === "Delivered" ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-600"
             }`}>
               {invoice.status}
             </span>
           </p>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-gray-700">Bill To</h3>
-          <p className="text-xs">{invoice.billTo}</p>
+        <div className="flex justify-end">
+          <div className="text-left">
+            <h3 className="font-semibold text-sm">Bill To</h3>
+            <p className="text-xs">{invoice.billTo}</p>
+          </div>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-gray-700">Ship To</h3>
-          <p className="text-xs">{invoice.shipTo}</p>
+        <div className="flex justify-end ">
+          <div className="text-left pr-6">
+              <h3 className="font-semibold text-sm">Ship To</h3>
+              <p className="text-xs">{invoice.shipTo}</p>
+          </div>
         </div>
-      </div>
+       </div> 
 
       {/* Section 2: Items Table */}
       <div className="overflow-x-auto">

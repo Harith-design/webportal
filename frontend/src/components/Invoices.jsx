@@ -1,5 +1,5 @@
 import React from "react";
-import { Package, Truck, Clock } from "lucide-react";
+import { Package, Truck, Clock} from "lucide-react";
 import { Link } from "react-router-dom"; // import Link
 
 function InvoicesPage() {
@@ -72,7 +72,7 @@ function InvoicesPage() {
       <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
         <table className="table-auto w-full border-collapse">
           <thead>
-            <tr className="text-left text-sm text-gray-500 border-b">
+            <tr className="text-center text-sm text-gray-500 border-b">
               <th className="px-4 py-2 font-normal">Invoice No.</th>
               <th className="px-4 py-2 font-normal">PO No.</th>
               <th className="px-4 py-2 font-normal">Posting Date</th>
@@ -85,7 +85,7 @@ function InvoicesPage() {
           </thead>
           <tbody className="text-xs">
             {orders.map((order) => (
-              <tr key={order.id} className="bg-white even:bg-gray-50">
+              <tr key={order.id} className="bg-white even:bg-gray-50 text-center">
                 <td className="px-4 py-2 text-blue-600 hover:underline">
                   {/* Make Sales No. a link */}
                   <Link to={`/invoices/${order.id}`}>{order.id}</Link>
@@ -96,8 +96,18 @@ function InvoicesPage() {
                 <td className="px-4 py-2">{order.total}</td>
                 <td className="px-4 py-2">{order.currency}</td>
                 <td className="px-4 py-2">{renderStatus(order.status)}</td>
-                <td className="px-4 py-2">
-                  <button className="text-blue-600 hover:underline">Download</button>
+                <td className="px-4 py-2 flex justify-center ">
+                 <a 
+                    href="/path/to/file.pdf" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <img 
+                      src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" 
+                      alt="PDF" 
+                      className="w-5 h-5" 
+                    />
+                  </a>
                 </td>
               </tr>
             ))}
