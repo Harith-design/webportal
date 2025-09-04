@@ -12,46 +12,47 @@ function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Row 1 - Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {[
-          {
-            title: "Total Orders",
-            value: "201",
-            icon: <ShoppingCart size={20} color="blue" />,
-            bg: "radial-gradient(circle at 30% 70%, #cfdfffff, #fffbf7ff)",
-          },
-          {
-            title: "Past Due",
-            value: "RM 2,100.50",
-            icon: <ClockAlert size={20} color="#e63946" />,
-            bg: "radial-gradient(circle at 30% 70%, #ffd7d7ff, #f8faffff)",
-          },
-          {
-            title: "Due Soon",
-            value: "RM 369.22",
-            icon: <ClockFading size={20} color="green" />,
-            bg: "radial-gradient(circle at 30% 70%, #9ce9d9ff, #fefff7ff)",
-          },
-          {
-            title: "Total Outstanding",
-            value: "RM 1,568.50",
-            icon: <Flag size={20} color="#d2e318ff" />,
-            bg: "radial-gradient(circle at 30% 70%, #f8fcd0ff, #fdfcfdff)",
-          },
-        ].map((card) => (
-          <div
-            key={card.title}
-            className="bg-white p-4 rounded-xl shadow-md min-h-30 w-full max-w-xs"
-            style={{ background: card.bg }}
-          >
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg">{card.title}</h3>
-              <div className="text-gray-600">{card.icon}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[
+            {
+              title: "Total Orders",
+              value: "201",
+              icon: <ShoppingCart size={20} color="black" />,
+              bg: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
+            },
+            {
+              title: "Past Due",
+              value: "RM 2,100.50",
+              icon: <ClockAlert size={20} color="black" />,
+              bg: "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
+            },
+            {
+              title: "Due Soon",
+              value: "RM 369.22",
+              icon: <ClockFading size={20} color="black" />,
+              bg: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
+            },
+            {
+              title: "Total Outstanding",
+              value: "RM 1,568.50",
+              icon: <Flag size={20} color="black" />,
+              bg: "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)",
+            },
+          ].map((card) => (
+            <div
+              key={card.title}
+              className="bg-white p-4 rounded-xl shadow-md min-h-30 w-full"
+              style={{ background: card.bg }}
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg">{card.title}</h3>
+                <div className="text-gray-600">{card.icon}</div>
+              </div>
+              <p className="font-semibold text-2xl mt-2">{card.value}</p>
             </div>
-            <p className="font-semibold text-2xl mt-2">{card.value}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+
 
       {/* Row 2 - Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,5 +1,5 @@
 // src/components/DashboardLayout.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
@@ -10,6 +10,8 @@ function DashboardLayout() {
   const navigate = useNavigate();
   const { id } = useParams(); // ✅ grab dynamic params (like :id)
   const [user, setUser] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null); // ✅ reference for dropdown wrapper
 
   // 🔹 Logout helper
   const handleLogout = () => {
@@ -44,6 +46,25 @@ function DashboardLayout() {
     return () => clearTimeout(timeout);
   }, [navigate]);
 
+  // ✅ Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
   // 🔹 Page title patterns
   const pageTitles = {
     "/dashboardpage": "Dashboard",
@@ -54,6 +75,7 @@ function DashboardLayout() {
     "/invoices/:id": "Invoice #{id}", // ✅ dynamic pattern
     "/settings": "Settings",
     "/customers": "Customers",
+    "/editprofile": "Edit Profile",
   };
 
   const getPageTitle = (pathname, id) => {
@@ -110,11 +132,13 @@ function DashboardLayout() {
           <h1 className="text-2xl font-semibold">{title}</h1>
 
           {user && (
+          <div className="relative" ref={dropdownRef}>
             <div className="flex items-center space-x-3">
               <div
-                className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold ${getColorFromName(
+                className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold cursor-pointer ${getColorFromName(
                   user.name
                 )}`}
+                onClick={() => setDropdownOpen((prev) => !prev)}
               >
                 {getInitials(user.name)}
               </div>
@@ -123,6 +147,38 @@ function DashboardLayout() {
                 <p className="text-xs text-gray-500">{user.role || "User"}</p>
               </div>
             </div>
+
+          {/* Dropdown */}
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-50">
+                  <p className="px-4 py-2 text-sm text-gray-700 font-medium">
+                    {user.name}
+                  </p>
+                  <hr className="my-1" />
+                  <button
+                    onClick={() => {
+                      navigate("/editprofile");
+                      setDropdownOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Edit Profile
+                  </button>
+                  {/* <button
+                    onClick={() => navigate("/settings")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Settings
+                  </button> */}
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+        </div>
           )}
         </header>
 

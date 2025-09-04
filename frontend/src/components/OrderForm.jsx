@@ -142,7 +142,7 @@ function PlaceOrderPage() {
           <thead>
             <tr className="text-xs font-semibold border-b text-center align-middle">
               <th className="px-4 py-2 text-left">Product Lookup</th>
-              <th className="px-4 py-2">Catalogue</th>
+              {/* <th className="px-4 py-2">Catalogue</th> */}
               <th className="px-4 py-2">Quantity</th>
               <th className="px-4 py-2">Item Price</th>
               <th className="px-4 py-2">Line Total</th>
@@ -184,7 +184,7 @@ function PlaceOrderPage() {
                 </td>
 
                 {/* Catalogue */}
-                <td className="px-4 py-2">
+                {/* <td className="px-4 py-2">
                   <input
                     type="text"
                     value={row.catalogue}
@@ -195,7 +195,7 @@ function PlaceOrderPage() {
                       row.active ? "bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "cursor-pointer"
                     }`}
                   />
-                </td>
+                </td> */}
 
                 {/* Quantity */}
                 <td className="px-4 py-2">
