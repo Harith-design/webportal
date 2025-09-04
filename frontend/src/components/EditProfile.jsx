@@ -32,7 +32,7 @@ function EditProfile() {
       <form className="space-y-5" onSubmit={handleSubmit}>
         {/* Name */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">Name</label>
+          <label className="w-40 block text-sm font-medium mb-1">Name</label>
           <input
             type="text"
             name="name"
@@ -45,7 +45,7 @@ function EditProfile() {
 
         {/* Email */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">Email</label>
+          <label className="w-40 block text-sm font-medium mb-1">Email</label>
           <input
             type="email"
             name="email"
@@ -58,7 +58,7 @@ function EditProfile() {
 
         {/* Role */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">Role</label>
+          <label className="w-40 block text-sm font-medium mb-1">Role</label>
           <input
             type="text"
             name="role"
@@ -71,7 +71,7 @@ function EditProfile() {
 
         {/* Company */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">Company</label>
+          <label className="w-40 block text-sm font-medium mb-1">Company</label>
           <input
             type="text"
             name="company"
@@ -84,7 +84,7 @@ function EditProfile() {
 
         {/* Contact */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">Contact No</label>
+          <label className="w-40 block text-sm font-medium mb-1">Contact No</label>
           <input
             type="text"
             name="contact"
@@ -97,7 +97,7 @@ function EditProfile() {
 
         {/* Password */}
         <div className ="flex items-center space-x-4">
-          <label className="w-40 block text-sm font-semibold mb-1">New Password</label>
+          <label className="w-40 block text-sm font-medium mb-1">New Password</label>
           <input
             type="password"
             name="password"
