@@ -31,21 +31,25 @@ class ResetPasswordNotification extends Notification
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Get the mail representation of the notification using a custom HTML Blade template.
      *
      * @param  mixed  $notifiable
      * @return \Illuminate\Notifications\Messages\MailMessage
      */
     public function toMail($notifiable)
     {
-        // Replace this URL with your actual frontend reset page
-        $resetUrl = "http://localhost:3000/reset-password?token={$this->token}&email={$notifiable->email}";
+        // Get frontend URL from .env
+        $frontendUrl = env('FRONTEND_URL', 'http://192.168.100.158:3000');
+
+        // Reset password link
+        $resetUrl = $frontendUrl . "/reset-password?token={$this->token}&email=" . urlencode($notifiable->email);
 
         return (new MailMessage)
-                    ->subject('Reset Your Password')
-                    ->line('You requested a password reset.')
-                    ->action('Reset Password', $resetUrl)
-                    ->line('If you did not request this, no further action is required.');
+                    ->subject('Reset Your Web Portal Password')
+                    ->view('emails.reset-password-html', [
+                        'url' => $resetUrl,
+                        'name' => $notifiable->name,
+                    ]);
     }
 
     /**

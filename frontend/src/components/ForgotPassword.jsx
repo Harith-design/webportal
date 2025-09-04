@@ -1,24 +1,38 @@
 import React, { useState } from "react";
-import { KeyRound } from "lucide-react"; // ✅ Import key icon
+import { KeyRound } from "lucide-react"; 
+import axios from "../services/api"; // ✅ use your api.js wrapper
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Send email to backend API
-    console.log("Reset password link sent to:", email);
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await axios.post("/forgot-password", { email });
+      setMessage(res.data.message || "Reset link sent! Please check your email.");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Error sending reset link.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-screen flex justify-center items-center">
       <div className="w-full max-w-xl p-10 bg-white rounded-2xl shadow-md">
-            {/* ✅ Key icon on top */}
-            <div className="flex justify-center items-center mb-3">
-              <KeyRound size={48} className="text-blue-600 mb-3" />
-            </div>
+        {/* ✅ Key icon on top */}
+        <div className="flex justify-center items-center mb-3">
+          <KeyRound size={48} className="text-blue-600 mb-3" />
+        </div>
+
         {/* Title */}
         <h2 className="text-2xl font-semibold text-center mb-6">Forgot Password?</h2>
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -37,11 +51,17 @@ function ForgotPassword() {
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            disabled={loading}
+            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
-            Reset Password
+            {loading ? "Sending..." : "Reset Password"}
           </button>
         </form>
+
+        {/* ✅ Success / Error Message */}
+        {message && (
+          <p className="mt-4 text-center text-sm text-gray-700">{message}</p>
+        )}
 
         {/* Back to Login */}
         <p className="text-left text-sm text-gray-600 mt-4">

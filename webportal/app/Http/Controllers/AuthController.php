@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Auth\Events\PasswordReset;
 
 class AuthController extends Controller
 {
@@ -51,7 +52,11 @@ class AuthController extends Controller
 
         // ------------------- Handle Remember Me -------------------
         $tokenName = 'auth_token';
-        $token = $user->createToken($tokenName, [], $request->remember_me ? now()->addWeeks(2) : now()->addHours(2))->plainTextToken;
+        $token = $user->createToken(
+            $tokenName,
+            [],
+            $request->remember_me ? now()->addWeeks(2) : now()->addHours(2)
+        )->plainTextToken;
 
         return response()->json([
             'user' => $user,
@@ -80,18 +85,11 @@ class AuthController extends Controller
             'email' => 'required|email',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'message' => 'If this email exists, a password reset link has been sent.'
-            ]);
-        }
-
+        // Always return same message (security best practice)
         $status = Password::sendResetLink($request->only('email'));
 
         return $status === Password::RESET_LINK_SENT
-            ? response()->json(['message' => 'Password reset link sent.'])
+            ? response()->json(['message' => 'If your email exists, a password reset link has been sent.'])
             : response()->json(['message' => 'Unable to send reset link.'], 500);
     }
 
@@ -111,6 +109,9 @@ class AuthController extends Controller
                     'password' => Hash::make($password),
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                // Fire Laravel's PasswordReset event
+                event(new PasswordReset($user));
             }
         );
 

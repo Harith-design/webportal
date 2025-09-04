@@ -24,7 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 
-// ------------------- Sales Order Routes -------------------
+// ------------------- Sales Order Routes (internal app logic) -------------------
 Route::prefix('sales-order')->group(function () {
     Route::get('/{docNum}', [SalesOrderController::class, 'show']);
 });
@@ -47,17 +47,19 @@ Route::get('/sap-debug-login', function () {
     ];
 });
 
-// ------------------- SAP B1 Business Partners CRUD Routes -------------------
-Route::prefix('sap')->group(function () {
-    // Read all business partners
+// ------------------- SAP B1 Routes -------------------
+Route::prefix('sap')->middleware('auth:sanctum')->group(function () {
+    // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
-
-    // Create a new business partner (customer or supplier)
     Route::post('/business-partners', [SapController::class, 'createBusinessPartner']);
-
-    // Update an existing business partner
     Route::put('/business-partners/{CardCode}', [SapController::class, 'updateBusinessPartner']);
-
-    // Delete a business partner
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
+
+    // ---------------- Invoices ----------------
+    Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']);  // Get single invoice
+    Route::post('/invoices', [SapController::class, 'createInvoice']);         // Create invoice
+
+    // ---------------- Sales Orders ----------------
+    Route::get('/sales-orders/{DocEntry}', [SapController::class, 'getSalesOrder']); // Get sales order by DocEntry
+    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);        // Create sales order
 });

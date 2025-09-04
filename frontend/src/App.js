@@ -13,8 +13,8 @@ import DashboardPage from "./components/DashboardPage";
 import OrdersPage from "./components/Orders";
 import PlaceOrderPage from "./components/OrderForm";
 import CustomerList from "./components/CustomerList";
-import InvoicesPage from "./components/Invoices"; // ✅ added
-import OrderDetails from "./components/OrderDetails"; // ✅ added
+import InvoicesPage from "./components/Invoices"; 
+import OrderDetails from "./components/OrderDetails"; 
 import InvoiceDetails from "./components/InvoiceDetails";
 
 // Layout & helpers
@@ -30,7 +30,7 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
-          <Route path="/resetpassword" element={<ResetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Dashboard routes */}
           <Route

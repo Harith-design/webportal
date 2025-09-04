@@ -1,18 +1,61 @@
-import React, { useState } from "react";
-import { KeyRound } from "lucide-react"; // ✅ Import key icon
+import React, { useState, useEffect } from "react";
+import { KeyRound } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "../services/api"; // ✅ use your api.js wrapper
 
 function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // ✅ Extract token & email from query params
+  const query = new URLSearchParams(location.search);
+  const token = query.get("token");
+  const email = query.get("email");
+
+  useEffect(() => {
+    if (!token || !email) {
+      setMessage("Invalid or expired reset link.");
+    }
+  }, [token, email]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setMessage("Passwords do not match!");
       return;
     }
-    // TODO: Send new password to backend API
-    console.log("New password set:", password);
+
+    if (!token || !email) {
+      setMessage("Invalid reset link.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const res = await axios.post("/reset-password", {
+        token,
+        email,
+        password,
+        password_confirmation: confirmPassword,
+      });
+
+      setMessage(res.data.message || "Password reset successfully! Redirecting...");
+      
+      // ✅ redirect to login after 2s
+      setTimeout(() => navigate("/login"), 2000);
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Error resetting password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -24,7 +67,9 @@ function ResetPassword() {
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-semibold text-center mb-6">Create New Password</h2>
+        <h2 className="text-2xl font-semibold text-center mb-6">
+          Create New Password
+        </h2>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -58,11 +103,17 @@ function ResetPassword() {
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            disabled={loading}
+            className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
-            Reset Password
+            {loading ? "Resetting..." : "Reset Password"}
           </button>
         </form>
+
+        {/* ✅ Success / Error Message */}
+        {message && (
+          <p className="mt-4 text-center text-sm text-gray-700">{message}</p>
+        )}
 
         {/* Back to Login */}
         <p className="text-left text-sm text-gray-600 mt-4">

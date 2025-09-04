@@ -1,56 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import API from "../services/api"; // 👈 make sure this path is correct
 
 function InvoiceDetails() {
-  const { id } = useParams();
+  const { id } = useParams(); // id = DocEntry from SAP
+  const [invoice, setInvoice] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Dummy invoice data
-  const invoices = [
-    {
-      id: 1001,
-      ponum: "PO-98765",
-      invoiceDate: "25-08-2025",
-      dueDate: "30-08-2025",
-      total: 1200,
-      currency: "RM",
-      status: "Open",
-      billTo: "ABC Headquarters, KL",
-      shipTo: "Warehouse A, Selangor",
-      items: [
-        { no: 1, name: "Tyre A", desc: "Radial tyre 15 inch", qty: 4, price: 200 },
-        { no: 2, name: "Tyre B", desc: "Tubeless tyre 17 inch", qty: 2, price: 300 },
-      ],
-      discount: 100,
-      vat: 72,
-    },
-    {
-      id: 1002,
-      ponum: "PO-54321",
-      invoiceDate: "24-08-2025",
-      dueDate: "29-08-2025",
-      total: 800,
-      currency: "RM",
-      status: "Delivered",
-      billTo: "XYZ Corp, Penang",
-      shipTo: "Port Klang, Selangor",
-      items: [
-        { no: 1, name: "Battery A", desc: "Car battery 12V", qty: 1, price: 400 },
-        { no: 2, name: "Battery B", desc: "Truck battery 24V", qty: 2, price: 200 },
-      ],
-      discount: 20,
-      vat: 40,
-    },
-  ];
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      try {
+        const res = await API.get(`/sap/invoices/${id}`);
+        setInvoice(res.data); // make sure backend returns invoice in expected format
+      } catch (err) {
+        console.error(err);
+        setError("⚠️ Failed to fetch invoice data");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const invoice = invoices.find((inv) => inv.id === parseInt(id));
+    fetchInvoice();
+  }, [id]);
 
-  if (!invoice) {
-    return <p className="p-6 text-red-600 font-semibold">⚠️ Invoice not found</p>;
-  }
+  if (loading) return <p className="p-6 text-gray-600">Loading invoice...</p>;
+  if (error) return <p className="p-6 text-red-600 font-semibold">{error}</p>;
+  if (!invoice) return <p className="p-6 text-red-600 font-semibold">⚠️ Invoice not found</p>;
 
-  // Calculate totals
+  // Calculate totals dynamically
   const subtotal = invoice.items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const finalTotal = subtotal - invoice.discount + invoice.vat;
+  const finalTotal = subtotal - (invoice.discount || 0) + (invoice.vat || 0);
 
   return (
     <div className="p-6 space-y-8 bg-white rounded-xl shadow-md">
@@ -99,9 +79,9 @@ function InvoiceDetails() {
             </tr>
           </thead>
           <tbody>
-            {invoice.items.map((item) => (
-              <tr key={item.no} className="hover:bg-gray-50">
-                <td className="border px-3 py-2 text-center">{item.no}</td>
+            {invoice.items.map((item, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="border px-3 py-2 text-center">{index + 1}</td>
                 <td className="border px-3 py-2">{item.name}</td>
                 <td className="border px-3 py-2">{item.desc}</td>
                 <td className="border px-3 py-2 text-center">{item.qty}</td>
@@ -125,11 +105,11 @@ function InvoiceDetails() {
         </div>
         <div className="flex justify-between">
           <span>Discount:</span>
-          <span>- {invoice.currency} {invoice.discount}</span>
+          <span>- {invoice.currency} {invoice.discount || 0}</span>
         </div>
         <div className="flex justify-between">
           <span>VAT:</span>
-          <span>+ {invoice.currency} {invoice.vat}</span>
+          <span>+ {invoice.currency} {invoice.vat || 0}</span>
         </div>
         <div className="flex justify-between font-semibold text-gray-800 border-t pt-2">
           <span>Final Amount:</span>
