@@ -39,7 +39,7 @@ class ResetPasswordNotification extends Notification
     public function toMail($notifiable)
     {
         // Get frontend URL from .env
-        $frontendUrl = env('FRONTEND_URL', 'http://192.168.100.158:3000');
+        $frontendUrl = env('FRONTEND_URL', 'http://192.168.100.183:3000');
 
         // Reset password link
         $resetUrl = $frontendUrl . "/reset-password?token={$this->token}&email=" . urlencode($notifiable->email);
