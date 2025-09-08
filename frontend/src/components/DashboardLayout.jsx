@@ -76,6 +76,7 @@ function DashboardLayout() {
     "/settings": "Settings",
     "/customers": "Customers",
     "/editprofile": "Edit Profile",
+    "/users": "Users"
   };
 
   const getPageTitle = (pathname, id) => {

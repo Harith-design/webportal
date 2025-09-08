@@ -7,6 +7,7 @@ import {
   FileText,
   ShoppingCart,
   LogOut,
+  UserRoundCog
 } from "lucide-react";
 import "./Sidebar.css";
 import { useLoading } from "../context/LoadingContext";
@@ -50,6 +51,9 @@ function Sidebar() {
         </Link>
         <Link to="/orderform" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
           <ShoppingCart size={16} /> <span>Place an Order</span>
+        </Link>
+        <Link to="/users" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
+          <UserRoundCog size={16} /> <span>Manage Users</span>
         </Link>
         {/* <Link to="/settings" className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-200 text-sm">
           <Settings size={16} /> <span>Settings</span>

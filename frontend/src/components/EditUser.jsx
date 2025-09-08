@@ -1,27 +1,53 @@
-import React, { useState } from "react";
+// src/pages/EditUser.jsx
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
-function EditProfile() {
+function EditUser() {
+  const { id } = useParams(); // get user id from URL
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    name: "sitin",
-    email: "sitin@gmail.com",
+    name: "",
+    email: "",
+    company: "",
     role: "User",
-    company: "ABC Sdn Bhd",
-    contact: "",
-    password: "",
+    status: "Active",
   });
 
-  const [message, setMessage] = useState("");
+  useEffect(() => {
+    // Replace with API call: GET /users/:id
+    const fetchUser = async () => {
+      const user = {
+        id,
+        name: "John Doe",
+        email: "john@example.com",
+        company: "ABC Sdn Bhd",
+        role: "Admin",
+        status: "Active",
+      };
+      setFormData(user);
+    };
+
+    fetchUser();
+  }, [id]);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+   const toggleStatus = () => {
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      status: !prev.status,
     }));
   };
 
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    setMessage("✅ Profile updated successfully (demo only).");
+    console.log("Updated User:", formData);
+    navigate("/users"); // redirect after save
   };
 
   return (
@@ -56,18 +82,6 @@ function EditProfile() {
               required
             />
           </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Contact No</label>
-            <input
-              type="text"
-              name="contact"
-              value={formData.contact}
-              onChange={handleChange}
-              placeholder="Enter contact number"
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          </div>
         </div>
 
         {/* Company Info */}
@@ -84,58 +98,73 @@ function EditProfile() {
               value={formData.company}
               onChange={handleChange}
               className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
             />
           </div>
 
           <div className="flex items-center space-x-4">
             <label className="w-40 text-sm font-medium">Role</label>
-            <input
-              type="text"
+            <select
               name="role"
               value={formData.role}
               onChange={handleChange}
               className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
-            />
+            >
+              <option value="Admin">Admin</option>
+              <option value="User">User</option>
+            </select>
           </div>
         </div>
 
-        {/* Security */}
+        {/* Account Status */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
-            Security
+            Status
           </h3>
 
           <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">New Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter new password"
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
+            <label className="w-40 text-sm font-medium">User Status</label>
+            <button
+              type="button"
+              onClick={toggleStatus}
+              className={`w-8 h-4 flex items-center rounded-full p-1 transition-colors ${
+                formData.status ? "bg-green-500" : "bg-gray-300"
+              }`}
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  formData.status ? "translate-x-2" : "translate-x-0"
+                }`}
+              />
+            </button>
+            <span
+              className={`text-sm font-medium ${
+                formData.status ? "text-green-600" : "text-gray-500"
+              }`}
+            >
+              {formData.status ? "Active" : "Inactive"}
+            </span>
           </div>
         </div>
 
-        {/* Save button */}
-        <div className="flex justify-end">
+        {/* Buttons */}
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/users")}
+            className="px-4 py-2 rounded-lg border hover:bg-gray-100"
+          >
+            Cancel
+          </button>
           <button
             type="submit"
-            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
           >
             Save Changes
           </button>
         </div>
       </form>
-
-      {message && (
-        <p className="mt-4 text-center text-sm text-gray-600">{message}</p>
-      )}
     </div>
   );
 }
 
-export default EditProfile;
+export default EditUser;

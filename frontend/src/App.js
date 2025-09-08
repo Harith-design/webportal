@@ -17,6 +17,8 @@ import InvoicesPage from "./components/Invoices";
 import OrderDetails from "./components/OrderDetails"; 
 import InvoiceDetails from "./components/InvoiceDetails";
 import EditProfile from "./components/EditProfile";
+import UserList from "./components/UserList";
+import EditUser from "./components/EditUser";
 
 // Layout & helpers
 import DashboardLayout from "./components/DashboardLayout";
@@ -49,6 +51,8 @@ function App() {
             <Route path="/invoices/:id" element={<InvoiceDetails />} />
             <Route path="/customers" element={<CustomerList />} />
             <Route path="/editprofile" element={<EditProfile />} />
+            <Route path="/users" element={<UserList />} />
+            <Route path="/edituser/:id" element={<EditUser />} />
           </Route>
 
           {/* Default route */}
