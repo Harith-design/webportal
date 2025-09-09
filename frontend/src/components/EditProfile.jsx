@@ -26,115 +26,132 @@ function EditProfile() {
 
   return (
     <div className="p-6 space-y-10 bg-white rounded-xl shadow-md">
-      <form className="space-y-8" onSubmit={handleSubmit}>
-        {/* Personal Info */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
-            Personal Information
-          </h3>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Contact No</label>
-            <input
-              type="text"
-              name="contact"
-              value={formData.contact}
-              onChange={handleChange}
-              placeholder="Enter contact number"
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          </div>
+  <form className="space-y-8" onSubmit={handleSubmit}>
+    {/* Personal Info */}
+    <div>
+      <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+        Personal Information
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Name</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            required
+          />
         </div>
 
-        {/* Company Info */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
-            Company Information
-          </h3>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Company</label>
-            <input
-              type="text"
-              name="company"
-              value={formData.company}
-              onChange={handleChange}
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
-            />
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">Role</label>
-            <input
-              type="text"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-              required
-            />
-          </div>
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            required
+          />
         </div>
 
-        {/* Security */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
-            Security
-          </h3>
-
-          <div className="flex items-center space-x-4">
-            <label className="w-40 text-sm font-medium">New Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter new password"
-              className="flex-1 max-w-2xl px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          </div>
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Contact No</label>
+          <input
+            type="text"
+            name="contact"
+            value={formData.contact}
+            onChange={handleChange}
+            placeholder="Enter contact number"
+            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
         </div>
-
-        {/* Save button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
-          >
-            Save Changes
-          </button>
-        </div>
-      </form>
-
-      {message && (
-        <p className="mt-4 text-center text-sm text-gray-600">{message}</p>
-      )}
+      </div>
     </div>
+
+    {/* Company Info */}
+    <div>
+      <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+        Company Information
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Company</label>
+          <input
+            type="text"
+            name="company"
+            value={formData.company}
+            onChange={handleChange}
+            className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            required
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Role</label>
+          <input
+            type="text"
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-1/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            required
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* Security */}
+    <div>
+      <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+        Security
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">New Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Enter new password"
+            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-medium mb-1">Confirm Password</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Confirm new password"
+            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* Save button */}
+    <div className="flex justify-end">
+      <button
+        type="submit"
+        className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+      >
+        Update
+      </button>
+    </div>
+  </form>
+
+  {message && (
+    <p className="mt-4 text-center text-sm text-gray-600">{message}</p>
+  )}
+</div>
+
+
   );
 }
 

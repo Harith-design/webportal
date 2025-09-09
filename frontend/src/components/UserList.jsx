@@ -34,7 +34,7 @@ function UserList() {
   // ✅ Close menu and navigate
   const handleEdit = (user) => {
     setOpenMenu(null);
-    navigate(`/edituser/${user.id}`); // example route
+    navigate(`/edituser/${user.id}`, { state: { user } }); // example route
   };
 
   const handleRemove = (user) => {
