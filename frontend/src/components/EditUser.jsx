@@ -82,26 +82,26 @@ function EditUser() {
     <div className="grid grid-cols-2 gap-6">
       {/* Name */}
       <div className="flex flex-col">
-        <label className="text-sm font-medium mb-1">Name</label>
+        <label className="text-[80%] font-medium mb-1">Name</label>
         <input
           type="text"
           name="name"
           value={formData.name}
           onChange={handleChange}
-          className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
           required
         />
       </div>
 
       {/* Email */}
       <div className="flex flex-col">
-        <label className="text-sm font-medium mb-1">Email</label>
+        <label className="text-[80%] font-medium mb-1">Email</label>
         <input
           type="email"
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
           required
         />
       </div>
@@ -117,24 +117,24 @@ function EditUser() {
     <div className="grid grid-cols-2 gap-6">
       {/* Company */}
       <div className="flex flex-col">
-        <label className="text-sm font-medium mb-1">Company</label>
+        <label className="text-[80%] font-medium mb-1">Company</label>
         <input
           type="text"
           name="company"
           value={formData.company}
           onChange={handleChange}
-          className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       </div>
 
       {/* Role */}
       <div className="flex flex-col">
-        <label className="text-sm font-medium mb-1">Role</label>
+        <label className="text-[80%] font-medium mb-1">Role</label>
         <select
           name="role"
           value={formData.role}
           onChange={handleChange}
-          className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
         >
           <option value="Admin">Admin</option>
           <option value="User">User</option>
@@ -150,7 +150,7 @@ function EditUser() {
     </h3>
 
     <div className="flex items-center gap-4">
-      <label className="text-sm font-medium">User Status</label>
+      <label className="text-[80%] font-medium">User Status</label>
       <button
         type="button"
         onClick={toggleStatus}

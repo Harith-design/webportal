@@ -34,38 +34,38 @@ function EditProfile() {
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Name</label>
+          <label className="text-[80%] font-medium mb-1">Name</label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
             required
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Email</label>
+          <label className="text-[80%] font-medium mb-1">Email</label>
           <input
             type="email"
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
             required
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Contact No</label>
+          <label className="text-[80%] font-medium mb-1">Contact No</label>
           <input
             type="text"
             name="contact"
             value={formData.contact}
             onChange={handleChange}
             placeholder="Enter contact number"
-            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>
       </div>
@@ -78,7 +78,7 @@ function EditProfile() {
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Company</label>
+          <label className="text-[80%] font-medium mb-1">Company</label>
           <input
             type="text"
             name="company"
@@ -90,13 +90,13 @@ function EditProfile() {
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Role</label>
+          <label className="text-[80%] font-medium mb-1">Role</label>
           <input
             type="text"
             name="role"
             value={formData.role}
             onChange={handleChange}
-            className="w-1/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-1/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
             required
           />
         </div>
@@ -110,26 +110,26 @@ function EditProfile() {
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">New Password</label>
+          <label className="text-[80%] font-medium mb-1">New Password</label>
           <input
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
             placeholder="Enter new password"
-            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Confirm Password</label>
+          <label className="text-[80%] font-medium mb-1">Confirm Password</label>
           <input
             type="password"
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
             placeholder="Confirm new password"
-            className="w-2/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
         </div>
       </div>
