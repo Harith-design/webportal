@@ -2,4 +2,8 @@
   background: none !important;
 }
 
-
+.scroll-container {
+  contain: content;
+  max-width: 100%;
+  overflow-x: auto;
+}

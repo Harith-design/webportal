@@ -202,18 +202,19 @@ function PlaceOrderPage() {
     <div className="min-w-[1200px]">
       <table className="table-auto border-collapse w-full bg-white">
         <thead>
-          <tr className="text-xs font-semibold border-b text-center align-middle">
-            <th className="px-4 py-2 text-left min-w-[180px]">Item No.</th>
-            <th className="px-4 py-2 text-left min-w-[220px]">Item Description</th>
-            <th className="px-4 py-2 min-w-[120px]">Quantity</th>
-            <th className="px-4 py-2 min-w-[120px]">Unit Price</th>
-            <th className="px-4 py-2 min-w-[120px]">Weight</th>
-            <th className="px-4 py-2 min-w-[120px]">Total Weight</th>
-            <th className="px-4 py-2 min-w-[120px]">Line Total</th>
-            <th className="px-4 py-2 min-w-[120px]">Tax Code</th>
-            <th className="px-4 py-2 min-w-[120px]">Delete</th>
-          </tr>
-        </thead>
+            <tr className="text-xs font-semibold border-b text-center align-middle">
+              <th className="px-2 py-2 text-left w-[150px]">Item No.</th>
+              <th className="px-2 py-2 text-left w-[250px]">Item Description</th>
+              {/* <th className="px-4 py-2">Catalogue</th> */}
+              <th className="px-2 py-2 w-[130px]">Quantity</th>
+              <th className="px-2 py-2 w-[130px]">Unit Price</th>
+              <th className="px-2 py-2 w-[130px]">Weight</th>
+              <th className="px-2 py-2 w-[130px]">Total Weight</th>
+              <th className="px-2 py-2 w-[130px]">Line Total</th>
+              <th className="px-2 py-2 w-[130px]">Tax Code</th>
+              <th className="px-2 py-2 w-[130px]">Delete</th>
+            </tr>
+          </thead>
         <tbody className="text-xs">
           {rows.map((row, index) => (
             <tr key={index} className={`text-center align-middle ${row.active ? "bg-white text-black" : "text-gray-400"}`}>
