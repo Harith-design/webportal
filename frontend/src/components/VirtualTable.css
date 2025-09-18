@@ -1,0 +1,27 @@
+.table {
+  border: 1px solid #ccc;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  display: flex;
+  background: #f0f0f0;
+  font-weight: bold;
+}
+
+.row {
+  display: flex;
+  border-bottom: 1px solid #eee;
+}
+
+.cell {
+  flex: 1;
+  padding: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerCell {
+  padding: 10px 8px;
+}
