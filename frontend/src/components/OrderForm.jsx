@@ -62,9 +62,10 @@ function PlaceOrderPage() {
 
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-md order-form-page">
+    // <div className="flex justify-center">
+    <div className="p-6 rounded-xl shadow-md order-form-page bg-white w-full max-w-full">
       {/* Flex container: form left, box right */}
-      <div className="flex justify-between gap-32">
+      <div className="flex flex-wrap md:flex-nowrap justify-between gap-8 w-full overflow-hidden">
         {/* Form (left) */}
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6 flex-1">
           {/* Delivery Date */}
@@ -93,7 +94,33 @@ function PlaceOrderPage() {
             />
           </div>
 
-          {/* Billing Address */}
+          {/* FOB Point */}
+          <div className="flex items-center gap-4">
+            <label className="min-w-[120px] text-xs">FOB Point</label>
+            <input
+              type="text"
+              nB Pointame="ponum"
+              value={order.ponum}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+              required
+            />
+          </div>
+
+          {/* Freight Terms */}
+          <div className="flex items-center gap-4">
+            <label className="min-w-[120px] text-xs">Freight Terms</label>
+            <input
+              type="text"
+              name="ponum"
+              value={order.ponum}
+              onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+              className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+              required
+            />
+          </div>
+
+          {/* Billing Address 
           <div className="flex items-center gap-4">
             <label className="min-w-[120px] text-xs">Billing Address</label>
             <select
@@ -107,8 +134,9 @@ function PlaceOrderPage() {
               <option value="address3">Address 3</option>
             </select>
           </div>
+          */}
 
-          {/* Shipping Address */}
+          {/* Shipping Address 
           <div className="flex items-center gap-4">
             <label className="min-w-[120px] text-xs">Shipping Address</label>
             <select
@@ -122,6 +150,7 @@ function PlaceOrderPage() {
               <option value="address3">Address 3</option>
             </select>
           </div>
+          */}
         </form>
 
 
@@ -168,20 +197,23 @@ function PlaceOrderPage() {
 
       {/* Tab Content */}
       {activeTab === "contents" && (
-        <div>
+        <div className="bg-white rounded-xl shadow-md p-4 overflow-x-auto">
           {/* Table */}
-      <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto mt-6">
-        <table className="table-auto w-full border-collapse OrderForm">
+      <div className="min-w-[1310px]">
+      {/* <div className="min-w-[1150px] w-full bg-red-200"> */}
+        <table className="table-auto border-collapse w-full bg-white">
           <thead>
             <tr className="text-xs font-semibold border-b text-center align-middle">
-              <th className="px-4 py-2 text-left">Item No.</th>
-              <th className="px-4 py-2 text-left">Item Description</th>
+              <th className="px-2 py-2 text-left w-[150px]">Item No.</th>
+              <th className="px-2 py-2 text-left w-[250px]">Item Description</th>
               {/* <th className="px-4 py-2">Catalogue</th> */}
-              <th className="px-4 py-2">Quantity</th>
-              <th className="px-4 py-2">Total Weight</th>
-              <th className="px-4 py-2">Unit Price</th>
-              <th className="px-4 py-2">Line Total</th>
-              <th className="px-4 py-2">Delete</th>
+              <th className="px-2 py-2 w-[130px]">Quantity</th>
+              <th className="px-2 py-2 w-[130px]">Unit Price</th>
+              <th className="px-2 py-2 w-[130px]">Weight</th>
+              <th className="px-2 py-2 w-[130px]">Total Weight</th>
+              <th className="px-2 py-2 w-[130px]">Line Total</th>
+              <th className="px-2 py-2 w-[130px]">Tax Code</th>
+              <th className="px-2 py-2 w-[130px]">Delete</th>
             </tr>
           </thead>
           <tbody className="text-xs">
@@ -192,8 +224,8 @@ function PlaceOrderPage() {
                   row.active ? "bg-white text-black" : "text-gray-400"
                 }`}
               >
-                {/* Product Lookup */}
-                <td className="px-4 py-2 text-left">
+                {/* Item No */}
+                <td className="px-2 py-2 text-left">
                   <div className="relative">
                     <input
                       type="text"
@@ -202,7 +234,7 @@ function PlaceOrderPage() {
                       onChange={(e) => handleChange(index, "product", e.target.value)}
                       onFocus={() => activateRow(index)}
                       readOnly={!row.active}
-                       className={`w-full border rounded pl-2 pr-8 py-1 text-xs ${
+                       className={`w-full box-border border rounded pl-2 pr-8 py-1 text-xs ${
                         row.active
                           ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                           : "placeholder-gray-300 cursor-pointer"
@@ -219,7 +251,7 @@ function PlaceOrderPage() {
                 </td>
 
                 {/* Item Description */}
-                <td className="px-4 py-2 text-left">
+                <td className="px-2 py-2 text-left">
                   <div className="relative">
                     <input
                       type="text"
@@ -228,7 +260,7 @@ function PlaceOrderPage() {
                       onChange={(e) => handleChange(index, "product", e.target.value)}
                       onFocus={() => activateRow(index)}
                       readOnly={!row.active}
-                       className={`w-full border rounded pl-2 pr-8 py-1 text-xs ${
+                       className={`w-full box-border border rounded pl-2 pr-8 py-1 text-xs ${
                         row.active
                           ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
                           : "placeholder-gray-300 cursor-pointer"
@@ -259,7 +291,7 @@ function PlaceOrderPage() {
                 </td> */}
 
                 {/* Quantity */}
-                <td className="px-4 py-2">
+                <td className="px-2 py-2">
                   <input
                     type="number"
                     placeholder="No."
@@ -267,29 +299,14 @@ function PlaceOrderPage() {
                     onChange={(e) => handleChange(index, "quantity", e.target.value)}
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
-                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
-                      row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
-                    }`}
-                  />
-                </td>
-
-                {/* Total Weight */}
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={row.quantity}
-                    onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                    onFocus={() => activateRow(index)}
-                    readOnly={!row.active}
-                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
+                    className={`w-full box-border border rounded px-2 py-1 text-xs ${
                       row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
                     }`}
                   />
                 </td>
 
                 {/* Unit Price */}
-                <td className="px-4 py-2">
+                <td className="px-2 py-2">
                   <input
                     type="number"
                     placeholder="0.00"
@@ -297,14 +314,40 @@ function PlaceOrderPage() {
                     onChange={(e) => handleChange(index, "quantity", e.target.value)}
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
-                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
+                    className={`w-full box-border border rounded px-2 py-1 text-xs ${
                       row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
                     }`}
                   />
                 </td>
 
-                    {/* Line Total */}
-                <td className="px-4 py-2">
+                {/* Weight */}
+                <td className="px-2 py-2 text-left">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search"
+                      value={row.product}
+                      onChange={(e) => handleChange(index, "product", e.target.value)}
+                      onFocus={() => activateRow(index)}
+                      readOnly={!row.active}
+                       className={`w-full box-border border rounded pl-2 pr-8 py-1 text-xs ${
+                        row.active
+                          ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          : "placeholder-gray-300 cursor-pointer"
+                      }`}
+                    />
+                    <span
+                      className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${
+                        row.active ? "text-gray-400" : "text-gray-300"
+                      }`}
+                    >
+                      <Search size={14} />
+                    </span>
+                  </div>
+                </td>
+
+                {/* Total Weight */}
+                <td className="px-2 py-2">
                   <input
                     type="number"
                     placeholder="0.00"
@@ -312,7 +355,23 @@ function PlaceOrderPage() {
                     onChange={(e) => handleChange(index, "quantity", e.target.value)}
                     onFocus={() => activateRow(index)}
                     readOnly={!row.active}
-                    className={`w-1/3 border rounded px-2 py-1 text-xs ${
+                    className={`w-full box-border border rounded px-2 py-1 text-xs ${
+                      row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
+                    }`}
+                  />
+                </td>
+
+
+                    {/* Line Total */}
+                <td className="px-2 py-2">
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={row.quantity}
+                    onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                    onFocus={() => activateRow(index)}
+                    readOnly={!row.active}
+                    className={`w-full box-border border rounded px-2 py-1 text-xs ${
                       row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
                     }`}
                   />
@@ -336,8 +395,25 @@ function PlaceOrderPage() {
                 {/* Line Total */}
                 {/* <td className="w-1/6 px-4 py-2">{row.total}</td> */}
 
+                {/* Tax Code  */}
+                <td className="px-2 py-2">
+                  <select
+                    name="billingAddress"
+                    value={order.billingAddress}
+                    onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
+                    className={`w-full box-border border rounded px-2 py-1 text-xs ${
+                      row.active ? "placeholder-gray-400 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" : "placeholder-gray-300 cursor-pointer"
+                    }`}
+                  >
+                    <option value="address1">Tax Code 1</option>
+                    <option value="address2">Tax Code 2</option>
+                    <option value="address3">Tax Code 3</option>
+                  </select>
+                </td>
+               
+
                 {/* Delete */}
-                <td className="px-4 py-2 flex justify-center items-center">
+                <td className="px-2 py-2 flex justify-center items-center">
                   <button
                     type="button"
                     onClick={() => row.active && handleDelete(index)}
@@ -355,7 +431,8 @@ function PlaceOrderPage() {
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
+      {/* </div> */}
         </div>
       )}
 
@@ -380,6 +457,7 @@ function PlaceOrderPage() {
         </button>
       </div>
     </div>
+  // </div>
   );
 }
 
