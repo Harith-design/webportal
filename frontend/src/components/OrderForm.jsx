@@ -402,11 +402,11 @@ function PlaceOrderPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-xs font-semibold mb-1">Shipping Address</p>
-                        <p className="text-xs">{order.billingAddress || "Select from form"}</p>
+                        <p className="text-xs">{order.shippingAddress || "Select from form"}</p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold mb-1">Billing Address</p>
-                        <p className="text-xs">{order.shippingAddress || "Select from form"}</p>
+                        <p className="text-xs">{order.billingAddress || "Select from form"}</p>
                       </div>
                     </div>
                   </div>
