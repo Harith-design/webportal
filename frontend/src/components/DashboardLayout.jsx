@@ -127,7 +127,7 @@ function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen w-screen flex">
+    <div className="min-h-screen flex w-screen">
       <Sidebar />
       <div className="ml-64 flex flex-col min-h-screen flex-1">
         <header className="flex justify-between items-center px-6 py-3">
