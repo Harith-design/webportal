@@ -1,5 +1,5 @@
 // src/pages/UserList.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState} from "react";
 import { Search, UserPlus, MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -7,7 +7,7 @@ function UserList() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [openMenu, setOpenMenu] = useState(null); // track which user's menu is open
-  const menuRef = useRef(null);
+  // const menuRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,7 +70,7 @@ function UserList() {
           placeholder="Search users..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
