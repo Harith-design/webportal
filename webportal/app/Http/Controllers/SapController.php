@@ -4,80 +4,167 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class SapController extends Controller
 {
-    // ----------------- SERVICE LAYER SESSION -----------------
-    private function getSession()
+    protected $baseUrl;
+    protected $companyDb;
+    protected $username;
+    protected $password;
+
+    public function __construct()
     {
-        return Cache::remember('b1session', 25 * 60, function () {
-            $loginResponse = Http::withoutVerifying()->post(
-                config('sapb1.base_url') . '/Login',
-                [
-                    'CompanyDB' => config('sapb1.company_db'),
-                    'UserName'  => config('sapb1.username'),
-                    'Password'  => config('sapb1.password'),
-                ]
-            );
-
-            if ($loginResponse->failed()) {
-                throw new \Exception('SAP B1 login failed: ' . $loginResponse->body());
-            }
-
-            return $loginResponse->json()['SessionId'];
-        });
+        $this->baseUrl   = config('sapb1.base_url');
+        $this->companyDb = config('sapb1.company_db');
+        $this->username  = config('sapb1.username');
+        $this->password  = config('sapb1.password');
     }
 
-    // ----------------- GENERIC FETCH METHOD -----------------
-    private function fetchFromServiceLayer($endpoint)
+    private function login()
     {
-        $sessionId = $this->getSession();
-        $response = Http::withoutVerifying()->withHeaders([
-            'Cookie' => "B1SESSION=$sessionId",
-        ])->get(config('sapb1.base_url') . "/$endpoint");
+        $response = Http::withOptions(['verify' => config('sapb1.verify_ssl')])
+            ->post($this->baseUrl . '/Login', [
+                'CompanyDB' => $this->companyDb,
+                'UserName'  => $this->username,
+                'Password'  => $this->password,
+            ]);
 
         if ($response->failed()) {
-            return [
-                'error'   => true,
-                'status'  => $response->status(),
-                'details' => $response->body(),
-            ];
+            return null;
         }
 
-        return $response->json();
-    }
+        $session = $response->json();
+        $cookies = $response->cookies();
 
-    // =====================================================
-    // ----------------- INVOICES (READ ONLY) --------------
-    // =====================================================
-    private function transformInvoice($sapInvoice)
-    {
         return [
-            'id'          => $sapInvoice['DocEntry'] ?? null,
-            'ponum'       => $sapInvoice['NumAtCard'] ?? '',
-            'invoiceDate' => $sapInvoice['DocDate'] ?? '',
-            'dueDate'     => $sapInvoice['DocDueDate'] ?? '',
-            'status'      => ($sapInvoice['DocumentStatus'] ?? 'bost_Open') === 'bost_Open' ? 'Open' : 'Closed',
-            'billTo'      => $sapInvoice['CardName'] ?? '',
-            'shipTo'      => $sapInvoice['Address'] ?? '',
-            'currency'    => $sapInvoice['DocCurrency'] ?? 'RM',
-            'discount'    => $sapInvoice['DiscountPercent'] ?? 0,
-            'vat'         => $sapInvoice['VatSum'] ?? 0,
-            'items'       => collect($sapInvoice['DocumentLines'] ?? [])->map(function ($line) {
-                return [
-                    'name'  => $line['ItemCode'] ?? '',
-                    'desc'  => $line['Dscription'] ?? '',
-                    'qty'   => $line['Quantity'] ?? 0,
-                    'price' => $line['Price'] ?? 0,
-                ];
-            })->toArray(),
+            'SessionId' => $session['SessionId'] ?? null,
+            'RouteId'   => $cookies->getCookieByName('ROUTEID')->getValue() ?? null,
         ];
     }
 
+    private function callServiceLayer($method, $endpoint, $data = [])
+    {
+        $login = $this->login();
+        if (!$login || empty($login['SessionId'])) {
+            return [
+                'error'  => true,
+                'status' => 401,
+                'details'=> 'Login to SAP failed',
+            ];
+        }
+
+        $cookieHeader = "B1SESSION={$login['SessionId']}";
+        if (!empty($login['RouteId'])) {
+            $cookieHeader .= "; ROUTEID={$login['RouteId']}";
+        }
+
+        $http = Http::withOptions(['verify' => config('sapb1.verify_ssl')])
+            ->withHeaders([
+                'Cookie' => $cookieHeader,
+            ]);
+
+        $url = $this->baseUrl . '/' . $endpoint;
+
+        Log::info("Calling SAP Service Layer: {$url}");
+
+        switch (strtolower($method)) {
+            case 'get':
+                $response = $http->get($url);
+                break;
+            case 'post':
+                $response = $http->post($url, $data);
+                break;
+            case 'put':
+                $response = $http->put($url, $data);
+                break;
+            case 'delete':
+                $response = $http->delete($url);
+                break;
+            default:
+                return [
+                    'error'  => true,
+                    'status' => 400,
+                    'details'=> 'Invalid HTTP method',
+                ];
+        }
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        return [
+            'error'  => true,
+            'status' => $response->status(),
+            'details'=> $response->json(),
+        ];
+    }
+
+    // =====================================================
+    // ----------------- BUSINESS PARTNERS -----------------
+    // =====================================================
+    public function getBusinessPartners()
+    {
+        $result = $this->callServiceLayer('get', 'BusinessPartners?$top=50&$select=CardCode,CardName');
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch business partners',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        return response()->json($result);
+    }
+
+    public function createBusinessPartner(Request $request)
+    {
+        $result = $this->callServiceLayer('post', 'BusinessPartners', $request->all());
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to create business partner',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        return response()->json($result);
+    }
+
+    public function updateBusinessPartner(Request $request, $CardCode)
+    {
+        $result = $this->callServiceLayer('put', "BusinessPartners('$CardCode')", $request->all());
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to update business partner',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        return response()->json($result);
+    }
+
+    public function deleteBusinessPartner($CardCode)
+    {
+        $result = $this->callServiceLayer('delete', "BusinessPartners('$CardCode')");
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to delete business partner',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Business partner deleted']);
+    }
+
+    // =====================================================
+    // ---------------------- INVOICES ---------------------
+    // =====================================================
     public function getInvoice($DocEntry)
     {
-        $result = $this->fetchFromServiceLayer("Invoices($DocEntry)");
+        $result = $this->callServiceLayer('get', "Invoices($DocEntry)");
 
         if (isset($result['error'])) {
             return response()->json([
@@ -86,91 +173,91 @@ class SapController extends Controller
             ], $result['status']);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'data'   => $this->transformInvoice($result),
-        ]);
+        return response()->json($result);
     }
 
-    // =====================================================
-    // ----------------- SALES ORDERS ----------------------
-    // =====================================================
-    private function transformSalesOrder($sapOrder)
+    public function createInvoice(Request $request)
     {
-        return [
-            'id'           => $sapOrder['DocEntry'] ?? null,
-            'ponum'        => $sapOrder['NumAtCard'] ?? '',
-            'orderDate'    => $sapOrder['DocDate'] ?? '',
-            'deliveryDate' => $sapOrder['DocDueDate'] ?? '',
-            'status'       => ($sapOrder['DocumentStatus'] ?? 'bost_Open') === 'bost_Open' ? 'Open' : 'Closed',
-            'customer'     => $sapOrder['CardName'] ?? '',
-            'shipTo'       => $sapOrder['Address'] ?? '',
-            'currency'     => $sapOrder['DocCurrency'] ?? 'RM',
-            'discount'     => $sapOrder['DiscountPercent'] ?? 0,
-            'vat'          => $sapOrder['VatSum'] ?? 0,
-            'items'        => collect($sapOrder['DocumentLines'] ?? [])->map(function ($line) {
-                return [
-                    'name'  => $line['ItemCode'] ?? '',
-                    'desc'  => $line['Dscription'] ?? '',
-                    'qty'   => $line['Quantity'] ?? 0,
-                    'price' => $line['Price'] ?? 0,
-                ];
-            })->toArray(),
-            'total'        => $sapOrder['DocTotal'] ?? 0,
-        ];
-    }
-
-    public function getSalesOrder($DocEntry)
-    {
-        $result = $this->fetchFromServiceLayer("Orders($DocEntry)");
+        $result = $this->callServiceLayer('post', 'Invoices', $request->all());
 
         if (isset($result['error'])) {
             return response()->json([
-                'error'   => 'Failed to fetch Sales Order',
+                'error'   => 'Failed to create invoice',
                 'details' => $result['details'],
             ], $result['status']);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'data'   => $this->transformSalesOrder($result),
-        ]);
+        return response()->json($result);
     }
 
-    // ----------------- CREATE SALES ORDER -----------------
+    // =====================================================
+    // ------------------- SALES ORDERS --------------------
+    // =====================================================
+    public function getSalesOrder($DocEntry)
+    {
+        $result = $this->callServiceLayer('get', "Orders($DocEntry)");
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch sales order',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        return response()->json($result);
+    }
+
     public function createSalesOrder(Request $request)
     {
-        $payload = [
-            'CardCode'    => $request->input('CardCode'),
-            'DocDate'     => $request->input('DocDate'),
-            'DocDueDate'  => $request->input('DocDueDate'),
-            'DocCurrency' => $request->input('DocCurrency', 'RM'),
-            'DocumentLines' => collect($request->input('items', []))->map(function ($item) {
-                return [
-                    'ItemCode'  => $item['name'] ?? '',
-                    'Quantity'  => $item['qty'] ?? 0,
-                    'Price'     => $item['price'] ?? 0,
-                    'Dscription'=> $item['desc'] ?? '',
-                ];
-            })->toArray(),
-            'DiscountPercent' => $request->input('discount', 0),
-        ];
+        $result = $this->callServiceLayer('post', 'Orders', $request->all());
 
-        $sessionId = $this->getSession();
-        $response = Http::withoutVerifying()->withHeaders([
-            'Cookie' => "B1SESSION=$sessionId",
-        ])->post(config('sapb1.base_url') . '/Orders', $payload);
-
-        if ($response->failed()) {
+        if (isset($result['error'])) {
             return response()->json([
-                'error'   => 'Failed to create Sales Order',
-                'details' => $response->body(),
-            ], $response->status());
+                'error'   => 'Failed to create sales order',
+                'details' => $result['details'],
+            ], $result['status']);
         }
+
+        return response()->json($result);
+    }
+
+    // =====================================================
+    // ---------------------- ITEMS ------------------------
+    // =====================================================
+    public function getItems(Request $request)
+    {
+        $search = strtoupper(trim($request->query('search', '')));
+        $top = 100;
+
+        $endpoint = "Items?\$top={$top}&\$select=ItemCode,ItemName";
+
+        if (!empty($search)) {
+            $escapedSearch = str_replace("'", "''", $search);
+            $endpoint .= "&\$filter=startswith(ItemCode,'{$escapedSearch}')";
+        }
+
+        $result = $this->callServiceLayer('get', $endpoint);
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch items',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        $items = $result['value'] ?? [];
+
+        $itemsMapped = collect($items)->map(function ($item) {
+            return [
+                'ItemCode' => $item['ItemCode'] ?? '',
+                'ItemName' => $item['ItemName'] ?? '',
+            ];
+        })->toArray();
 
         return response()->json([
             'status' => 'success',
-            'data'   => $response->json(),
+            'count'  => count($itemsMapped),
+            'data'   => $itemsMapped,
         ]);
     }
 }

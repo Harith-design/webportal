@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Trash2, Search } from "lucide-react";
-import "./OrderForm.css"; // import your CSS
+import { getItems } from "../services/api"; // ✅ updated getItems(search, skip, top)
+import "./OrderForm.css";
 
 function PlaceOrderPage() {
-
   const [activeTab, setActiveTab] = useState("contents");
 
   const [order, setOrder] = useState({
@@ -13,53 +13,97 @@ function PlaceOrderPage() {
     shippingAddress: "",
   });
 
-  // ✅ Rows state
   const [rows, setRows] = useState([
-    { product: "", catalogue: "", quantity: "", price: "0.00", total: "0.00", active: true },
-    { product: "", catalogue: "", quantity: "", price: "0.00", total: "0.00", active: false },
+    {
+      product: "",
+      description: "",
+      quantity: "",
+      unitPrice: "0.00",
+      weight: "",
+      totalWeight: "0.00",
+      lineTotal: "0.00",
+      taxCode: "",
+      active: true,
+    },
   ]);
 
-  // ✅ Handle row edits
+  // dropdown options per row
+  const [itemOptions, setItemOptions] = useState({});
+
   const handleChange = (index, field, value) => {
     const updated = [...rows];
     updated[index][field] = value;
 
-    // auto calculate line total
-    if (field === "quantity" || field === "price") {
+    if (field === "quantity" || field === "unitPrice") {
       const qty = parseFloat(updated[index].quantity) || 0;
-      const price = parseFloat(updated[index].price) || 0;
-      updated[index].total = (qty * price).toFixed(2);
+      const price = parseFloat(updated[index].unitPrice) || 0;
+      updated[index].lineTotal = (qty * price).toFixed(2);
     }
 
     setRows(updated);
   };
 
-  // ✅ Activate row on focus
   const activateRow = (index) => {
     if (!rows[index].active) {
       const updated = [...rows];
       updated[index].active = true;
       setRows([
         ...updated,
-        { product: "", catalogue: "", quantity: "", price: "", total: "", active: false },
+        {
+          product: "",
+          description: "",
+          quantity: "",
+          unitPrice: "",
+          weight: "",
+          totalWeight: "",
+          lineTotal: "",
+          taxCode: "",
+          active: false,
+        },
       ]);
     }
   };
 
-  // ✅ Delete row
   const handleDelete = (index) => {
     setRows(rows.filter((_, i) => i !== index));
   };
 
-  // ✅ Submit
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Order submitted:", order, rows);
     alert("Order submitted! Check console for details.");
   };
 
-  const orderTotal = rows.reduce((sum, row) => sum + parseFloat(row.total || 0), 0).toFixed(2);
+  const orderTotal = rows
+    .reduce((sum, row) => sum + parseFloat(row.lineTotal || 0), 0)
+    .toFixed(2);
 
+  // ✅ fetch items from SAP as user types
+  const handleSearch = async (index, query) => {
+    handleChange(index, "product", query);
+
+    if (query.length < 2) return; // wait until user types at least 2 chars
+
+    try {
+      const items = await getItems(query, 0, 20); // fetch top 20 matches only
+      setItemOptions((prev) => ({ ...prev, [index]: items }));
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    }
+  };
+
+  // ✅ when selecting an item
+  const handleSelectItem = (index, item) => {
+    const updated = [...rows];
+    updated[index].product = item.ItemCode;
+    updated[index].description = item.ItemName;
+    updated[index].unitPrice = item.Price || "0.00"; // extend later if SAP returns price
+    updated[index].weight = item.Weight || "0.00";
+    setRows(updated);
+
+    // clear dropdown
+    setItemOptions((prev) => ({ ...prev, [index]: [] }));
+  };
 
   return (
       <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
