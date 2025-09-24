@@ -117,6 +117,6 @@ return [
     | Frontend URL (for React app)
     |--------------------------------------------------------------------------
     */
-    'frontend_url' => env('FRONTEND_URL', 'http://192.168.100.183:3000'),
+    'frontend_url' => env('FRONTEND_URL', 'http://192.168.100.157:3000'),
 
 ];

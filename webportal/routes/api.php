@@ -48,7 +48,10 @@ Route::get('/sap-debug-login', function () {
 });
 
 // ------------------- SAP B1 Routes -------------------
-Route::prefix('sap')->middleware('auth:sanctum')->group(function () {
+Route::prefix('sap')->group(function () {
+    // ---------------- Items ----------------
+    Route::get('/items', [SapController::class, 'getItems']); // 🔹 With pagination support
+
     // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
     Route::post('/business-partners', [SapController::class, 'createBusinessPartner']);
@@ -56,10 +59,10 @@ Route::prefix('sap')->middleware('auth:sanctum')->group(function () {
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
 
     // ---------------- Invoices ----------------
-    Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']);  // Get single invoice
-    Route::post('/invoices', [SapController::class, 'createInvoice']);         // Create invoice
+    Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']);  
+    Route::post('/invoices', [SapController::class, 'createInvoice']);         
 
     // ---------------- Sales Orders ----------------
-    Route::get('/sales-orders/{DocEntry}', [SapController::class, 'getSalesOrder']); // Get sales order by DocEntry
-    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);        // Create sales order
+    Route::get('/sales-orders/{DocEntry}', [SapController::class, 'getSalesOrder']); 
+    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);        
 });
