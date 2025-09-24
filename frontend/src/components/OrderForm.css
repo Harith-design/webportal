@@ -2,8 +2,8 @@
   background: none !important;
 }
 
-.scroll-container {
-  contain: content;
-  max-width: 100%;
+.table-wrapper {
   overflow-x: auto;
+  min-width: 100%;
+  table-layout: fixed;
 }
