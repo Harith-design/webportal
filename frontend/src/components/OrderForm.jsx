@@ -25,6 +25,17 @@ function PlaceOrderPage() {
       taxCode: "",
       active: true,
     },
+    {
+      product: "",
+      description: "",
+      quantity: "",
+      unitPrice: "0.00",
+      weight: "",
+      totalWeight: "0.00",
+      lineTotal: "0.00",
+      taxCode: "",
+      active: false,
+    },
   ]);
 
   // dropdown options per row
@@ -43,29 +54,55 @@ function PlaceOrderPage() {
     setRows(updated);
   };
 
+  // ✅ Option B: Always keep one inactive row at the bottom
   const activateRow = (index) => {
-    if (!rows[index].active) {
-      const updated = [...rows];
-      updated[index].active = true;
-      setRows([
-        ...updated,
-        {
+    setRows((prevRows) => {
+      const updated = prevRows.map((row, i) =>
+        i === index ? { ...row, active: true } : row
+      );
+
+      // If the last row is active, add one inactive row
+      if (updated[updated.length - 1].active) {
+        updated.push({
           product: "",
           description: "",
           quantity: "",
-          unitPrice: "",
+          unitPrice: "0.00",
           weight: "",
-          totalWeight: "",
-          lineTotal: "",
+          totalWeight: "0.00",
+          lineTotal: "0.00",
           taxCode: "",
           active: false,
-        },
-      ]);
-    }
+        });
+      }
+
+      return updated;
+    });
   };
 
+  // ✅ Prevent deleting the last inactive row
   const handleDelete = (index) => {
-    setRows(rows.filter((_, i) => i !== index));
+    setRows((prevRows) => {
+      if (!prevRows[index].active) return prevRows; // don't delete inactive row
+      const updated = prevRows.filter((_, i) => i !== index);
+
+      // Ensure at least one inactive row exists
+      if (!updated.some((row) => row.active === false)) {
+        updated.push({
+          product: "",
+          description: "",
+          quantity: "",
+          unitPrice: "0.00",
+          weight: "",
+          totalWeight: "0.00",
+          lineTotal: "0.00",
+          taxCode: "",
+          active: false,
+        });
+      }
+
+      return updated;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -106,8 +143,8 @@ function PlaceOrderPage() {
   };
 
   return (
-      <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
-        {/* Flex container: form left, box right */}
+    <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
+       {/* Flex container: form left, box right */}
         {/* First Section */}
         <div className="grid grid-cols-3 gap-6 p-4 rounded-lg">
           {/* Form (left) */}
@@ -470,7 +507,7 @@ function PlaceOrderPage() {
             Submit Order
           </button>
         </div>
-      </div>
+    </div>
   );
 }
 
