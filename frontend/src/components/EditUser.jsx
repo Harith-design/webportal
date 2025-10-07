@@ -187,7 +187,7 @@ function EditUser() {
       type="submit"
       className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
     >
-      Update
+      Save
     </button>
   </div>
 </form>

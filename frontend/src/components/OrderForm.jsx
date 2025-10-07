@@ -84,7 +84,7 @@ function PlaceOrderPage() {
   const handleDelete = (index) => {
     setRows((prevRows) => {
       if (!prevRows[index].active) return prevRows; // don't delete inactive row
-      const updated = prevRows.filter((_, i) => i !== index);
+      const updated = prevRows.filter((_, i) => i !== index); 
 
       // Ensure at least one inactive row exists
       if (!updated.some((row) => row.active === false)) {
@@ -146,67 +146,90 @@ function PlaceOrderPage() {
     <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
        {/* Flex container: form left, box right */}
         {/* First Section */}
-        <div className="grid grid-cols-3 gap-6 p-4 rounded-lg">
+        <div className="flex justify-between py-2 rounded-lg gap-x-10">
           {/* Form (left) */}
-          <form onSubmit={handleSubmit} className="col-span-2 grid grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-2 gap-6">
             {/* Delivery Date */}
             <div className="flex items-center gap-4">
-              <label className="w-[120px] text-xs">Delivery Date</label>
+              <label className="w-[190px] text-xs">Requested Delivery Date</label>
               <input
                 type="date"
                 name="deliveryDate"
                 value={order.deliveryDate}
                 onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
-                className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+                className="w-2/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
                 required
               />
             </div>
 
-            {/* PO No */}
+            {/* Ship To */}
             <div className="flex items-center gap-4">
-              <label className="w-[120px] text-xs">PO No.</label>
-              <input
-                type="text"
-                name="ponum"
-                value={order.ponum}
-                onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
-                className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-                required
-              />
+              <label className="w-[50px] text-xs">Ship To</label>
+                <select
+                  name="shippingAddress"
+                  value={order.shippingAddress}
+                  onChange={(e) =>
+                    setOrder({ ...order, [e.target.name]: e.target.value })
+                  }
+                  className="w-2/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+                >
+                  <option value="">Select Ship To</option>
+                  <option value="Warehouse A">Warehouse A</option>
+                  <option value="Warehouse B">Warehouse B</option>
+                  <option value="Warehouse C">Warehouse C</option>
+                </select>             
             </div>
 
-            {/* FOB Point */}
+            {/* PO Reference (auto-generated, read-only) */}
             <div className="flex items-center gap-4">
-              <label className="w-[120px] text-xs">FOB Point</label>
-              <input
-                type="text"
-                nB Pointame="ponum"
-                value={order.ponum}
-                onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
-                className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-                required
-              />
+              <label className="w-[190px] text-xs">PO Reference</label>
+              <span className="w-2/3 px-3 py-2 text-xs border rounded-lg bg-gray-100 text-gray-100">
+                {order.poref || "—"}  {/* blank until system generates */}
+              </span>
             </div>
 
-            {/* Freight Terms */}
+            {/* Bill To */}
             <div className="flex items-center gap-4">
-              <label className="w-[120px] text-xs">Freight Terms</label>
-              <input
-                type="text"
-                name="ponum"
-                value={order.ponum}
-                onChange={(e) => setOrder({ ...order, [e.target.name]: e.target.value })}
-                className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-                required
-              />
+              <label className="w-[50px] text-xs">Bill To</label>
+              <select
+                name="billingAddress"
+                value={order.billingAddress}
+                onChange={(e) =>
+                  setOrder({ ...order, [e.target.name]: e.target.value })
+                }
+                className="w-2/3  border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
+              >
+                <option value="">Select Bill To</option>
+                <option value="Head Office">Head Office</option>
+                <option value="Finance Dept">Finance Dept</option>
+                <option value="Branch Office">Branch Office</option>
+              </select>
             </div>
           </form>
+
+          {/* Preview Box (right, 1/3 width) */}
+          <div className="flex-1 p-4 border rounded-lg shadow-sm bg-gray-50 max-w-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold mb-1">Shipping Address</p>
+                <p className="text-xs">
+                  {order.shippingAddress || "Select from form"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold mb-1">Billing Address</p>
+                <p className="text-xs">
+                  {order.billingAddress || "Select from form"}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
 
         {/* Tabs */}
         {/* Heading Second Section */}
-        <div className="border-b mb-4 mt-6 flex text-sm">
+        {/* <div className="border-b mb-4 mt-6 flex text-sm">
           <button
             type="button"
             onClick={() => setActiveTab("contents")}
@@ -229,12 +252,12 @@ function PlaceOrderPage() {
           >
             Logistics
           </button>
-        </div>
+        </div> */}
 
         {/* Tab Content */}
         {/* Scrollable Table */}
         {/* Second Section */}
-        {activeTab === "contents" && (
+        {/* {activeTab === "contents" && ( */}
          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6"> 
           <div className="p-6 rounded-xl shadow-md bg-white overflow-x-auto">
             <div className="min-w-[1200px]">
@@ -248,7 +271,6 @@ function PlaceOrderPage() {
                           <th className="px-2 py-2 w-2/12">Weight</th>
                           <th className="px-2 py-2 w-1/12">Total Weight</th>
                           <th className="px-2 py-2 w-1/12">Line Total</th>
-                          <th className="px-2 py-2 min-w-[120px]">Tax Code</th>
                           <th className="px-2 py-2 w-1/12">Delete</th>
                         </tr>
                     </thead>
@@ -259,7 +281,7 @@ function PlaceOrderPage() {
                           "w-full box-border border rounded px-2 py-1 text-xs";
                         const inputActive =
                           "bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400";
-                        const inputInactive = "cursor-pointer placeholder-gray-300";
+                        const inputInactive = "placeholder-gray-300";
 
                         const inputClass = `${inputBase} ${isActive ? inputActive : inputInactive}`;
                         return (
@@ -274,11 +296,10 @@ function PlaceOrderPage() {
                               <div className="relative">
                                 <input
                                   type="text"
-                                  placeholder="Search"
+                                  placeholder={isActive ? "Search" : "Click to add an item"}
                                   value={row.product}
                                   onChange={(e) => handleChange(index, "product", e.target.value)}
                                   onFocus={() => activateRow(index)}
-                                  readOnly={!isActive}
                                   className={`${inputClass} pl-2 pr-8`}
                                 />
                                 <span
@@ -302,7 +323,7 @@ function PlaceOrderPage() {
                                     handleChange(index, "description", e.target.value)
                                   }
                                   onFocus={() => activateRow(index)}
-                                  readOnly={!isActive}
+                                  disabled={!isActive}
                                   className={`${inputClass} pl-2 pr-8`}
                                 />
                                 <span
@@ -323,13 +344,14 @@ function PlaceOrderPage() {
                                 value={row.quantity}
                                 onChange={(e) => handleChange(index, "quantity", e.target.value)}
                                 onFocus={() => activateRow(index)}
+                                disabled={!isActive}
                                 readOnly={!isActive}
                                 className={inputClass}
                               />
                             </td>
 
                             {/* Unit Price */}
-                            <td className="px-2 py-2">
+                            {/* <td className="px-2 py-2">
                               <input
                                 type="number"
                                 placeholder="0.00"
@@ -338,6 +360,16 @@ function PlaceOrderPage() {
                                 onFocus={() => activateRow(index)}
                                 readOnly={!isActive}
                                 className={inputClass}
+                              />
+                            </td> */}
+                            {/* Unit Price (auto) */}
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={row.unitPrice}
+                                disabled
+                                readOnly
+                                className={`${inputBase} ${isActive ? "text-gray-400" : "text-gray-300"}`}
                               />
                             </td>
 
@@ -349,7 +381,8 @@ function PlaceOrderPage() {
                                   placeholder="Search"
                                   value={row.weight}
                                   onChange={(e) => handleChange(index, "weight", e.target.value)}
-                                  onFocus={() => activateRow(index)}
+                                  // onFocus={() => activateRow(index)}
+                                  disabled={!isActive}
                                   readOnly={!isActive}
                                   className={`${inputClass} pl-2 pr-8`}
                                 />
@@ -364,7 +397,7 @@ function PlaceOrderPage() {
                             </td>
 
                             {/* Total Weight */}
-                            <td className="px-2 py-2">
+                            {/* <td className="px-2 py-2">
                               <input
                                 type="number"
                                 placeholder="0.00"
@@ -374,10 +407,20 @@ function PlaceOrderPage() {
                                 readOnly={!isActive}
                                 className={inputClass}
                               />
+                            </td> */}
+                            {/* Total Weight (auto) */}
+                            <td className="px-2 py-2">
+                              <input
+                                type="number"
+                                value={row.totalWeight}
+                                disabled
+                                readOnly
+                                className={`${inputBase} ${isActive ? "text-gray-400" : "text-gray-300"}`}
+                              />
                             </td>
 
                             {/* Line Total */}
-                            <td className="px-2 py-2">
+                            {/* <td className="px-2 py-2">
                               <input
                                 type="number"
                                 placeholder="0.00"
@@ -387,20 +430,16 @@ function PlaceOrderPage() {
                                 readOnly={!isActive}
                                 className={inputClass}
                               />
-                            </td>
-
-                            {/* Tax Code */}
+                            </td> */}
+                            {/* Line Total (auto) */}
                             <td className="px-2 py-2">
-                              <select
-                                name="taxCode"
-                                value={row.taxCode}
-                                onChange={(e) => handleChange(index, "taxCode", e.target.value)}
-                                className={inputClass}
-                              >
-                                <option value="code1">Tax Code 1</option>
-                                <option value="code2">Tax Code 2</option>
-                                <option value="code3">Tax Code 3</option>
-                              </select>
+                              <input
+                                type="number"
+                                value={row.lineTotal}
+                                readOnly
+                                disabled // always disabled
+                                className={`${inputBase} ${isActive ? "text-gray-400" : "text-gray-300"}`}
+                              />
                             </td>
 
                             {/* Delete */}
@@ -434,7 +473,7 @@ function PlaceOrderPage() {
               </p>
             </div>
           </div>
-        )}
+        {/* )} */}
 
         {activeTab === "logistics" && (
           <div className="p-4">
@@ -480,17 +519,17 @@ function PlaceOrderPage() {
 
               {/* Right side: Preview Box (same style as Section 1) */}
               <div className="col-span-1 p-4 border rounded-lg shadow-sm bg-gray-50">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs font-semibold mb-1">Shipping Address</p>
-                        <p className="text-xs">{order.shippingAddress || "Select from form"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold mb-1">Billing Address</p>
-                        <p className="text-xs">{order.billingAddress || "Select from form"}</p>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold mb-1">Shipping Address</p>
+                    <p className="text-xs">{order.shippingAddress || "Select from form"}</p>
                   </div>
+                  <div>
+                    <p className="text-xs font-semibold mb-1">Billing Address</p>
+                    <p className="text-xs">{order.billingAddress || "Select from form"}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
