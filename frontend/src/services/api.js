@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 👇 Directly point to your Laravel backend
 const API = axios.create({
-  baseURL: "http://192.168.100.157:8000/api", // 👈 use Harith's backend server IP
+  baseURL: "http://192.168.100.187:8000/api", // 👈 use Harith's backend server IP
   headers: {
     "Content-Type": "application/json",
   },
@@ -43,8 +43,16 @@ export const deleteBusinessPartner = (cardCode) =>
 // ---------- SAP / Invoices ----------
 export const getInvoice = (docEntry) =>
   API.get(`/sap/invoices/${docEntry}`).then((res) => res.data.data);
-
 export const createInvoice = (data) =>
   API.post("/sap/invoices", data).then((res) => res.data.data);
+
+// ---------- SAP / Items (🆕 Added Section) ----------
+export const getItems = (search = "", skip = 0, top = 20) =>
+  API.get("/sap/items", { params: { search, skip, top } })
+    .then((res) => res.data.data)
+    .catch((err) => {
+      console.error("Error fetching items:", err);
+      throw err;
+    });
 
 export default API;

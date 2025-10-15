@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Pencil } from "lucide-react";
+import UserAvatar from "../components/UserAvatar";
 
 function EditProfile() {
   const [formData, setFormData] = useState({
@@ -101,28 +102,32 @@ function EditProfile() {
             {/* Right side - profile picture */}
             <div className="relative flex flex-col items-center">
               <div className="relative">
-                <img
-                  src={preview || "https://via.placeholder.com/150"}
-                  alt="Profile"
-                  className="w-36 h-36 rounded-full object-cover border shadow-md"
-                />
+    {preview ? (
+      <img
+        src={preview}
+        alt="Profile"
+        className="w-36 h-36 rounded-full object-cover border shadow-md"
+      />
+    ) : (
+      <UserAvatar name={formData.name} size={144} />
+    )}
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="profilePicInput"
-                  onChange={handlePicChange}
-                  className="hidden"
-                />
+    <input
+      type="file"
+      accept="image/*"
+      id="profilePicInput"
+      onChange={handlePicChange}
+      className="hidden"
+    />
 
-                <label
-                  htmlFor="profilePicInput"
-                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
-                >
-                  <Pencil size={14} />
-                  <span className="text-xs">Edit</span>
-                </label>
-              </div>
+    <label
+      htmlFor="profilePicInput"
+      className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
+    >
+      <Pencil size={14} />
+      <span className="text-xs">Edit</span>
+    </label>
+  </div>
             </div>
           </div>
         </div>
