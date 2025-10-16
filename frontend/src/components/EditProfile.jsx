@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pencil } from "lucide-react";
-import UserAvatar from "../components/UserAvatar";
+import UserAvatar from "./UserAvatar";
 
 function EditProfile() {
   const [formData, setFormData] = useState({

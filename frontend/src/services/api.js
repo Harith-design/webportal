@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 👇 Directly point to your Laravel backend
 const API = axios.create({
-  baseURL: "http://192.168.100.187:8000/api", // 👈 use Harith's backend server IP
+  baseURL: "http://192.168.100.189:8000/api", // 👈 use Harith's backend server IP
   headers: {
     "Content-Type": "application/json",
   },
