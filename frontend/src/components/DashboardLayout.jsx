@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
 import { isTokenValid, clearToken } from "../helpers/auth";
+import UserAvatar from "./UserAvatar";
 
 function DashboardLayout() {
   const location = useLocation();
@@ -136,14 +137,8 @@ function DashboardLayout() {
           {user && (
           <div className="relative" ref={dropdownRef}>
             <div className="flex items-center space-x-3">
-              <div
-                className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-semibold cursor-pointer ${getColorFromName(
-                  user.name
-                )}`}
-                onClick={() => setDropdownOpen((prev) => !prev)}
-              >
-                {getInitials(user.name)}
-              </div>
+              <UserAvatar name={user.name} size={40}
+                onClick={() => setDropdownOpen((prev) => !prev)}/>
               <div className="text-right">
                 <p className="text-sm font-medium">{user.name}</p>
                 <p className="text-xs text-gray-500">{user.role || "User"}</p>
