@@ -57,7 +57,6 @@ export const deleteBusinessPartner = (cardCode) =>
 // ---------- SAP / Invoices ----------
 export const getInvoice = (docEntry) =>
   API.get(`/sap/invoices/${docEntry}`).then((res) => res.data.data);
-
 export const createInvoice = (data) =>
   API.post("/sap/invoices", data).then((res) => res.data.data);
 
