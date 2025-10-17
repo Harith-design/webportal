@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SapController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -19,9 +20,21 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+// ------------------- Protected Routes (requires auth) -------------------
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', [AuthController::class, 'user']);
+    
+    // Current logged-in user
+    Route::get('/user/me', [UserController::class, 'me']);
+    
+    // Logout
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // ------------------- Users -------------------
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::put('/users/{id}', [UserController::class, 'update']); // 🔹 Previously missing
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
 });
 
 // ------------------- Sales Order Routes (internal app logic) -------------------

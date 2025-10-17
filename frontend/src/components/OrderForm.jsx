@@ -232,8 +232,9 @@ function PlaceOrderPage() {
       </div>
 
       {/* Table */}
-      <div className="p-6 rounded-xl shadow-md bg-white overflow-x-auto">
-        <div className="min-w-[1200px]">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6"> 
+          <div className="p-6 rounded-xl shadow-md bg-white overflow-x-auto">
+            <div className="min-w-[1200px]">
           <table className="table-auto w-full border-collapse">
             <thead>
               <tr className="text-xs font-semibold border-b text-center align-middle">
@@ -407,6 +408,7 @@ function PlaceOrderPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
