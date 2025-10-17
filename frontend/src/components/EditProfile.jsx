@@ -8,13 +8,13 @@ function EditProfile() {
     id: "",
     name: "",
     email: "",
-    role: "",
+    // role: "", // ❌ Commented out
     contact: "",
     company: "",
     password: "",
     confirmPassword: "",
-    companyLogo: null,
-    logoPreview: null,
+    // companyLogo: null, // ❌ Commented out
+    // logoPreview: null, // ❌ Commented out
     CardCode: "",
     CardName: "",
   });
@@ -36,13 +36,13 @@ function EditProfile() {
           id: user.id,
           name: user.name || "",
           email: user.email || "",
-          role: user.role || "User",
-          contact: user.contact || "",
+          // role: user.role || "User", // ❌ Commented out
+          contact: user.contact_no || "",
           company: user.company || "",
           CardCode: user.cardcode || "",
           CardName: user.cardname || "",
-          companyLogo: null,
-          logoPreview: null,
+          // companyLogo: null, // ❌ Commented out
+          // logoPreview: null, // ❌ Commented out
           password: "",
           confirmPassword: "",
         });
@@ -68,16 +68,7 @@ function EditProfile() {
     }
   };
 
-  const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData((prev) => ({
-        ...prev,
-        companyLogo: file,
-        logoPreview: URL.createObjectURL(file),
-      }));
-    }
-  };
+  // ❌ Removed handleLogoChange (not used now)
 
   // SAP Company Search
   const handleCompanySearch = async (e) => {
@@ -256,6 +247,8 @@ function EditProfile() {
               />
             </div>
 
+            {/* ❌ Role and Company Logo removed */}
+            {/*
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">Role</label>
               <input
@@ -267,7 +260,6 @@ function EditProfile() {
               />
             </div>
 
-            {/* Company Logo Upload */}
             <div className="flex flex-col mt-2">
               <label className="text-[80%] font-medium mb-1">Company Logo</label>
               <div className="relative w-32 h-16 border rounded bg-gray-50 flex items-center justify-center shadow-sm">
@@ -295,6 +287,7 @@ function EditProfile() {
                 </label>
               </div>
             </div>
+            */}
           </div>
         </div>
 

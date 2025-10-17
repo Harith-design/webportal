@@ -27,7 +27,24 @@ export const getCurrentUser = () => API.get("/user/me"); // ✅ FIXED
 // ---------- USERS ----------
 export const getUsers = () => API.get("/users");
 export const createUser = (data) => API.post("/users", data);
-export const updateUser = (id, data) => API.put(`/users/${id}`, data);
+
+// ✅ FIXED VERSION: handles profile picture + password confirmation properly
+export const updateUser = async (id, data) => {
+  const formData = new FormData();
+
+  // Append all fields dynamically
+  for (const key in data) {
+    if (data[key] !== null && data[key] !== undefined) {
+      formData.append(key, data[key]);
+    }
+  }
+
+  // Use POST + _method=PUT to support FormData with Laravel
+  return await API.post(`/users/${id}?_method=PUT`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 
 // ---------- SAP / Business Partners ----------
