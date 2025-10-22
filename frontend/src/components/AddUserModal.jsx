@@ -29,72 +29,91 @@ function AddUserModal({ show, onClose, newUser, setNewUser, onSave }) {
           <input
             type="text"
             placeholder="First Name"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.firstName}
-            onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, firstName: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Last Name"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.lastName}
-            onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, lastName: e.target.value })
+            }
           />
           <input
             type="email"
             placeholder="Email"
-            className="border p-2 rounded-md col-span-2"
+            className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.email}
-            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, email: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="BP Code"
-            className="border p-2 rounded-md col-span-2"
+            className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.bpCode}
-            onChange={(e) => setNewUser({ ...newUser, bpCode: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, bpCode: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Street Address"
-            className="border p-2 rounded-md col-span-2"
+            className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.street}
-            onChange={(e) => setNewUser({ ...newUser, street: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, street: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="City"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.city}
-            onChange={(e) => setNewUser({ ...newUser, city: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, city: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="County"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.county}
-            onChange={(e) => setNewUser({ ...newUser, county: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, county: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Postal Code"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.postalCode}
-            onChange={(e) => setNewUser({ ...newUser, postalCode: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, postalCode: e.target.value })
+            }
           />
           <input
             type="text"
             placeholder="Country"
-            className="border p-2 rounded-md"
+            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
             value={newUser.country}
-            onChange={(e) => setNewUser({ ...newUser, country: e.target.value })}
+            onChange={(e) =>
+              setNewUser({ ...newUser, country: e.target.value })
+            }
           />
         </div>
 
+        {/* Buttons */}
         <div className="flex justify-end mt-6 gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border text-gray-600 hover:bg-gray-100"
+            className="px-4 py-2 rounded-lg border hover:bg-gray-100"
           >
             Cancel
           </button>
