@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 👇 Directly point to your Laravel backend
 const API = axios.create({
-  baseURL: "http://192.168.100.189:8000/api", // 👈 use Harith's backend server IP
+  baseURL: "http://192.168.100.191:8000/api", // 👈 backend IP
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,7 +22,7 @@ API.interceptors.request.use((config) => {
 export const register = (data) => API.post("/register", data);
 export const login = (data) => API.post("/login", data);
 export const logout = () => API.post("/logout");
-export const getCurrentUser = () => API.get("/user");
+export const getCurrentUser = () => API.get("/user/me"); // ✅ FIXED
 
 // ---------- USERS ----------
 export const getUsers = () => API.get("/users");
@@ -31,12 +31,26 @@ export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 
 // ---------- SAP / Business Partners ----------
-export const getBusinessPartners = () =>
-  API.get("/sap/business-partners").then((res) => res.data.data);
+export const getBusinessPartners = async (search = "") => {
+  try {
+    const res = await API.get("/sap/business-partners", {
+      params: { search },
+    });
+    return res.data; // ✅ Return full backend response
+  } catch (err) {
+    console.error("Error fetching business partners:", err);
+    throw err;
+  }
+};
+
 export const createBusinessPartner = (data) =>
   API.post("/sap/business-partners", data).then((res) => res.data.data);
+
 export const updateBusinessPartner = (cardCode, data) =>
-  API.put(`/sap/business-partners/${cardCode}`, data).then((res) => res.data.data);
+  API.put(`/sap/business-partners/${cardCode}`, data).then(
+    (res) => res.data.data
+  );
+
 export const deleteBusinessPartner = (cardCode) =>
   API.delete(`/sap/business-partners/${cardCode}`).then((res) => res.data);
 
@@ -46,13 +60,15 @@ export const getInvoice = (docEntry) =>
 export const createInvoice = (data) =>
   API.post("/sap/invoices", data).then((res) => res.data.data);
 
-// ---------- SAP / Items (🆕 Added Section) ----------
-export const getItems = (search = "", skip = 0, top = 20) =>
-  API.get("/sap/items", { params: { search, skip, top } })
-    .then((res) => res.data.data)
-    .catch((err) => {
-      console.error("Error fetching items:", err);
-      throw err;
-    });
+// ---------- SAP / Items ----------
+export const getItems = async (search = "") => {
+  try {
+    const res = await API.get("/sap/items", { params: { search } });
+    return res.data; // ✅ Return full backend response
+  } catch (err) {
+    console.error("Error fetching items:", err);
+    throw err;
+  }
+};
 
 export default API;

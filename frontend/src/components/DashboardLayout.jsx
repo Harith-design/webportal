@@ -13,6 +13,7 @@ function DashboardLayout() {
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null); // ✅ reference for dropdown wrapper
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // 🔹 Logout helper
   const handleLogout = () => {
@@ -102,11 +103,39 @@ function DashboardLayout() {
 
   const title = getPageTitle(location.pathname, id);
 
+  const getInitials = (name) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+
+  const getColorFromName = (name) => {
+    const colors = [
+      "bg-red-500",
+      "bg-green-500",
+      "bg-blue-500",
+      "bg-yellow-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-teal-500",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   return (
     <div className="min-h-screen flex w-screen">
-      <Sidebar />
-      <div className="ml-64 flex flex-col min-h-screen flex-1">
+      <Sidebar onToggle={setIsCollapsed} />
+    <div
+      className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ${
+        isCollapsed ? "ml-20" : "ml-64"
+      }`}
+    >
         <header className="flex justify-between items-center px-6 py-3">
           <h1 className="text-2xl font-semibold">{title}</h1>
 
@@ -152,8 +181,7 @@ function DashboardLayout() {
                 </div>
               )}
         </div>
-          )} 
-        
+          )}
         </header>
 
         <main className="flex-1 px-6 pt-4 pb-6 overflow-y-auto">

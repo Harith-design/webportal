@@ -22,6 +22,7 @@ import EditUser from "./components/EditUser";
 
 // Layout & helpers
 import DashboardLayout from "./components/DashboardLayout";
+import './App.css';
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
