@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { LoadingProvider } from "./context/LoadingContext";
+import { Toaster } from "react-hot-toast"; 
 
 // Public pages
 import SignUp from "./components/Signup";
@@ -59,6 +60,22 @@ function App() {
           {/* Default route */}
           <Route path="*" element={<Login />} />
         </Routes>
+
+        {/* ✅ Add this at the bottom so toast works globally */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: { fontSize: "0.9rem" },
+            success: {
+              style: { background: "#16a34a", color: "white" },
+              iconTheme: { primary: "white", secondary: "#16a34a" },
+            },
+            error: {
+              style: { background: "#dc2626", color: "white" },
+            },
+          }}
+        />
       </LoadingProvider>
     </Router>
   );

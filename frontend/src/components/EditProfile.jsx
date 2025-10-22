@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
 import { getBusinessPartners, updateUser, getCurrentUser } from "../services/api";
+import toast from "react-hot-toast";
 import UserAvatar from "../components/UserAvatar";
 
 function EditProfile() {

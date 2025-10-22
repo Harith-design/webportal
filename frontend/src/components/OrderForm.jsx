@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Trash2, Search, Loader2 } from "lucide-react";
 import { getItems } from "../services/api";
+import toast from "react-hot-toast";
+import confetti from "canvas-confetti"; // 🎊 add this
 import "./OrderForm.css";
 
 function PlaceOrderPage() {
@@ -145,11 +147,38 @@ function PlaceOrderPage() {
     setItemOptions((prev) => ({ ...prev, [index]: [] }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  try {
+    // Simulate order submission
     console.log("✅ Order submitted:", order, rows);
-    alert("Order submitted! Check console for details.");
-  };
+
+    // ✅ Success toast
+    toast.success("Your order has been submitted successfully!");
+
+    // 🎊 Trigger confetti
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { y: 0.6 }, // makes it rise from the bottom
+    });
+
+    // Optionally clear the form after success
+    setOrder({
+      ponum: "",
+      deliveryDate: "",
+      billingAddress: "",
+      shippingAddress: "",
+    });
+
+  } catch (err) {
+    console.error("❌ Failed to submit order:", err);
+    toast.error("Something went wrong while submitting the order. Please try again.");
+  }
+};
+
 
   return (
     <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
