@@ -8,13 +8,13 @@ function EditProfile() {
     id: "",
     name: "",
     email: "",
-    role: "",
+    // role: "", // ❌ Commented out
     contact: "",
     company: "",
     password: "",
     confirmPassword: "",
-    companyLogo: null,
-    logoPreview: null,
+    // companyLogo: null, // ❌ Commented out
+    // logoPreview: null, // ❌ Commented out
     CardCode: "",
     CardName: "",
   });
@@ -36,13 +36,13 @@ function EditProfile() {
           id: user.id,
           name: user.name || "",
           email: user.email || "",
-          role: user.role || "User",
-          contact: user.contact || "",
+          // role: user.role || "User", // ❌ Commented out
+          contact: user.contact_no || "",
           company: user.company || "",
           CardCode: user.cardcode || "",
           CardName: user.cardname || "",
-          companyLogo: null,
-          logoPreview: null,
+          // companyLogo: null, // ❌ Commented out
+          // logoPreview: null, // ❌ Commented out
           password: "",
           confirmPassword: "",
         });
@@ -68,16 +68,7 @@ function EditProfile() {
     }
   };
 
-  const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData((prev) => ({
-        ...prev,
-        companyLogo: file,
-        logoPreview: URL.createObjectURL(file),
-      }));
-    }
-  };
+  // ❌ Removed handleLogoChange (not used now)
 
   // SAP Company Search
   const handleCompanySearch = async (e) => {
@@ -110,21 +101,30 @@ function EditProfile() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      // Only send fields that have values
-      const payload = {};
+    // Password confirmation check
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      setMessage("❌ Passwords do not match!");
+      return;
+    }
 
-      if (formData.name) payload.name = formData.name;
-      if (formData.email) payload.email = formData.email;
-      if (formData.contact) payload.contact_no = formData.contact;
-      if (formData.CardCode) payload.cardcode = formData.CardCode;
-      if (formData.CardName) payload.cardname = formData.CardName;
-      if (formData.password) payload.password = formData.password;
+    try {
+      // Build payload
+      const payload = {
+        name: formData.name || "",
+        email: formData.email || "",
+        contact_no: formData.contact || "",
+        cardcode: formData.CardCode || "",
+        cardname: formData.CardName || "",
+      };
+
+      if (formData.password) {
+        payload.password = formData.password;
+      }
 
       await updateUser(formData.id, payload);
       setMessage("✅ Profile updated successfully!");
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("Error updating profile:", error.response || error);
       setMessage("❌ Failed to update profile. Please try again.");
     }
   };
@@ -147,7 +147,6 @@ function EditProfile() {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  // ✅ Removed required
                 />
               </div>
 
@@ -159,7 +158,6 @@ function EditProfile() {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  // ✅ Removed required
                 />
               </div>
 
@@ -172,7 +170,6 @@ function EditProfile() {
                   onChange={handleChange}
                   placeholder="Enter contact number"
                   className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  // ✅ Removed required
                 />
               </div>
             </div>
@@ -250,6 +247,8 @@ function EditProfile() {
               />
             </div>
 
+            {/* ❌ Role and Company Logo removed */}
+            {/*
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">Role</label>
               <input
@@ -261,7 +260,6 @@ function EditProfile() {
               />
             </div>
 
-            {/* Company Logo Upload */}
             <div className="flex flex-col mt-2">
               <label className="text-[80%] font-medium mb-1">Company Logo</label>
               <div className="relative w-32 h-16 border rounded bg-gray-50 flex items-center justify-center shadow-sm">
@@ -289,6 +287,7 @@ function EditProfile() {
                 </label>
               </div>
             </div>
+            */}
           </div>
         </div>
 

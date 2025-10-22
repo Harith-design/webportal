@@ -16,6 +16,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'contact_no', // backend column
         'cardcode',
         'cardname',
     ];
@@ -28,6 +29,17 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    // 👇 Map frontend 'contact' to backend 'contact_no'
+    public function setContactAttribute($value)
+    {
+        $this->attributes['contact_no'] = $value;
+    }
+
+    public function getContactAttribute()
+    {
+        return $this->attributes['contact_no'];
+    }
 
     /**
      * Send the password reset notification.
