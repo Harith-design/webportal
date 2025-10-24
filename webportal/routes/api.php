@@ -77,5 +77,8 @@ Route::prefix('sap')->group(function () {
 
     // ---------------- Sales Orders ----------------
     Route::get('/sales-orders/{DocEntry}', [SapController::class, 'getSalesOrder']); 
-    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);        
+    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);  
+    
+    // ---------------- List Sales Orders (for Orders Page) ----------------
+    Route::get('/orders', [SapController::class, 'getSalesOrders']);
 });

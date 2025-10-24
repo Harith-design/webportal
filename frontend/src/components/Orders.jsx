@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Package, Truck, Clock, Search, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
@@ -6,56 +7,38 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css"; // <-- your overrides
 
 function OrdersPage() {
-  const orders = [
-    {
-      id: 1001,
-      poNo: "PO-2025-001",
-      customer: "ABC Trading",
-      billTo: "ABC Trading HQ, KL",
-      shipTo: "ABC Trading Warehouse, Penang",
-      orderDate: "2025-08-25",
-      dueDate: "2025-08-30",
-      total: 1200,
-      currency: "RM",
-      status: "Open",
-    },
-    {
-      id: 1002,
-      poNo: "PO-2025-002",
-      customer: "XYZ Supplies",
-      billTo: "XYZ Supplies HQ, JB",
-      shipTo: "XYZ Supplies Warehouse, Melaka",
-      orderDate: "2025-08-24",
-      dueDate: "2025-08-29",
-      total: 800,
-      currency: "RM",
-      status: "Delivered",
-    },
-    {
-      id: 1003,
-      poNo: "PO-2025-003",
-      customer: "Global Parts",
-      billTo: "Global Parts HQ, Selangor",
-      shipTo: "Global Parts Logistic Hub, Johor",
-      orderDate: "2025-08-23",
-      dueDate: "2025-08-28",
-      total: 500,
-      currency: "RM",
-      status: "In Transit",
-    },
-    {
-      id: 1004,
-      poNo: "PO-2025-004",
-      customer: "BestMart",
-      billTo: "BestMart HQ, KL",
-      shipTo: "BestMart Outlet, Ipoh",
-      orderDate: "2025-08-22",
-      dueDate: "2025-08-27",
-      total: 1500,
-      currency: "RM",
-      status: "Open",
-    },
-  ];
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  const fetchOrders = async () => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/sap/orders");
+      if (res.data && res.data.data) {
+        // 🔹 Transform API keys to match frontend field names if needed
+        const formatted = res.data.data.map((o) => ({
+          id: o.salesNo,
+          poNo: o.poNo,
+          customer: o.customer,
+          orderDate: o.orderDate,
+          dueDate: o.dueDate,
+          total: o.total,
+          currency: o.currency,
+          status: o.status,
+          download: o.download,
+        }));
+        setOrders(formatted);
+      }
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchOrders();
+}, []);
+
 
   // 🔹 States for filters
   const [statusFilter, setStatusFilter] = useState("");
@@ -68,6 +51,8 @@ function OrdersPage() {
   // 🔹 Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
+
+  
 
   // 🔹 Filtering logic
   const filteredOrders = orders.filter((order) => {
@@ -107,10 +92,10 @@ function OrdersPage() {
             <Package size={16} className="mr-1" /> {status}
           </span>
         );
-      case "Delivered":
+      case "Closed":
         return (
           <span className="flex items-center text-green-600">
-            <Truck size={16} className="mr-1" /> {status}
+            <Truck size={16} className="mr-1" /> Delivered
           </span>
         );
       case "In Transit":
@@ -214,6 +199,7 @@ function OrdersPage() {
           <thead>
             <tr className="text-center text-sm text-gray-500 border-b">
               <th className="px-4 py-2 font-normal">Sales No.</th>
+              <th className="px-4 py-2 font-normal">Customer</th>
               <th className="px-4 py-2 font-normal">PO No.</th>
               <th className="px-4 py-2 font-normal">Order Date</th>
               <th className="px-4 py-2 font-normal">Due Date</th>
@@ -230,6 +216,7 @@ function OrdersPage() {
                   <td className="px-4 py-2 text-blue-600 hover:underline">
                     <Link to={`/orders/${order.id}`}>{order.id}</Link>
                   </td>
+                  <td className="px-4 py-2">{order.customer}</td>
                   <td className="px-4 py-2">{order.poNo}</td>
                   <td className="px-4 py-2">{order.orderDate}</td>
                   <td className="px-4 py-2">{order.dueDate}</td>

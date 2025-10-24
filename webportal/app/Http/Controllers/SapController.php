@@ -227,4 +227,62 @@ class SapController extends Controller
             'data'   => $details,
         ]);
     }
+
+        // =====================================================
+    // ------------------- SALES ORDER LIST ----------------
+    // =====================================================
+    public function getSalesOrders(Request $request)
+{
+    $top = 50; // limit to avoid overloading
+    $search = strtoupper(trim($request->query('search', '')));
+
+    // Include all required columns
+    $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus";
+
+    if (!empty($search)) {
+        $escaped = str_replace("'", "''", $search);
+        $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
+    }
+
+    $result = $this->callServiceLayer('get', $endpoint);
+
+    if (isset($result['error'])) {
+        return response()->json([
+            'error'   => 'Failed to fetch Sales Orders',
+            'details' => $result['details'],
+        ], $result['status']);
+    }
+
+    // ✅ Define $orders properly
+    $orders = $result['value'] ?? [];
+
+    // 🔹 Sort by Order Date (DocDate) — most recent first
+    usort($orders, function ($a, $b) {
+        return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+    });
+
+    // ✅ Format the output with all desired columns
+    $formatted = collect($orders)->map(function ($o) {
+        return [
+            'salesNo'   => $o['DocNum'] ?? '',
+            'poNo'      => $o['NumAtCard'] ?? '',
+            'customer'  => $o['CardName'] ?? '',
+            'orderDate' => substr($o['DocDate'] ?? '', 0, 10),
+            'dueDate'   => substr($o['DocDueDate'] ?? '', 0, 10),
+            'total'     => $o['DocTotal'] ?? 0,
+            'currency'  => $o['DocCurrency'] ?? 'RM',
+            'status'    => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+            'download'  => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"), // for the Download column
+        ];
+    })->toArray();
+
+    // ✅ Return formatted data
+    return response()->json([
+        'status' => 'success',
+        'count'  => count($formatted),
+        'data'   => $formatted,
+    ]);
+}
+
+
 }
