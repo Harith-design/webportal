@@ -284,5 +284,62 @@ class SapController extends Controller
     ]);
 }
 
+// =====================================================
+// ------------------- INVOICE LIST --------------------
+// =====================================================
+public function getInvoices(Request $request)
+{
+    $top = 50; // limit to avoid overloading
+    $search = strtoupper(trim($request->query('search', '')));
+
+    // Include all required invoice columns
+    $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus";
+
+    if (!empty($search)) {
+        $escaped = str_replace("'", "''", $search);
+        $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
+    }
+
+    $result = $this->callServiceLayer('get', $endpoint);
+
+    if (isset($result['error'])) {
+        return response()->json([
+            'error'   => 'Failed to fetch Invoices',
+            'details' => $result['details'],
+        ], $result['status']);
+    }
+
+    $invoices = $result['value'] ?? [];
+
+    // Sort by Posting Date (DocDate)
+    usort($invoices, function ($a, $b) {
+        return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+    });
+
+    // Format output
+    $formatted = collect($invoices)->map(function ($inv) {
+        return [
+            'invoiceNo'   => $inv['DocNum'] ?? '',
+            'poNo'        => $inv['NumAtCard'] ?? '',
+            'customer'    => $inv['CardName'] ?? '',
+            'postingDate' => substr($inv['DocDate'] ?? '', 0, 10),
+            'dueDate'     => substr($inv['DocDueDate'] ?? '', 0, 10),
+            'total'       => $inv['DocTotal'] ?? 0,
+            'currency'    => $inv['DocCurrency'] ?? 'RM',
+            'status'      => ($inv['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+            'download'    => url("/api/sap/invoices/{$inv['DocEntry']}/pdf"), // for the Download column
+        ];
+    })->toArray();
+
+    return response()->json([
+        'status' => 'success',
+        'count'  => count($formatted),
+        'data'   => $formatted,
+    ]);
+}
+
+
+
+
 
 }
