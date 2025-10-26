@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Package, Truck, Clock, Search, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
@@ -6,44 +7,31 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
 
 function InvoicesPage() {
-  const invoices = [
-    {
-      id: 1001,
-      ponum: "ABC Trading",
-      postingDate: "2025-08-25",
-      dueDate: "2025-08-30",
-      total: 1200,
-      currency: "RM",
-      status: "Open",
-    },
-    {
-      id: 1002,
-      ponum: "XYZ Supplies",
-      postingDate: "2025-08-24",
-      dueDate: "2025-08-29",
-      total: 800,
-      currency: "RM",
-      status: "Delivered",
-    },
-    {
-      id: 1003,
-      ponum: "Global Parts",
-      postingDate: "2025-08-23",
-      dueDate: "2025-08-28",
-      total: 500,
-      currency: "RM",
-      status: "In Transit",
-    },
-    {
-      id: 1004,
-      ponum: "BestMart",
-      postingDate: "2025-08-22",
-      dueDate: "2025-08-27",
-      total: 1500,
-      currency: "RM",
-      status: "Open",
-    },
-  ];
+  const [invoices, setInvoices] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+
+useEffect(() => {
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get("http://localhost:8000/api/sap/invoices"); // adjust if your backend URL is different
+      if (res.data.status === "success") {
+        setInvoices(res.data.data);
+      } else {
+        setError("Failed to fetch invoices");
+      }
+    } catch (err) {
+      console.error("Error fetching invoices:", err);
+      setError("Error fetching invoices");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchInvoices();
+}, []);
+
 
   // 🔹 States for filters
   const [statusFilter, setStatusFilter] = useState("all");
@@ -197,10 +185,18 @@ function InvoicesPage() {
 
       {/* 🔹 Invoices Table */}
       <div className="rounded-xl overflow-hidden shadow-sm min-h-[400px] max-h-[600px] overflow-y-auto">
+        {loading && (
+  <div className="text-center text-gray-500 py-4">Loading invoices...</div>
+)}
+{error && (
+  <div className="text-center text-red-500 py-4">{error}</div>
+)}
+
         <table className="table-auto w-full border-collapse">
           <thead>
             <tr className="text-center text-sm text-gray-500 border-b">
               <th className="px-4 py-2 font-normal">Invoice No.</th>
+              <th className="px-4 py-2 font-normal">Customer</th>
               <th className="px-4 py-2 font-normal">PO No.</th>
               <th className="px-4 py-2 font-normal">Posting Date</th>
               <th className="px-4 py-2 font-normal">Due Date</th>
@@ -213,27 +209,29 @@ function InvoicesPage() {
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
-                <tr key={inv.id} className="even:bg-gray-50 text-center">
-                  <td className="px-4 py-2 text-blue-600 hover:underline">
-                    <Link to={`/invoices/${inv.id}`}>{inv.id}</Link>
-                  </td>
-                  <td className="px-4 py-2">{inv.ponum}</td>
-                  <td className="px-4 py-2">{inv.postingDate}</td>
-                  <td className="px-4 py-2">{inv.dueDate}</td>
-                  <td className="px-4 py-2">{inv.total}</td>
-                  <td className="px-4 py-2">{inv.currency}</td>
-                  <td className="px-4 py-2">{renderStatus(inv.status)}</td>
-                  <td className="px-4 py-2 flex justify-center">
-                    <a href="/path/to/file.pdf" target="_blank" rel="noopener noreferrer">
-                      <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
-                        alt="PDF"
-                        className="w-5 h-5"
-                      />
-                    </a>
-                  </td>
-                </tr>
-              ))
+  <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
+    <td className="px-4 py-2 text-blue-600 hover:underline">
+      <Link to={`/invoices/${inv.invoiceNo}`}>{inv.invoiceNo}</Link>
+    </td>
+    <td className="px-4 py-2">{inv.customer}</td>
+    <td className="px-4 py-2">{inv.poNo}</td>
+    <td className="px-4 py-2">{inv.postingDate}</td>
+    <td className="px-4 py-2">{inv.dueDate}</td>
+    <td className="px-4 py-2">{inv.total}</td>
+    <td className="px-4 py-2">{inv.currency}</td>
+    <td className="px-4 py-2">{renderStatus(inv.status)}</td>
+    <td className="px-4 py-2 flex justify-center">
+      <a href={inv.download} target="_blank" rel="noopener noreferrer">
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
+          alt="PDF"
+          className="w-5 h-5"
+        />
+      </a>
+    </td>
+  </tr>
+))
+
             ) : (
               <tr>
                 <td colSpan="8" className="text-center py-4 text-gray-500">

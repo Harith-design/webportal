@@ -83,6 +83,7 @@ Route::prefix('sap')->group(function () {
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
 
     // ---------------- Invoices ----------------
+    Route::get('/invoices', [SapController::class, 'getInvoices']); // 🔹 List all invoices (new)
     Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']);  
     // 🔹 You preferred GET invoice route, removed POST createInvoice
 
