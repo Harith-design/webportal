@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import {
   ShoppingCart,
   ClockAlert,
@@ -33,6 +34,71 @@ const purchasesData = [
 ];
 
 function DashboardPage() {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [recentOrders, setRecentOrders] = useState([]);
+
+  useEffect(() => {
+  const fetchOrders = async () => {
+
+    // fetch company code (start)
+    var user = localStorage.getItem("user");
+    if(!user){
+      user = sessionStorage.getItem("user");
+    }
+    var userModel = JSON.parse(user);
+    // fetch company code (end)
+
+
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/sap/orders");
+
+      
+      if (res.data && res.data.data) {
+        // 🔹 Transform API keys to match frontend field names if needed
+
+        const filtered = res.data.data.filter(
+          (o) => o.customerCode === userModel.cardcode  // 🔹 Only include orders for this company
+        );
+
+
+         const formatted = filtered.map((o) => ({
+          id: o.salesNo,
+          poNo: o.poNo,
+          customer: o.customer,
+          orderDate: o.orderDate,
+          dueDate: o.dueDate,
+          total: o.total,
+          currency: o.currency,
+          status: o.status,
+          download: o.download,
+
+        }));
+        setOrders(formatted);
+        setTotalCount(formatted.length); 
+
+  
+        const sorted = [...formatted].sort(
+          (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+        );
+
+        // ✅ Take only 4 latest
+        const latestFour = sorted.slice(0, 4);
+        setRecentOrders(latestFour);
+
+      }
+      console.log(res);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchOrders();
+}, []);
+
   return (
     <div className="space-y-6">
       {/* Row 1 - Cards + Chart */}
@@ -42,7 +108,7 @@ function DashboardPage() {
           {[
             {
               title: "Total Orders",
-              value: "201",
+              value: totalCount,
               icon: <ShoppingCart size={30} color="black" />,
               bg: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
             },
@@ -131,43 +197,28 @@ function DashboardPage() {
                   <th className="px-4 py-2 font-normal">Status</th>
                 </tr>
               </thead>
-              <tbody className="text-xs">
-                <tr>
-                  <td className="px-4 py-2">1001</td>
-                  <td className="px-4 py-2">25-08-2025</td>
-                  <td className="px-4 py-2 text-blue-600 flex items-center gap-2">
-                    <CircleEllipsis size={16} /> Open
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2">1002</td>
-                  <td className="px-4 py-2">24-07-2025</td>
-                  <td className="px-4 py-2 text-green-600 flex items-center gap-2">
-                    <Truck size={16} /> Delivered
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2">1002</td>
-                  <td className="px-4 py-2">24-07-2025</td>
-                  <td className="px-4 py-2 text-green-600 flex items-center gap-2">
-                    <Truck size={16} /> Delivered
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2">1002</td>
-                  <td className="px-4 py-2">24-07-2025</td>
-                  <td className="px-4 py-2 text-green-600 flex items-center gap-2">
-                    <Truck size={16} /> Delivered
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2">1002</td>
-                  <td className="px-4 py-2">24-07-2025</td>
-                  <td className="px-4 py-2 text-green-600 flex items-center gap-2">
-                    <Truck size={16} /> Delivered
-                  </td>
-                </tr>
-              </tbody>
+                <tbody className="text-xs">
+                  {recentOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td className="px-4 py-2">{order.id}</td>
+                      <td className="px-4 py-2">
+                        {new Date(order.orderDate).toLocaleDateString("en-GB")}
+                      </td>
+                      <td className="px-4 py-2 flex items-center gap-2">
+                        {order.status.toLowerCase() === "delivered" ? (
+                          <span className="text-green-600 flex items-center gap-1">
+                            <Truck size={16} /> {order.status}
+                          </span>
+                        ) : (
+                          <span className="text-blue-600 flex items-center gap-1">
+                            <CircleEllipsis size={16} /> {order.status}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
             </table>
           </div>
         </div>

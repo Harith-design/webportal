@@ -58,6 +58,8 @@ class AuthController extends Controller
             $request->remember_me ? now()->addWeeks(2) : now()->addHours(2)
         )->plainTextToken;
 
+        Auth::login($user); 
+
         return response()->json([
             'user' => $user,
             'token' => $token,

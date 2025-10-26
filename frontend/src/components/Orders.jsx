@@ -13,11 +13,29 @@ function OrdersPage() {
 
   useEffect(() => {
   const fetchOrders = async () => {
+
+    // fetch company code (start)
+    var user = localStorage.getItem("user");
+    if(!user){
+      user = sessionStorage.getItem("user");
+    }
+    var userModel = JSON.parse(user);
+    // fetch company code (end)
+
+
     try {
       const res = await axios.get("http://127.0.0.1:8000/api/sap/orders");
+
+      
       if (res.data && res.data.data) {
         // 🔹 Transform API keys to match frontend field names if needed
-        const formatted = res.data.data.map((o) => ({
+
+        const filtered = res.data.data.filter(
+          (o) => o.customerCode === userModel.cardcode  // 🔹 Only include orders for this company
+        );
+
+
+         const formatted = filtered.map((o) => ({
           id: o.salesNo,
           poNo: o.poNo,
           customer: o.customer,
@@ -27,6 +45,7 @@ function OrdersPage() {
           currency: o.currency,
           status: o.status,
           download: o.download,
+
         }));
         setOrders(formatted);
       }

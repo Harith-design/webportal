@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SapController;
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Auth; 
 use App\Http\Controllers\UserController;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -15,25 +17,31 @@ use Illuminate\Support\Facades\Http;
 */
 
 // ------------------- Authentication Routes -------------------
-Route::post('/register', [AuthController::class, 'register']);
+// Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // ------------------- Protected Routes (requires auth) -------------------
 Route::middleware('auth:sanctum')->group(function () {
-    
-    // Current logged-in user
+
+    // 🔹 Current logged-in user
     Route::get('/user/me', [UserController::class, 'me']);
+
+    // wan test
+    Route::get('/user/company', function(Request $request){
+        return response()->json($request->user());
+    });
+    // wan test end
     
-    // Logout
+    // 🔹 Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ------------------- Users -------------------
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/users', [UserController::class, 'store']);
-    Route::put('/users/{id}', [UserController::class, 'update']); // 🔹 Previously missing
+    Route::put('/users/{id}', [UserController::class, 'update']); // 🔹 For profile save
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 });
 
@@ -60,10 +68,13 @@ Route::get('/sap-debug-login', function () {
     ];
 });
 
+
+
 // ------------------- SAP B1 Routes -------------------
 Route::prefix('sap')->group(function () {
+
     // ---------------- Items ----------------
-    Route::get('/items', [SapController::class, 'getItems']); // 🔹 With pagination support
+    Route::get('/items', [SapController::class, 'getItems']); // 🔹 With pagination
 
     // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
@@ -74,12 +85,12 @@ Route::prefix('sap')->group(function () {
     // ---------------- Invoices ----------------
     Route::get('/invoices', [SapController::class, 'getInvoices']); // 🔹 List all invoices (new)
     Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']);  
-    Route::post('/invoices', [SapController::class, 'createInvoice']);         
+    // 🔹 You preferred GET invoice route, removed POST createInvoice
 
     // ---------------- Sales Orders ----------------
     Route::get('/sales-orders/{DocEntry}', [SapController::class, 'getSalesOrder']); 
-    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);  
-    
-    // ---------------- List Sales Orders (for Orders Page) ----------------
     Route::get('/orders', [SapController::class, 'getSalesOrders']);
+
+    // ------- Create Sales Order (for Place Order Page) -------------------
+    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
 });

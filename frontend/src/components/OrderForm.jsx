@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Trash2, Search, Loader2 } from "lucide-react";
 import { getItems } from "../services/api";
 import toast from "react-hot-toast";
-import confetti from "canvas-confetti"; // 🎊 add this
+import confetti from "canvas-confetti";
+import axios from "axios";
 import "./OrderForm.css";
 
 function PlaceOrderPage() {
@@ -41,9 +42,10 @@ function PlaceOrderPage() {
   const [itemOptions, setItemOptions] = useState({});
   const [loadingRow, setLoadingRow] = useState(null);
   const [orderTotal, setOrderTotal] = useState("0.00");
+  const [userCompany, setUserCompany] = useState({ cardcode: "", cardname: "" });
   const searchTimers = useRef({});
 
-  // 🔁 Automatically update order total when rows change
+  // 🔁 Auto-calc order total
   useEffect(() => {
     const total = rows.reduce(
       (sum, row) => sum + parseFloat(row.lineTotal || 0),
@@ -52,18 +54,51 @@ function PlaceOrderPage() {
     setOrderTotal(total.toFixed(2));
   }, [rows]);
 
+  // 🔹 Fetch user's company info from backend on load
+  useEffect(() => {
+    const fetchUserCompany = async () => {
+      try {
+        var token = localStorage.getItem("token");
+        if(!token){
+          token = sessionStorage.getItem("token");
+        }
+
+        const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+        const res = await axios.get(
+          // "http://192.168.100.189:8000/api/user/company",
+          `${apiUrl}/api/user/company`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        console.log(res);
+        if (res.data && res.data.cardcode && res.data.cardname) {
+          setUserCompany({
+            cardcode: res.data.cardcode,
+            cardname: res.data.cardname,
+          });
+        } else {
+          toast.error("Company info not found. Please update your profile.");
+        }
+      } catch (err) {
+        console.error("Failed to fetch company info:", err);
+        toast.error("Unable to get company info.");
+      }
+    };
+
+    fetchUserCompany();
+  }, []);
+
   const handleChange = (index, field, value) => {
     const updated = [...rows];
     updated[index][field] = value;
 
-    // Auto-calculate line total and total weight
     const qty = parseFloat(updated[index].quantity) || 0;
     const price = parseFloat(updated[index].unitPrice) || 0;
     const weight = parseFloat(updated[index].weight) || 0;
 
     updated[index].lineTotal = (qty * price).toFixed(2);
     updated[index].totalWeight = (qty * weight).toFixed(2);
-
     setRows(updated);
   };
 
@@ -110,20 +145,18 @@ function PlaceOrderPage() {
     });
   };
 
-  // 🔍 Debounced search for SAP items
+  // 🔍 Search items from SAP
   const handleSearch = (index, query) => {
     handleChange(index, "product", query);
     if (query.length < 2) return;
 
-    if (searchTimers.current[index]) {
-      clearTimeout(searchTimers.current[index]);
-    }
+    if (searchTimers.current[index]) clearTimeout(searchTimers.current[index]);
 
     searchTimers.current[index] = setTimeout(async () => {
       try {
         setLoadingRow(index);
         const response = await getItems(query);
-        const items = response?.data?.data || response?.data || response || [];
+        const items = response?.data?.data || response?.data || [];
         setItemOptions((prev) => ({
           ...prev,
           [index]: Array.isArray(items) ? items : [],
@@ -147,38 +180,71 @@ function PlaceOrderPage() {
     setItemOptions((prev) => ({ ...prev, [index]: [] }));
   };
 
+  // ✅ Submit order to backend (real SAP creation)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
 
-  try {
-    // Simulate order submission
-    console.log("✅ Order submitted:", order, rows);
+      if (!userCompany.cardcode || !userCompany.cardname) {
+        toast.error("Missing company info. Please update your profile.");
+        return;
+      }
 
-    // ✅ Success toast
-    toast.success("Your order has been submitted successfully!");
+      // 🔹 Prepare payload to match SAP API
+      const payload = {
+        CardCode: userCompany.cardcode,
+        CardName: userCompany.cardname,
+        DocDate: new Date().toISOString().split("T")[0],
+        DocDueDate: order.deliveryDate || new Date().toISOString().split("T")[0],
+        Comments: order.ponum || "",
+        DocumentLines: rows
+          .filter((row) => row.active && row.product)
+          .map((r) => ({
+            ItemCode: r.product,
+            Quantity: parseFloat(r.quantity) || 0,
+            UnitPrice: parseFloat(r.unitPrice) || 0,
+            U_Weight: parseFloat(r.weight) || 0,
+            TaxCode: "SR-0",
+          })),
+      };
 
-    // 🎊 Trigger confetti
-    confetti({
-      particleCount: 120,
-      spread: 70,
-      origin: { y: 0.6 }, // makes it rise from the bottom
-    });
+      console.log("📦 Sending payload to backend:", payload);
+      // 🔹 Send request to Laravel backend
+      const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+      const res = await axios.post(
+        // "http://192.168.100.189:8000/api/sap/sales-orders",
+        `${apiUrl}/api/sap/sales-orders`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    // Optionally clear the form after success
-    setOrder({
-      ponum: "",
-      deliveryDate: "",
-      billingAddress: "",
-      shippingAddress: "",
-    });
-
-  } catch (err) {
-    console.error("❌ Failed to submit order:", err);
-    toast.error("Something went wrong while submitting the order. Please try again.");
-  }
-};
-
+      if (res.data.status === "success") {
+        toast.success(`✅ Sales Order Created! DocNum: ${res.data.data.DocNum}`);
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+        console.log("SAP Response:", res.data);
+      } else {
+        console.error("SAP Error:", res.data);
+        toast.error(res.data.message || "Failed to create Sales Order.");
+      }
+    } catch (err) {
+      console.error("❌ Failed to submit order:", err);
+      toast.error(
+        err.response?.data?.message ||
+          "Something went wrong while submitting the order."
+      );
+    }
+  };
 
   return (
     <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
@@ -261,7 +327,7 @@ const handleSubmit = async (e) => {
       </div>
 
       {/* Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6"> 
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <div className="p-6 rounded-xl shadow-md bg-white overflow-x-auto">
           <div className="min-w-[1200px]">
             <table className="table-auto w-full border-collapse">
@@ -450,7 +516,6 @@ const handleSubmit = async (e) => {
           Total Order: <span className="ml-2">RM {orderTotal}</span>
         </p>
       </div>
-    
 
       <div className="flex justify-end mt-6">
         <button
