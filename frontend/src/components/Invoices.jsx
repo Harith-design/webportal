@@ -7,7 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
 
 function InvoicesPage() {
-  const [invoices, setInvoices] = useState([]);
+const [invoices, setInvoices] = useState([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState(null);
 
@@ -185,12 +185,7 @@ useEffect(() => {
 
       {/* 🔹 Invoices Table */}
       <div className="rounded-xl overflow-hidden shadow-sm min-h-[400px] max-h-[600px] overflow-y-auto">
-        {loading && (
-  <div className="text-center text-gray-500 py-4">Loading invoices...</div>
-)}
-{error && (
-  <div className="text-center text-red-500 py-4">{error}</div>
-)}
+        
 
         <table className="table-auto w-full border-collapse">
           <thead>
@@ -235,7 +230,12 @@ useEffect(() => {
             ) : (
               <tr>
                 <td colSpan="8" className="text-center py-4 text-gray-500">
-                  No matching invoices found
+                  {loading && (
+  <div className="text-center text-gray-500 py-4">Loading invoices...</div>
+)}
+{error && (
+  <div className="text-center text-red-500 py-4">{error}</div>
+)}
                 </td>
               </tr>
             )}

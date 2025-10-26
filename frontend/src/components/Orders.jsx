@@ -9,6 +9,7 @@ import "./DatePicker.css"; // <-- your overrides
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
   const fetchOrders = async () => {
@@ -41,7 +42,7 @@ function OrdersPage() {
 
 
   // 🔹 States for filters
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [orderStart, setOrderStart] = useState(null);
   const [orderEnd, setOrderEnd] = useState(null);
   const [dueStart, setDueStart] = useState(null);
@@ -56,8 +57,9 @@ function OrdersPage() {
 
   // 🔹 Filtering logic
   const filteredOrders = orders.filter((order) => {
-    const orderDate = new Date(order.orderDate);
-    const dueDate = new Date(order.dueDate);
+    const orderDate = new Date(order.orderDate.replace(/-/g, "/"));
+    const dueDate = new Date(order.dueDate.replace(/-/g, "/"));
+
 
     if (statusFilter && statusFilter !== "all" && order.status !== statusFilter) return false;
     if (orderStart && orderDate < orderStart) return false;
@@ -68,9 +70,9 @@ function OrdersPage() {
     if (
       searchQuery &&
       !(
-        order.id.toString().includes(searchQuery) ||
-        order.poNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.toLowerCase().includes(searchQuery.toLowerCase())
+        order.id.toString().toLowerCase().includes(searchQuery.toLowerCase())||
+        (order.poNo?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (order.customer?.toLowerCase() || "").includes(searchQuery.toLowerCase())
       )
     ) {
       return false;
@@ -124,7 +126,7 @@ function OrdersPage() {
             >
               <option value="all">All Status</option>
               <option value="Open">Open</option>
-              <option value="Delivered">Delivered</option>
+              <option value="Closed">Delivered</option>
               <option value="In Transit">In Transit</option>
             </select>
           </div>
@@ -237,7 +239,12 @@ function OrdersPage() {
             ) : (
               <tr>
                 <td colSpan="8" className="text-center py-4 text-gray-500">
-                  No matching orders found
+                  {loading && (
+  <div className="text-center text-gray-500 py-4">Loading orders...</div>
+)}
+{error && (
+  <div className="text-center text-red-500 py-4">{error}</div>
+)}
                 </td>
               </tr>
             )}
