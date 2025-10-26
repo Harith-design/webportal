@@ -32,10 +32,15 @@ function Login() {
       if (rememberMe) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("token_expiry", now + 14 * 24 * 60 * 60 * 1000);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       } else {
         sessionStorage.setItem("token", response.data.token);
         sessionStorage.setItem("token_expiry", now + 2 * 60 * 60 * 1000);
+        sessionStorage.setItem("user", JSON.stringify(response.data.user));
       }
+
+
+
 
       navigate("/dashboardpage");
     } catch (error) {

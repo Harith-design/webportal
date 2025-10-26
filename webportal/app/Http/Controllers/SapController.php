@@ -122,7 +122,6 @@ class SapController extends Controller
         $endpoint = "BusinessPartners?\$top={$top}&\$select=CardCode,CardName";
 
         if (!empty($search)) {
-            // Escape quotes for OData
             $escapedSearch = str_replace("'", "''", $search);
             $endpoint .= "&\$filter=startswith(CardCode,'{$escapedSearch}') or startswith(CardName,'{$escapedSearch}')";
         }
@@ -158,7 +157,7 @@ class SapController extends Controller
     public function getItems(Request $request)
     {
         $search = strtoupper(trim($request->query('search', '')));
-        $top = 50; // reduced for speed
+        $top = 50;
 
         $endpoint = "Items?\$top={$top}&\$select=ItemCode,ItemName";
 
@@ -228,61 +227,140 @@ class SapController extends Controller
         ]);
     }
 
-        // =====================================================
+    // =====================================================
     // ------------------- SALES ORDER LIST ----------------
     // =====================================================
     public function getSalesOrders(Request $request)
-{
-    $top = 50; // limit to avoid overloading
-    $search = strtoupper(trim($request->query('search', '')));
+    {
+        $top = 50;
+        $search = strtoupper(trim($request->query('search', '')));
 
-    // Include all required columns
-    $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus";
+        $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
 
-    if (!empty($search)) {
-        $escaped = str_replace("'", "''", $search);
-        $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
-    }
+        if (!empty($search)) {
+            $escaped = str_replace("'", "''", $search);
+            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
+        }
 
-    $result = $this->callServiceLayer('get', $endpoint);
+        $result = $this->callServiceLayer('get', $endpoint);
 
-    if (isset($result['error'])) {
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch Sales Orders',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        $orders = $result['value'] ?? [];
+
+        usort($orders, function ($a, $b) {
+            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+        });
+
+        $formatted = collect($orders)->map(function ($o) {
+            return [
+                'salesNo'   => $o['DocNum'] ?? '',
+                'poNo'      => $o['NumAtCard'] ?? '',
+                'customer'  => $o['CardName'] ?? '',
+                'customerCode'  => $o['CardCode'] ?? '',
+                'orderDate' => substr($o['DocDate'] ?? '', 0, 10),
+                'dueDate'   => substr($o['DocDueDate'] ?? '', 0, 10),
+                'total'     => $o['DocTotal'] ?? 0,
+                'currency'  => $o['DocCurrency'] ?? 'RM',
+                'status'    => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+                'download'  => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"),
+            ];
+        })->toArray();
+
         return response()->json([
-            'error'   => 'Failed to fetch Sales Orders',
-            'details' => $result['details'],
-        ], $result['status']);
+            'status' => 'success',
+            'count'  => count($formatted),
+            'data'   => $formatted,
+        ]);
     }
 
-    // ✅ Define $orders properly
-    $orders = $result['value'] ?? [];
+    // =====================================================
+    // ------------------- CREATE SALES ORDER ---------------
+    // =====================================================
+    public function createSalesOrder(Request $request)
+    {
 
-    // 🔹 Sort by Order Date (DocDate) — most recent first
-    usort($orders, function ($a, $b) {
-        return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
-    });
+        // ✅ Validate input
+        $validated = $request->validate([
+            'CardCode' => 'required|string',
+            'DocDueDate' => 'required|date',
+            'DocumentLines' => 'required|array|min:1',
+            'DocumentLines.*.ItemCode' => 'required|string',
+            'DocumentLines.*.Quantity' => 'required|numeric|min:1',
+            'DocumentLines.*.UnitPrice' => 'required|numeric|min:0',
+        ]);
 
-    // ✅ Format the output with all desired columns
-    $formatted = collect($orders)->map(function ($o) {
-        return [
-            'salesNo'   => $o['DocNum'] ?? '',
-            'poNo'      => $o['NumAtCard'] ?? '',
-            'customer'  => $o['CardName'] ?? '',
-            'orderDate' => substr($o['DocDate'] ?? '', 0, 10),
-            'dueDate'   => substr($o['DocDueDate'] ?? '', 0, 10),
-            'total'     => $o['DocTotal'] ?? 0,
-            'currency'  => $o['DocCurrency'] ?? 'RM',
-            'status'    => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
-            'download'  => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"), // for the Download column
+
+        // ✅ Prepare payload for SAP
+        $payload = [
+            'CardCode' => $validated['CardCode'],
+            'DocDueDate' => $validated['DocDueDate'],
+            'DocumentLines' => collect($validated['DocumentLines'])->map(function ($line) {
+                return [
+                    'ItemCode'  => $line['ItemCode'],
+                    'Quantity'  => $line['Quantity'],
+                    'UnitPrice' => $line['UnitPrice'],
+                    'U_Weight'  => $line['Weight'] ?? null,
+                ];
+            })->values()->toArray(),
         ];
-    })->toArray();
 
-    // ✅ Return formatted data
-    return response()->json([
-        'status' => 'success',
-        'count'  => count($formatted),
-        'data'   => $formatted,
-    ]);
-}
+        // ✅ Call SAP Service Layer
+        $result = $this->callServiceLayer('post', 'Orders', $payload);
 
+        if (isset($result['error'])) {
+            Log::error('❌ Failed to create sales order', ['error' => $result]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create Sales Order',
+                'details' => $result['details'] ?? null,
+            ], $result['status'] ?? 500);
+        }
 
+        Log::info('✅ Sales Order created successfully', ['result' => $result]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Sales Order created successfully',
+            'data' => $result,
+        ], 201);
+    }
+
+    // =====================================================
+    // ------------------- GET INVOICE ----------------------
+    // =====================================================
+    public function getInvoice($DocEntry)
+    {
+        try {
+            $endpoint = "Invoices({$DocEntry})";
+            $result = $this->callServiceLayer('get', $endpoint);
+
+            if (isset($result['error'])) {
+                Log::error('❌ Failed to fetch invoice', ['error' => $result]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to fetch invoice data from SAP',
+                    'details' => $result['details'] ?? null,
+                ], $result['status'] ?? 500);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Invoice fetched successfully',
+                'data' => $result,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Exception in getInvoice: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unexpected error occurred',
+            ], 500);
+        }
+    }
 }
