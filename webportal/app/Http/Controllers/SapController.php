@@ -27,7 +27,6 @@ class SapController extends Controller
      */
     private function login()
     {
-        // ✅ Cache session for 30 minutes
         return Cache::remember('sap_session', 30 * 60, function () {
             $response = Http::withOptions(['verify' => config('sapb1.verify_ssl')])
                 ->post($this->baseUrl . '/Login', [
@@ -94,9 +93,8 @@ class SapController extends Controller
                 ];
         }
 
-        // 🧠 Handle expired session
         if ($response->status() === 401 || $response->status() === 403) {
-            Cache::forget('sap_session'); // Force new login
+            Cache::forget('sap_session');
             return $this->callServiceLayer($method, $endpoint, $data);
         }
 
@@ -117,7 +115,7 @@ class SapController extends Controller
     public function getBusinessPartners(Request $request)
     {
         $search = strtoupper(trim($request->query('search', '')));
-        $top = 50; // Limit for performance
+        $top = 50;
 
         $endpoint = "BusinessPartners?\$top={$top}&\$select=CardCode,CardName";
 
@@ -192,7 +190,7 @@ class SapController extends Controller
     }
 
     // =====================================================
-    // ------------------- SALES ORDERS --------------------
+    // ------------------- SALES ORDERS UDF --------------------
     // =====================================================
     public function getItemDetailsFromSalesOrderUDF($itemCode)
     {
@@ -227,69 +225,12 @@ class SapController extends Controller
         ]);
     }
 
-    // =====================================================
-    // ------------------- SALES ORDER LIST ----------------
-    // =====================================================
     public function getSalesOrders(Request $request)
-    {
-        $top = 50;
-        $search = strtoupper(trim($request->query('search', '')));
-
-        $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
-
-        if (!empty($search)) {
-            $escaped = str_replace("'", "''", $search);
-            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
-        }
-
-        $result = $this->callServiceLayer('get', $endpoint);
-
-        if (isset($result['error'])) {
-            return response()->json([
-                'error'   => 'Failed to fetch Sales Orders',
-                'details' => $result['details'],
-            ], $result['status']);
-        }
-
-        $orders = $result['value'] ?? [];
-
-        usort($orders, function ($a, $b) {
-            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
-        });
-
-        $formatted = collect($orders)->map(function ($o) {
-            return [
-                'salesNo'   => $o['DocNum'] ?? '',
-                'poNo'      => $o['NumAtCard'] ?? '',
-                'customer'  => $o['CardName'] ?? '',
-                'customerCode'  => $o['CardCode'] ?? '',
-                'orderDate' => substr($o['DocDate'] ?? '', 0, 10),
-                'dueDate'   => substr($o['DocDueDate'] ?? '', 0, 10),
-                'total'     => $o['DocTotal'] ?? 0,
-                'currency'  => $o['DocCurrency'] ?? 'RM',
-                'status'    => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
-                'download'  => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"),
-            ];
-        })->toArray();
-
-    // ✅ Return formatted data
-    return response()->json([
-        'status' => 'success',
-        'count'  => count($formatted),
-        'data'   => $formatted,
-    ]);
-}
-
-// =====================================================
-// ------------------- INVOICE LIST --------------------
-// =====================================================
-public function getInvoices(Request $request)
 {
-    $top = 50; // limit to avoid overloading
+    $top = 50;
     $search = strtoupper(trim($request->query('search', '')));
 
-    // Include all required invoice columns
-    $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus";
+    $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
 
     if (!empty($search)) {
         $escaped = str_replace("'", "''", $search);
@@ -300,30 +241,30 @@ public function getInvoices(Request $request)
 
     if (isset($result['error'])) {
         return response()->json([
-            'error'   => 'Failed to fetch Invoices',
+            'error'   => 'Failed to fetch Sales Orders',
             'details' => $result['details'],
         ], $result['status']);
     }
 
-    $invoices = $result['value'] ?? [];
+    $orders = $result['value'] ?? [];
 
-    // Sort by Posting Date (DocDate)
-    usort($invoices, function ($a, $b) {
+    usort($orders, function ($a, $b) {
         return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
     });
 
-    // Format output
-    $formatted = collect($invoices)->map(function ($inv) {
+    $formatted = collect($orders)->map(function ($o) {
         return [
-            'invoiceNo'   => $inv['DocNum'] ?? '',
-            'poNo'        => $inv['NumAtCard'] ?? '',
-            'customer'    => $inv['CardName'] ?? '',
-            'postingDate' => substr($inv['DocDate'] ?? '', 0, 10),
-            'dueDate'     => substr($inv['DocDueDate'] ?? '', 0, 10),
-            'total'       => $inv['DocTotal'] ?? 0,
-            'currency'    => $inv['DocCurrency'] ?? 'RM',
-            'status'      => ($inv['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
-            'download'    => url("/api/sap/invoices/{$inv['DocEntry']}/pdf"), // for the Download column
+            'docEntry'     => $o['DocEntry'] ?? '',   // <-- added docEntry
+            'salesNo'      => $o['DocNum'] ?? '',
+            'poNo'         => $o['NumAtCard'] ?? '',
+            'customer'     => $o['CardName'] ?? '',
+            'customerCode' => $o['CardCode'] ?? ($o['CardName'] ?? ''),
+            'orderDate'    => substr($o['DocDate'] ?? '', 0, 10),
+            'dueDate'      => substr($o['DocDueDate'] ?? '', 0, 10),
+            'total'        => $o['DocTotal'] ?? 0,
+            'currency'     => $o['DocCurrency'] ?? 'RM',
+            'status'       => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+            'download'     => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"),
         ];
     })->toArray();
 
@@ -334,16 +275,103 @@ public function getInvoices(Request $request)
     ]);
 }
 
+// =====================================================
+// ---------------- SALES ORDER DETAILS ----------------
+// =====================================================
+public function getSalesOrderDetails($docEntry)
+{
+    // Expand DocumentLines to include item details
+    $endpoint = "Orders({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName&\$expand=DocumentLines(\$select=ItemCode,ItemDescription,Quantity,UnitPrice,LineTotal)";
 
+    $result = $this->callServiceLayer('get', $endpoint);
+
+    if (isset($result['error'])) {
+        return response()->json([
+            'error' => 'Failed to fetch Sales Order details',
+            'details' => $result['details'] ?? $result,
+        ], $result['status'] ?? 500);
+    }
+
+    $lines = collect($result['DocumentLines'] ?? [])->map(function ($line) {
+        return [
+            'ItemCode'    => $line['ItemCode'] ?? '',
+            'Description' => $line['ItemDescription'] ?? '',
+            'Quantity'    => $line['Quantity'] ?? 0,
+            'Price'       => $line['UnitPrice'] ?? 0,
+            'Total'       => $line['LineTotal'] ?? (($line['Quantity'] ?? 0) * ($line['UnitPrice'] ?? 0)),
+        ];
+    })->toArray();
+
+    return response()->json([
+        'status' => 'success',
+        'data'   => [
+            'DocEntry' => $result['DocEntry'] ?? '',
+            'DocNum'   => $result['DocNum'] ?? '',
+            'CardCode' => $result['CardCode'] ?? '',
+            'Customer' => $result['CardName'] ?? '',
+            'Lines'    => $lines,
+        ],
+    ]);
+}
 
 
     // =====================================================
-    // ------------------- CREATE SALES ORDER ---------------
+    // ------------------- INVOICE LIST --------------------
+    // =====================================================
+    public function getInvoices(Request $request)
+    {
+        $top = 50;
+        $search = strtoupper(trim($request->query('search', '')));
+
+        $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
+
+        if (!empty($search)) {
+            $escaped = str_replace("'", "''", $search);
+            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
+        }
+
+        $result = $this->callServiceLayer('get', $endpoint);
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch Invoices',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        $invoices = $result['value'] ?? [];
+
+        usort($invoices, function ($a, $b) {
+            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+        });
+
+        $formatted = collect($invoices)->map(function ($inv) {
+            return [
+                'invoiceNo'    => $inv['DocNum'] ?? '',
+                'poNo'         => $inv['NumAtCard'] ?? '',
+                'customer'     => $inv['CardName'] ?? '',
+                'customerCode' => $inv['CardCode'] ?? ($inv['CardName'] ?? ''),
+                'postingDate'  => substr($inv['DocDate'] ?? '', 0, 10),
+                'dueDate'      => substr($inv['DocDueDate'] ?? '', 0, 10),
+                'total'        => $inv['DocTotal'] ?? 0,
+                'currency'     => $inv['DocCurrency'] ?? 'RM',
+                'status'       => ($inv['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+                'download'     => url("/api/sap/invoices/{$inv['DocEntry']}/pdf"),
+            ];
+        })->toArray();
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => count($formatted),
+            'data'   => $formatted,
+        ]);
+    }
+
+    // =====================================================
+    // ------------------- CREATE SALES ORDER -------------
     // =====================================================
     public function createSalesOrder(Request $request)
     {
-
-        // ✅ Validate input
         $validated = $request->validate([
             'CardCode' => 'required|string',
             'DocDueDate' => 'required|date',
@@ -353,8 +381,6 @@ public function getInvoices(Request $request)
             'DocumentLines.*.UnitPrice' => 'required|numeric|min:0',
         ]);
 
-
-        // ✅ Prepare payload for SAP
         $payload = [
             'CardCode' => $validated['CardCode'],
             'DocDueDate' => $validated['DocDueDate'],
@@ -368,7 +394,6 @@ public function getInvoices(Request $request)
             })->values()->toArray(),
         ];
 
-        // ✅ Call SAP Service Layer
         $result = $this->callServiceLayer('post', 'Orders', $payload);
 
         if (isset($result['error'])) {
@@ -390,35 +415,54 @@ public function getInvoices(Request $request)
     }
 
     // =====================================================
-    // ------------------- GET INVOICE ----------------------
+    // ------------------- GET SINGLE INVOICE -------------
     // =====================================================
-    public function getInvoice($DocEntry)
+    public function getInvoice(Request $request)
     {
-        try {
-            $endpoint = "Invoices({$DocEntry})";
-            $result = $this->callServiceLayer('get', $endpoint);
+        $top = 50;
+        $search = strtoupper(trim($request->query('search', '')));
 
-            if (isset($result['error'])) {
-                Log::error('❌ Failed to fetch invoice', ['error' => $result]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to fetch invoice data from SAP',
-                    'details' => $result['details'] ?? null,
-                ], $result['status'] ?? 500);
-            }
+        $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Invoice fetched successfully',
-                'data' => $result,
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('❌ Exception in getInvoice: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unexpected error occurred',
-            ], 500);
+        if (!empty($search)) {
+            $escaped = str_replace("'", "''", $search);
+            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
         }
+
+        $result = $this->callServiceLayer('get', $endpoint);
+
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch Invoices',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        $invoices = $result['value'] ?? [];
+
+        usort($invoices, function ($a, $b) {
+            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+        });
+
+        $formatted = collect($invoices)->map(function ($inv) {
+            return [
+                'invoiceNo'    => $inv['DocNum'] ?? '',
+                'poNo'         => $inv['NumAtCard'] ?? '',
+                'customer'     => $inv['CardName'] ?? '',
+                'customerCode' => $inv['CardCode'] ?? ($inv['CardName'] ?? ''),
+                'postingDate'  => substr($inv['DocDate'] ?? '', 0, 10),
+                'dueDate'      => substr($inv['DocDueDate'] ?? '', 0, 10),
+                'total'        => $inv['DocTotal'] ?? 0,
+                'currency'     => $inv['DocCurrency'] ?? 'RM',
+                'status'       => ($inv['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+                'download'     => url("/api/sap/invoices/{$inv['DocEntry']}/pdf"),
+            ];
+        })->toArray();
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => count($formatted),
+            'data'   => $formatted,
+        ]);
     }
 }
