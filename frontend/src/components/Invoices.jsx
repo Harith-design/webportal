@@ -8,32 +8,56 @@ import "./DatePicker.css";
 
 function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-useEffect(() => {
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get("http://localhost:8000/api/sap/invoices"); // adjust if your backend URL is different
-      if (res.data.status === "success") {
-        setInvoices(res.data.data);
-      } else {
-        setError("Failed to fetch invoices");
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        setLoading(true);
+
+        // 🔹 Get current user
+        let user = localStorage.getItem("user") || sessionStorage.getItem("user");
+        const userModel = JSON.parse(user);
+
+        // 🔹 Fetch all invoices
+        const res = await axios.get("http://127.0.0.1:8000/api/sap/invoices");
+
+        if (res.data && res.data.data) {
+          // 🔹 Only include invoices for current user's company
+          const filtered = res.data.data.filter(
+            (inv) => inv.customerCode === userModel.cardcode
+          );
+
+          // 🔹 Map to consistent frontend keys
+          const formatted = filtered.map((inv) => ({
+            invoiceNo: inv.invoiceNo,
+            poNo: inv.poNo,
+            customer: inv.customer,
+            postingDate: inv.postingDate,
+            dueDate: inv.dueDate,
+            total: inv.total,
+            currency: inv.currency,
+            status: inv.status,
+            download: inv.download || "#",
+          }));
+
+          setInvoices(formatted);
+        } else {
+          setError("No invoices received from SAP API.");
+        }
+      } catch (err) {
+        console.error("Error fetching invoices:", err);
+        setError("Failed to fetch invoices.");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error fetching invoices:", err);
-      setError("Error fetching invoices");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchInvoices();
-}, []);
+    fetchInvoices();
+  }, []);
 
-
-  // 🔹 States for filters
+  // 🔹 Filter states
   const [statusFilter, setStatusFilter] = useState("all");
   const [postStart, setPostStart] = useState(null);
   const [postEnd, setPostEnd] = useState(null);
@@ -59,12 +83,14 @@ useEffect(() => {
     if (
       searchQuery &&
       !(
-        inv.id.toString().includes(searchQuery) ||
-        inv.ponum.toLowerCase().includes(searchQuery.toLowerCase())
+        inv.invoiceNo.toString().includes(searchQuery) ||
+        (inv.poNo && inv.poNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (inv.customer && inv.customer.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     ) {
       return false;
     }
+
     return true;
   });
 
@@ -103,7 +129,6 @@ useEffect(() => {
     <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto space-y-6">
       {/* 🔹 Filters */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        {/* Left Filters */}
         <div className="flex flex-wrap gap-4">
           {/* Status Dropdown */}
           <div>
@@ -119,58 +144,42 @@ useEffect(() => {
             </select>
           </div>
 
-          {/* Posting Dates */}
+          {/* Posting Date */}
           <div className="flex items-center gap-2">
             <label className="text-xs">Posting Date:</label>
-
-            <div className="relative">
-              <DatePicker
-                selected={postStart}
-                onChange={(date) => setPostStart(date)}
-                placeholderText="From"
-                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-            </div>
-
-            <div className="relative">
-              <DatePicker
-                selected={postEnd}
-                onChange={(date) => setPostEnd(date)}
-                placeholderText="To"
-                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-            </div>
+            <DatePicker
+              selected={postStart}
+              onChange={(date) => setPostStart(date)}
+              placeholderText="From"
+              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <DatePicker
+              selected={postEnd}
+              onChange={(date) => setPostEnd(date)}
+              placeholderText="To"
+              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
           </div>
 
-          {/* Due Dates */}
+          {/* Due Date */}
           <div className="flex items-center gap-2">
             <label className="text-xs">Due Date:</label>
-
-            <div className="relative">
-              <DatePicker
-                selected={dueStart}
-                onChange={(date) => setDueStart(date)}
-                placeholderText="From"
-                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-            </div>
-
-            <div className="relative">
-              <DatePicker
-                selected={dueEnd}
-                onChange={(date) => setDueEnd(date)}
-                placeholderText="To"
-                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-            </div>
+            <DatePicker
+              selected={dueStart}
+              onChange={(date) => setDueStart(date)}
+              placeholderText="From"
+              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <DatePicker
+              selected={dueEnd}
+              onChange={(date) => setDueEnd(date)}
+              placeholderText="To"
+              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
           </div>
         </div>
 
-        {/* Right Search Bar */}
+        {/* Search Bar */}
         <div className="relative w-full md:w-64">
           <Search size={16} className="text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
           <input
@@ -185,13 +194,6 @@ useEffect(() => {
 
       {/* 🔹 Invoices Table */}
       <div className="rounded-xl overflow-hidden shadow-sm min-h-[400px] max-h-[600px] overflow-y-auto">
-        {loading && (
-  <div className="text-center text-gray-500 py-4">Loading invoices...</div>
-)}
-{error && (
-  <div className="text-center text-red-500 py-4">{error}</div>
-)}
-
         <table className="table-auto w-full border-collapse">
           <thead>
             <tr className="text-center text-sm text-gray-500 border-b">
@@ -209,33 +211,34 @@ useEffect(() => {
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
-  <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
-    <td className="px-4 py-2 text-blue-600 hover:underline">
-      <Link to={`/invoices/${inv.invoiceNo}`}>{inv.invoiceNo}</Link>
-    </td>
-    <td className="px-4 py-2">{inv.customer}</td>
-    <td className="px-4 py-2">{inv.poNo}</td>
-    <td className="px-4 py-2">{inv.postingDate}</td>
-    <td className="px-4 py-2">{inv.dueDate}</td>
-    <td className="px-4 py-2">{inv.total}</td>
-    <td className="px-4 py-2">{inv.currency}</td>
-    <td className="px-4 py-2">{renderStatus(inv.status)}</td>
-    <td className="px-4 py-2 flex justify-center">
-      <a href={inv.download} target="_blank" rel="noopener noreferrer">
-        <img
-          src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
-          alt="PDF"
-          className="w-5 h-5"
-        />
-      </a>
-    </td>
-  </tr>
-))
-
+                <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
+                  <td className="px-4 py-2 text-blue-600 hover:underline">
+                    <Link to={`/invoices/${inv.invoiceNo}`}>{inv.invoiceNo}</Link>
+                  </td>
+                  <td className="px-4 py-2">{inv.customer}</td>
+                  <td className="px-4 py-2">{inv.poNo}</td>
+                  <td className="px-4 py-2">{inv.postingDate}</td>
+                  <td className="px-4 py-2">{inv.dueDate}</td>
+                  <td className="px-4 py-2">{inv.total}</td>
+                  <td className="px-4 py-2">{inv.currency}</td>
+                  <td className="px-4 py-2">{renderStatus(inv.status)}</td>
+                  <td className="px-4 py-2 flex justify-center">
+                    <a href={inv.download} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
+                        alt="PDF"
+                        className="w-5 h-5"
+                      />
+                    </a>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center py-4 text-gray-500">
-                  No matching invoices found
+                <td colSpan="9" className="text-center py-4 text-gray-500">
+                  {loading && "Loading invoices..."}
+                  {error && error}
+                  {!loading && !error && "No invoices found"}
                 </td>
               </tr>
             )}
@@ -243,7 +246,7 @@ useEffect(() => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* 🔹 Pagination */}
       <div className="flex justify-center items-center gap-2 mt-4">
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -253,27 +256,17 @@ useEffect(() => {
           Prev
         </button>
 
-        <button
-          onClick={() => setCurrentPage(1)}
-          className={`px-3 py-1 border rounded text-xs ${
-            currentPage === 1 ? "bg-blue-500 text-white" : ""
-          }`}
-        >
-          1
-        </button>
-
-        {totalPages > 1 &&
-          Array.from({ length: totalPages - 1 }, (_, i) => (
-            <button
-              key={i + 2}
-              onClick={() => setCurrentPage(i + 2)}
-              className={`px-3 py-1 border rounded text-xs ${
-                currentPage === i + 2 ? "bg-blue-500 text-white" : ""
-              }`}
-            >
-              {i + 2}
-            </button>
-          ))}
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i + 1}
+            onClick={() => setCurrentPage(i + 1)}
+            className={`px-3 py-1 border rounded text-xs ${
+              currentPage === i + 1 ? "bg-blue-500 text-white" : ""
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
 
         <button
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
