@@ -68,8 +68,6 @@ Route::get('/sap-debug-login', function () {
     ];
 });
 
-
-
 // ------------------- SAP B1 Routes -------------------
 Route::prefix('sap')->group(function () {
 
@@ -83,17 +81,16 @@ Route::prefix('sap')->group(function () {
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
 
     // ---------------- Invoices ----------------
-   // ---------------- Invoices ----------------
-    // In api.php
-    Route::get('/invoices', [SapController::class, 'getInvoices']); // list like orders
-    Route::get('/invoices/{DocEntry}', [SapController::class, 'getInvoice']); // single invoice
-
+    Route::get('/invoices', [SapController::class, 'getInvoices']);       // list of invoices
+    Route::get('/invoices/{docEntry}', [SapController::class, 'getInvoice']); // single invoice with items
 
     // ---------------- Sales Orders ----------------
-    Route::get('/orders', [SapController::class, 'getSalesOrders']);
-    Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']);
-
+    Route::get('/orders', [SapController::class, 'getSalesOrders']); 
+    Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']); 
 
     // ------- Create Sales Order (for Place Order Page) -------------------
     Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
 });
+
+
+

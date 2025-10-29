@@ -114,7 +114,7 @@ function DashboardPage() {
             },
             {
               title: "Past Due",
-              value: "RM 2,100.50",
+              value: "RM 2299.65",
               icon: <ClockAlert size={30} color="black" />,
               bg: "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
             },
