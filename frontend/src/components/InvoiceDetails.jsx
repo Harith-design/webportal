@@ -1,33 +1,57 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import API from "../services/api"; // ensure this path is correct
 import { Package, Truck, Clock } from "lucide-react";
 
 function InvoiceDetails() {
-  const { id } = useParams(); // DocEntry from SAP
-  const [invoice, setInvoice] = useState(null);
+  const { id } = useParams(); // invoiceNo from URL
+  const location = useLocation();
+  const stateInvoice = location.state?.invoice; // get invoice from link state if available
+  const [invoice, setInvoice] = useState(stateInvoice || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchInvoice = async () => {
+    const fetchInvoiceItems = async () => {
       try {
         setLoading(true);
+
+        // Fetch the invoice data from SAP API
         const res = await API.get(`/sap/invoices/${id}`);
-        if (res.data && res.data.items) {
-          setInvoice(res.data);
+        console.log("Invoice API response:", res.data);
+
+        if (res.data) {
+          // Map DocumentLines to frontend items
+          const items = res.data.DocumentLines?.map(line => ({
+            itemCode: line.ItemCode,
+            description: line.Dscription,
+            qty: line.Quantity,
+            price: line.Price,
+            total: line.Quantity * line.Price
+          })) || [];
+
+          // Merge items into the existing invoice state (keep header fields intact)
+          setInvoice(prev => ({
+            ...prev,
+            items
+          }));
         } else {
-          setError("⚠️ Invoice data not found");
+          setError("⚠️ No invoice items found from API");
         }
       } catch (err) {
         console.error(err);
-        setError("⚠️ Failed to fetch invoice data");
+        setError("⚠️ Failed to fetch invoice items");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInvoice();
+    // Only fetch items if they are not already in stateInvoice
+    if (!invoice?.items || invoice.items.length === 0) {
+      fetchInvoiceItems();
+    } else {
+      setLoading(false);
+    }
   }, [id]);
 
   const renderStatus = (status) => {
@@ -75,10 +99,7 @@ function InvoiceDetails() {
     );
 
   // Calculate totals dynamically
-  const subtotal = invoice.items.reduce(
-    (sum, item) => sum + item.qty * item.price,
-    0
-  );
+  const subtotal = invoice.items?.reduce((sum, item) => sum + item.qty * item.price, 0) || 0;
   const finalTotal = subtotal - (invoice.discount || 0) + (invoice.vat || 0);
 
   return (
@@ -87,24 +108,23 @@ function InvoiceDetails() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
         <div className="space-y-1">
           <p>
-            <span className="font-semibold">Invoice No:</span> {invoice.id}
+            <span className="font-semibold">Invoice No:</span> {invoice.invoiceNo || invoice.id}
           </p>
           <p>
-            <span className="font-semibold">PO Number:</span> {invoice.ponum}
+            <span className="font-semibold">PO Number:</span> {invoice.poNo || invoice.ponum}
           </p>
           <p>
-            <span className="font-semibold">Invoice Date:</span>{" "}
-            {invoice.invoiceDate}
+            <span className="font-semibold">Invoice Date:</span> {invoice.postingDate || invoice.invoiceDate}
           </p>
           <p>
-            <span className="font-semibold">Due Date:</span> {invoice.dueDate}
+            <span className="font-semibold">Due Date:</span> {invoice.dueDate || invoice.DocDueDate}
           </p>
           <p>
-            <span className="font-semibold">Status:</span>{" "}
-            {renderStatus(invoice.status)}
+            <span className="font-semibold">Status:</span> {renderStatus(invoice.status || invoice.DocumentStatus)}
           </p>
         </div>
 
+        {/* Bill To / Ship To */}
         <div className="flex justify-end">
           <div className="text-left">
             <h3 className="font-semibold text-sm">Bill To</h3>
@@ -134,20 +154,24 @@ function InvoiceDetails() {
             </tr>
           </thead>
           <tbody>
-            {invoice.items.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="border px-3 py-2 text-center">{index + 1}</td>
-                <td className="border px-3 py-2">{item.name}</td>
-                <td className="border px-3 py-2">{item.desc}</td>
-                <td className="border px-3 py-2 text-center">{item.qty}</td>
-                <td className="border px-3 py-2 text-right">
-                  {invoice.currency} {item.price}
-                </td>
-                <td className="border px-3 py-2 text-right">
-                  {invoice.currency} {item.qty * item.price}
+            {invoice.items?.length > 0 ? (
+              invoice.items.map((item, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="border px-3 py-2 text-center">{index + 1}</td>
+                  <td className="border px-3 py-2">{item.itemCode}</td>
+                  <td className="border px-3 py-2">{item.description}</td>
+                  <td className="border px-3 py-2 text-center">{item.qty}</td>
+                  <td className="border px-3 py-2 text-right">{invoice.currency} {item.price}</td>
+                  <td className="border px-3 py-2 text-right">{invoice.currency} {item.total}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center py-4 text-gray-500">
+                  Items not loaded. Please refresh.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
