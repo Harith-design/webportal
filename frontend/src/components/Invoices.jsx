@@ -212,9 +212,31 @@ function InvoicesPage() {
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
                 <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
-                  <td className="px-4 py-2 text-blue-600 hover:underline">
-                    <Link to={`/invoices/${inv.invoiceNo}`}>{inv.invoiceNo}</Link>
-                  </td>
+                 <td className="px-4 py-2 text-blue-600 hover:underline">
+                <Link 
+                  to={`/invoices/${inv.invoiceNo}`} 
+                                  state={{
+                  invoice: {
+                    id: inv.invoiceNo,
+                    ponum: inv.poNo,
+                    customer: inv.customer,
+                    invoiceDate: inv.postingDate,
+                    dueDate: inv.dueDate,
+                    status: inv.status,
+                    currency: inv.currency,
+                    items: inv.items || [],       // fallback if items are missing
+                    discount: inv.discount || 0,
+                    vat: inv.vat || 0,
+                    billTo: inv.billTo || "",
+                    shipTo: inv.shipTo || ""
+                  }
+                }}
+                // ✅ pass invoice object to details page
+                >
+                  {inv.invoiceNo}
+                </Link>
+               </td>
+
                   <td className="px-4 py-2">{inv.customer}</td>
                   <td className="px-4 py-2">{inv.poNo}</td>
                   <td className="px-4 py-2">{inv.postingDate}</td>

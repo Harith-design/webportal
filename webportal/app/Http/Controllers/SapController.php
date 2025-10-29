@@ -280,8 +280,8 @@ class SapController extends Controller
 // =====================================================
 public function getSalesOrderDetails($docEntry)
 {
-    // Expand DocumentLines to include item details
-    $endpoint = "Orders({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName&\$expand=DocumentLines(\$select=ItemCode,ItemDescription,Quantity,UnitPrice,LineTotal)";
+    // ✅ Expand more fields if you want (UDFs, etc.)
+    $endpoint = "Orders({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal&\$expand=DocumentLines(\$select=ItemCode,ItemDescription,Quantity,UnitPrice,LineTotal,TaxCode)";
 
     $result = $this->callServiceLayer('get', $endpoint);
 
@@ -292,29 +292,36 @@ public function getSalesOrderDetails($docEntry)
         ], $result['status'] ?? 500);
     }
 
+    // ✅ Normalize and safely extract data
     $lines = collect($result['DocumentLines'] ?? [])->map(function ($line) {
         return [
             'ItemCode'    => $line['ItemCode'] ?? '',
             'Description' => $line['ItemDescription'] ?? '',
-            'Quantity'    => $line['Quantity'] ?? 0,
-            'Price'       => $line['UnitPrice'] ?? 0,
-            'Total'       => $line['LineTotal'] ?? (($line['Quantity'] ?? 0) * ($line['UnitPrice'] ?? 0)),
+            'Quantity'    => isset($line['Quantity']) ? (float)$line['Quantity'] : 0, // ✅ ensure capital Q
+            'UnitPrice'   => isset($line['UnitPrice']) ? (float)$line['UnitPrice'] : 0,
+            'LineTotal'   => isset($line['LineTotal']) ? (float)$line['LineTotal'] : (
+                (isset($line['Quantity'], $line['UnitPrice']))
+                    ? (float)$line['Quantity'] * (float)$line['UnitPrice']
+                    : 0
+            ),
+            'TaxCode'     => $line['TaxCode'] ?? '',
         ];
     })->toArray();
 
     return response()->json([
         'status' => 'success',
         'data'   => [
-            'DocEntry' => $result['DocEntry'] ?? '',
-            'DocNum'   => $result['DocNum'] ?? '',
-            'CardCode' => $result['CardCode'] ?? '',
-            'Customer' => $result['CardName'] ?? '',
-            'Lines'    => $lines,
+            'DocEntry'  => $result['DocEntry'] ?? '',
+            'DocNum'    => $result['DocNum'] ?? '',
+            'CardCode'  => $result['CardCode'] ?? '',
+            'Customer'  => $result['CardName'] ?? '',
+            'DocDate'   => $result['DocDate'] ?? '',
+            'DocDueDate'=> $result['DocDueDate'] ?? '',
+            'DocTotal'  => $result['DocTotal'] ?? 0,
+            'Lines'     => $lines,
         ],
     ]);
 }
-
-
     // =====================================================
     // ------------------- INVOICE LIST --------------------
     // =====================================================
