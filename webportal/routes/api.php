@@ -41,8 +41,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/users', [UserController::class, 'store']);
-    Route::put('/users/{id}', [UserController::class, 'update']); // 🔹 For profile save
+    Route::post('/users/{id}', [UserController::class, 'update']); // ✅ changed from PUT
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
+
 });
 
 // ------------------- Sales Order Routes (internal app logic) -------------------
@@ -82,14 +83,24 @@ Route::prefix('sap')->group(function () {
 
     // ---------------- Invoices ----------------
     Route::get('/invoices', [SapController::class, 'getInvoices']);       // list of invoices
-    Route::get('/invoices/{docEntry}', [SapController::class, 'getInvoice']); // single invoice with items
+    Route::get('/invoices/{docEntry}/details', [SapController::class, 'getInvoiceDetails']);
+    Route::get('/invoices/{docEntry}/documentlines', [SapController::class, 'getInvoiceDocumentLines']);
+    Route::get('/invoices/{docEntry}/pdf', [SapController::class, 'invoicePdf']);
+
 
     // ---------------- Sales Orders ----------------
     Route::get('/orders', [SapController::class, 'getSalesOrders']); 
     Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']); 
+    Route::get('/sales-orders/{docEntry}/pdf', [App\Http\Controllers\SapController::class, 'salesOrderPdf']);
+
 
     // ------- Create Sales Order (for Place Order Page) -------------------
     Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
+
+    
+
+
+    
 });
 
 

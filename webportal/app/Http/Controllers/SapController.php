@@ -190,12 +190,11 @@ class SapController extends Controller
     }
 
     // =====================================================
-    // ------------------- SALES ORDERS UDF --------------------
+    // -------------- SALES ORDERS (UDF helper) ------------
     // =====================================================
     public function getItemDetailsFromSalesOrderUDF($itemCode)
     {
         $endpoint = "Orders?\$select=DocEntry,DocumentLines&\$filter=DocumentLines/any(line: line/ItemCode eq '{$itemCode}')";
-
         $result = $this->callServiceLayer('get', $endpoint);
 
         if (isset($result['error'])) {
@@ -208,7 +207,7 @@ class SapController extends Controller
         $details = [];
         foreach ($result['value'] ?? [] as $order) {
             foreach ($order['DocumentLines'] ?? [] as $line) {
-                if ($line['ItemCode'] === $itemCode) {
+                if (($line['ItemCode'] ?? null) === $itemCode) {
                     $details = [
                         'ItemCode'    => $itemCode,
                         'Weight'      => $line['U_Weight'] ?? null,
@@ -225,103 +224,104 @@ class SapController extends Controller
         ]);
     }
 
+    // =====================================================
+    // ------------------- SALES ORDERS LIST ---------------
+    // =====================================================
     public function getSalesOrders(Request $request)
-{
-    $top = 50;
-    $search = strtoupper(trim($request->query('search', '')));
+    {
+        $top = 50;
+        $search = strtoupper(trim($request->query('search', '')));
 
-    $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
+        $endpoint = "Orders?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
 
-    if (!empty($search)) {
-        $escaped = str_replace("'", "''", $search);
-        $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
-    }
+        if (!empty($search)) {
+            $escaped = str_replace("'", "''", $search);
+            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
+        }
 
-    $result = $this->callServiceLayer('get', $endpoint);
+        $result = $this->callServiceLayer('get', $endpoint);
 
-    if (isset($result['error'])) {
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch Sales Orders',
+                'details' => $result['details'],
+            ], $result['status']);
+        }
+
+        $orders = $result['value'] ?? [];
+
+        usort($orders, function ($a, $b) {
+            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
+        });
+
+        $formatted = collect($orders)->map(function ($o) {
+            return [
+                'docEntry'     => $o['DocEntry'] ?? '',
+                'salesNo'      => $o['DocNum'] ?? '',
+                'poNo'         => $o['NumAtCard'] ?? '',
+                'customer'     => $o['CardName'] ?? '',
+                'customerCode' => $o['CardCode'] ?? ($o['CardName'] ?? ''),
+                'orderDate'    => substr($o['DocDate'] ?? '', 0, 10),
+                'dueDate'      => substr($o['DocDueDate'] ?? '', 0, 10),
+                'total'        => $o['DocTotal'] ?? 0,
+                'currency'     => $o['DocCurrency'] ?? 'RM',
+                'status'       => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
+                'download'     => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"),
+            ];
+        })->toArray();
+
         return response()->json([
-            'error'   => 'Failed to fetch Sales Orders',
-            'details' => $result['details'],
-        ], $result['status']);
+            'status' => 'success',
+            'count'  => count($formatted),
+            'data'   => $formatted,
+        ]);
     }
 
-    $orders = $result['value'] ?? [];
+    // =====================================================
+    // ---------------- SALES ORDER DETAILS ----------------
+    // =====================================================
+    public function getSalesOrderDetails($docEntry)
+    {
+        $endpoint = "Orders({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal&\$expand=DocumentLines(\$select=ItemCode,ItemDescription,Quantity,UnitPrice,LineTotal,TaxCode)";
+        $result = $this->callServiceLayer('get', $endpoint);
 
-    usort($orders, function ($a, $b) {
-        return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
-    });
+        if (isset($result['error'])) {
+            return response()->json([
+                'error'   => 'Failed to fetch Sales Order details',
+                'details' => $result['details'] ?? $result,
+            ], $result['status'] ?? 500);
+        }
 
-    $formatted = collect($orders)->map(function ($o) {
-        return [
-            'docEntry'     => $o['DocEntry'] ?? '',   // <-- added docEntry
-            'salesNo'      => $o['DocNum'] ?? '',
-            'poNo'         => $o['NumAtCard'] ?? '',
-            'customer'     => $o['CardName'] ?? '',
-            'customerCode' => $o['CardCode'] ?? ($o['CardName'] ?? ''),
-            'orderDate'    => substr($o['DocDate'] ?? '', 0, 10),
-            'dueDate'      => substr($o['DocDueDate'] ?? '', 0, 10),
-            'total'        => $o['DocTotal'] ?? 0,
-            'currency'     => $o['DocCurrency'] ?? 'RM',
-            'status'       => ($o['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
-            'download'     => url("/api/sap/sales-orders/{$o['DocEntry']}/pdf"),
-        ];
-    })->toArray();
+        $lines = collect($result['DocumentLines'] ?? [])->map(function ($line) {
+            return [
+                'ItemCode'    => $line['ItemCode'] ?? '',
+                'Description' => $line['ItemDescription'] ?? '',
+                'Quantity'    => isset($line['Quantity']) ? (float)$line['Quantity'] : 0,
+                'UnitPrice'   => isset($line['UnitPrice']) ? (float)$line['UnitPrice'] : 0,
+                'LineTotal'   => isset($line['LineTotal']) ? (float)$line['LineTotal'] : (
+                    (isset($line['Quantity'], $line['UnitPrice']))
+                        ? (float)$line['Quantity'] * (float)$line['UnitPrice']
+                        : 0
+                ),
+                'TaxCode'     => $line['TaxCode'] ?? '',
+            ];
+        })->toArray();
 
-    return response()->json([
-        'status' => 'success',
-        'count'  => count($formatted),
-        'data'   => $formatted,
-    ]);
-}
-
-// =====================================================
-// ---------------- SALES ORDER DETAILS ----------------
-// =====================================================
-public function getSalesOrderDetails($docEntry)
-{
-    // ✅ Expand more fields if you want (UDFs, etc.)
-    $endpoint = "Orders({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal&\$expand=DocumentLines(\$select=ItemCode,ItemDescription,Quantity,UnitPrice,LineTotal,TaxCode)";
-
-    $result = $this->callServiceLayer('get', $endpoint);
-
-    if (isset($result['error'])) {
         return response()->json([
-            'error' => 'Failed to fetch Sales Order details',
-            'details' => $result['details'] ?? $result,
-        ], $result['status'] ?? 500);
+            'status' => 'success',
+            'data'   => [
+                'DocEntry'  => $result['DocEntry'] ?? '',
+                'DocNum'    => $result['DocNum'] ?? '',
+                'CardCode'  => $result['CardCode'] ?? '',
+                'Customer'  => $result['CardName'] ?? '',
+                'DocDate'   => $result['DocDate'] ?? '',
+                'DocDueDate'=> $result['DocDueDate'] ?? '',
+                'DocTotal'  => $result['DocTotal'] ?? 0,
+                'Lines'     => $lines,
+            ],
+        ]);
     }
 
-    // ✅ Normalize and safely extract data
-    $lines = collect($result['DocumentLines'] ?? [])->map(function ($line) {
-        return [
-            'ItemCode'    => $line['ItemCode'] ?? '',
-            'Description' => $line['ItemDescription'] ?? '',
-            'Quantity'    => isset($line['Quantity']) ? (float)$line['Quantity'] : 0, // ✅ ensure capital Q
-            'UnitPrice'   => isset($line['UnitPrice']) ? (float)$line['UnitPrice'] : 0,
-            'LineTotal'   => isset($line['LineTotal']) ? (float)$line['LineTotal'] : (
-                (isset($line['Quantity'], $line['UnitPrice']))
-                    ? (float)$line['Quantity'] * (float)$line['UnitPrice']
-                    : 0
-            ),
-            'TaxCode'     => $line['TaxCode'] ?? '',
-        ];
-    })->toArray();
-
-    return response()->json([
-        'status' => 'success',
-        'data'   => [
-            'DocEntry'  => $result['DocEntry'] ?? '',
-            'DocNum'    => $result['DocNum'] ?? '',
-            'CardCode'  => $result['CardCode'] ?? '',
-            'Customer'  => $result['CardName'] ?? '',
-            'DocDate'   => $result['DocDate'] ?? '',
-            'DocDueDate'=> $result['DocDueDate'] ?? '',
-            'DocTotal'  => $result['DocTotal'] ?? 0,
-            'Lines'     => $lines,
-        ],
-    ]);
-}
     // =====================================================
     // ------------------- INVOICE LIST --------------------
     // =====================================================
@@ -330,7 +330,10 @@ public function getSalesOrderDetails($docEntry)
         $top = 50;
         $search = strtoupper(trim($request->query('search', '')));
 
-        $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
+        // No $expand here; just header fields
+        $endpoint = "Invoices?\$orderby=DocDate desc"
+            . "&\$top={$top}"
+            . "&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
 
         if (!empty($search)) {
             $escaped = str_replace("'", "''", $search);
@@ -354,6 +357,7 @@ public function getSalesOrderDetails($docEntry)
 
         $formatted = collect($invoices)->map(function ($inv) {
             return [
+                'docEntry'     => $inv['DocEntry'] ?? '',
                 'invoiceNo'    => $inv['DocNum'] ?? '',
                 'poNo'         => $inv['NumAtCard'] ?? '',
                 'customer'     => $inv['CardName'] ?? '',
@@ -375,7 +379,7 @@ public function getSalesOrderDetails($docEntry)
     }
 
     // =====================================================
-    // ------------------- CREATE SALES ORDER -------------
+    // ------------------- CREATE SALES ORDER --------------
     // =====================================================
     public function createSalesOrder(Request $request)
     {
@@ -422,54 +426,200 @@ public function getSalesOrderDetails($docEntry)
     }
 
     // =====================================================
-    // ------------------- GET SINGLE INVOICE -------------
+    // ------------------- GET SINGLE INVOICE --------------
     // =====================================================
-    public function getInvoice(Request $request)
+    public function getInvoiceDetails($docEntry)
     {
-        $top = 50;
-        $search = strtoupper(trim($request->query('search', '')));
+        try {
+            // 1) Header (no $expand to avoid SL errors)
+            $endpoint = "Invoices({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal";
+            $result = $this->callServiceLayer('get', $endpoint);
 
-        $endpoint = "Invoices?\$orderby=DocDate desc&\$top={$top}&\$select=DocEntry,DocNum,NumAtCard,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,DocumentStatus,CardCode";
+            Log::info('SAP raw invoice response', ['docEntry' => $docEntry, 'result' => $result]);
 
-        if (!empty($search)) {
-            $escaped = str_replace("'", "''", $search);
-            $endpoint .= "&\$filter=contains(CardName,'{$escaped}') or contains(DocNum,'{$escaped}') or contains(NumAtCard,'{$escaped}')";
-        }
+            if (isset($result['error'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to fetch invoice details',
+                    'details' => $result['details'] ?? $result,
+                ], 500);
+            }
 
-        $result = $this->callServiceLayer('get', $endpoint);
+            // 2) Lines via navigation
+            $linesEndpoint = "Invoices({$docEntry})/DocumentLines";
+            $linesResult = $this->callServiceLayer('get', $linesEndpoint);
 
-        if (isset($result['error'])) {
+            Log::info('SAP DocumentLines response', ['docEntry' => $docEntry, 'linesResult' => $linesResult]);
+
+            if (isset($linesResult['error'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to fetch document lines',
+                    'details' => $linesResult['details'] ?? $linesResult,
+                ], 500);
+            }
+
+            $lines = collect($linesResult['value'] ?? [])->map(function ($line) {
+                $qty   = (float)($line['Quantity']  ?? 0);
+                $price = (float)($line['UnitPrice'] ?? ($line['Price'] ?? 0));
+                $total = isset($line['LineTotal']) ? (float)$line['LineTotal'] : $qty * $price;
+
+                return [
+                    'ItemCode'    => $line['ItemCode'] ?? '',
+                    'Dscription'  => $line['ItemDescription'] ?? ($line['Text'] ?? ''),
+                    'Quantity'    => $qty,
+                    'Price'       => $price,
+                    'LineTotal'   => $total,
+                ];
+            })->toArray();
+
             return response()->json([
-                'error'   => 'Failed to fetch Invoices',
-                'details' => $result['details'],
-            ], $result['status']);
+                'status' => 'success',
+                'data' => [
+                    'DocEntry'       => $result['DocEntry'] ?? '',
+                    'DocNum'         => $result['DocNum'] ?? '',
+                    'CardCode'       => $result['CardCode'] ?? '',
+                    'Customer'       => $result['CardName'] ?? '',
+                    'DocDate'        => $result['DocDate'] ?? '',
+                    'DocDueDate'     => $result['DocDueDate'] ?? '',
+                    'DocTotal'       => $result['DocTotal'] ?? 0,
+                    'DocumentLines'  => $lines,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Exception fetching invoice details', ['docEntry' => $docEntry, 'message' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unexpected error fetching invoice details',
+                'details' => $e->getMessage(),
+            ], 500);
         }
+    }
 
-        $invoices = $result['value'] ?? [];
+    // =====================================================
+    // --------------- GET INVOICE DOCUMENT LINES ----------
+    // =====================================================
+    public function getInvoiceDocumentLines($docEntry)
+    {
+        try {
+            $endpoint = "Invoices({$docEntry})/DocumentLines";
+            $result = $this->callServiceLayer('get', $endpoint);
 
-        usort($invoices, function ($a, $b) {
-            return strtotime($b['DocDate']) <=> strtotime($a['DocDate']);
-        });
+            Log::info("SAP DocumentLines Response", ['result' => $result]);
 
-        $formatted = collect($invoices)->map(function ($inv) {
-            return [
-                'invoiceNo'    => $inv['DocNum'] ?? '',
-                'poNo'         => $inv['NumAtCard'] ?? '',
-                'customer'     => $inv['CardName'] ?? '',
-                'customerCode' => $inv['CardCode'] ?? ($inv['CardName'] ?? ''),
-                'postingDate'  => substr($inv['DocDate'] ?? '', 0, 10),
-                'dueDate'      => substr($inv['DocDueDate'] ?? '', 0, 10),
-                'total'        => $inv['DocTotal'] ?? 0,
-                'currency'     => $inv['DocCurrency'] ?? 'RM',
-                'status'       => ($inv['DocumentStatus'] ?? '') === 'bost_Open' ? 'Open' : 'Closed',
-                'download'     => url("/api/sap/invoices/{$inv['DocEntry']}/pdf"),
+            if (isset($result['error'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to fetch invoice document lines',
+                    'details' => $result['details'] ?? $result,
+                ], 500);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $result['value'] ?? [],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching invoice document lines', ['docEntry' => $docEntry, 'message' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unexpected error fetching invoice document lines',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // =====================================================
+    // ------------------- INVOICE PDF (Option B) ----------
+    // =====================================================
+    public function invoicePdf($docEntry)
+    {
+        try {
+            // Guard so the app never breaks if DomPDF isn't installed
+            if (!class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'PDF engine not installed. Run: composer require barryvdh/laravel-dompdf',
+                ], 501);
+            }
+
+            // 1) Header
+            $headerEndpoint = "Invoices({$docEntry})?\$select=DocEntry,DocNum,CardCode,CardName,DocDate,DocDueDate,DocTotal,DocCurrency,NumAtCard,DocumentStatus";
+            $header = $this->callServiceLayer('get', $headerEndpoint);
+            if (isset($header['error'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to fetch invoice header',
+                    'details' => $header['details'] ?? $header,
+                ], 500);
+            }
+
+            // 2) Lines
+            $linesEndpoint = "Invoices({$docEntry})/DocumentLines";
+            $linesRes = $this->callServiceLayer('get', $linesEndpoint);
+            $rawLines = $linesRes['value'] ?? [];
+
+            $lines = collect($rawLines)->map(function ($l, $i) {
+                $qty   = (float)($l['Quantity']   ?? 0);
+                $price = (float)($l['UnitPrice']  ?? ($l['Price'] ?? 0));
+                $total = isset($l['LineTotal']) ? (float)$l['LineTotal'] : $qty * $price;
+
+                return [
+                    'no'          => $i + 1,
+                    'ItemCode'    => $l['ItemCode'] ?? '-',
+                    'Description' => $l['ItemDescription'] ?? ($l['Text'] ?? '-'),
+                    'Quantity'    => $qty,
+                    'UnitPrice'   => $price,
+                    'LineTotal'   => $total,
+                ];
+            })->values()->toArray();
+
+            if (!count($lines)) {
+                $lines = [[
+                    'no'          => 1,
+                    'ItemCode'    => '-',
+                    'Description' => 'Item details not available',
+                    'Quantity'    => 1,
+                    'UnitPrice'   => (float)($header['DocTotal'] ?? 0),
+                    'LineTotal'   => (float)($header['DocTotal'] ?? 0),
+                ]];
+            }
+
+            // Totals
+            $subtotal = array_reduce($lines, fn($s, $r) => $s + (float)$r['LineTotal'], 0.0);
+            $discount = 0.0;
+            $vat      = 0.0;
+            $grand    = $subtotal - $discount + $vat;
+
+            // Data for blade
+            $data = [
+                'DocEntry'   => $header['DocEntry']   ?? '',
+                'DocNum'     => $header['DocNum']     ?? '',
+                'CardCode'   => $header['CardCode']   ?? '',
+                'Customer'   => $header['CardName']   ?? '',
+                'DocDate'    => substr($header['DocDate']    ?? '', 0, 10),
+                'DocDueDate' => substr($header['DocDueDate'] ?? '', 0, 10),
+                'PONum'      => $header['NumAtCard']  ?? '-',
+                'Status'     => (($header['DocumentStatus'] ?? '') === 'bost_Open') ? 'Open' : 'Closed',
+                'Currency'   => $header['DocCurrency'] ?? 'MYR',
+                'Lines'      => $lines,
+                'Subtotal'   => $subtotal,
+                'Discount'   => $discount,
+                'VAT'        => $vat,
+                'Grand'      => $grand,
             ];
-        })->toArray();
 
-        return response()->json([
-            'status' => 'success',
-            'count'  => count($formatted),
-            'data'   => $formatted,
-        ]);
+            // Render Blade → PDF (fully-qualified reference, Option B)
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', $data)->setPaper('a4');
+            return $pdf->stream("Invoice_{$data['DocNum']}.pdf");
+
+        } catch (\Throwable $e) {
+            Log::error('invoicePdf error', ['docEntry' => $docEntry, 'ex' => $e->getMessage()]);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to generate invoice PDF',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -2,12 +2,7 @@ import axios from "axios";
 
 // 👇 Directly point to your Laravel backend
 const API = axios.create({
-  // baseURL: "http://192.168.100.191:8000/api", // 👈 backend IP
-    baseURL: "http://127.0.0.1:8000/api", // 👈 backend IP
-  
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: "http://127.0.0.1:8000/api", // backend API URL
 });
 
 // ✅ Attach token from localStorage OR sessionStorage
@@ -24,27 +19,23 @@ API.interceptors.request.use((config) => {
 export const register = (data) => API.post("/register", data);
 export const login = (data) => API.post("/login", data);
 export const logout = () => API.post("/logout");
-export const getCurrentUser = () => API.get("/user/me"); // ✅ FIXED
+export const getCurrentUser = () => API.get("/user/me");
 
 // ---------- USERS ----------
 export const getUsers = () => API.get("/users");
 export const createUser = (data) => API.post("/users", data);
 
-// ✅ FIXED VERSION: handles profile picture + password confirmation properly
+// ✅ UPDATED: no manual Content-Type, Axios handles multipart automatically
 export const updateUser = async (id, data) => {
   const formData = new FormData();
 
-  // Append all fields dynamically
   for (const key in data) {
     if (data[key] !== null && data[key] !== undefined) {
       formData.append(key, data[key]);
     }
   }
 
-  // Use POST + _method=PUT to support FormData with Laravel
-  return await API.post(`/users/${id}?_method=PUT`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return await API.post(`/users/${id}`, formData);
 };
 
 export const deleteUser = (id) => API.delete(`/users/${id}`);
@@ -55,7 +46,7 @@ export const getBusinessPartners = async (search = "") => {
     const res = await API.get("/sap/business-partners", {
       params: { search },
     });
-    return res.data; // ✅ Return full backend response
+    return res.data;
   } catch (err) {
     console.error("Error fetching business partners:", err);
     throw err;
@@ -83,7 +74,7 @@ export const createInvoice = (data) =>
 export const getItems = async (search = "") => {
   try {
     const res = await API.get("/sap/items", { params: { search } });
-    return res.data; // ✅ Return full backend response
+    return res.data;
   } catch (err) {
     console.error("Error fetching items:", err);
     throw err;

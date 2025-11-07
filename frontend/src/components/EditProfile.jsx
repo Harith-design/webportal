@@ -55,6 +55,11 @@ function EditProfile() {
           password: "",
           confirmPassword: "",
         });
+        // ✅ Load existing profile picture if available
+      if (user.profile_picture) {
+        setPreview(`http://127.0.0.1:8000/${user.profile_picture}`);
+      }
+
       } catch (err) {
         console.error("Error loading user:", err);
       }
