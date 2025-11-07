@@ -4,6 +4,8 @@ import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
 import { isTokenValid, clearToken } from "../helpers/auth";
+import { performLogout } from "../helpers/logout";
+import { useLoading } from "../context/LoadingContext";
 import UserAvatar from "./UserAvatar";
 
 function DashboardLayout() {
@@ -16,10 +18,10 @@ function DashboardLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // 🔹 Logout helper
-  const handleLogout = () => {
-    clearToken();
-    // navigate("/login");
-  };
+  const handleLogout = async () => {
+  await performLogout(setLoading, navigate);
+};
+
 
   useEffect(() => {
     if (!isTokenValid()) {
@@ -128,21 +130,24 @@ function DashboardLayout() {
     return colors[Math.abs(hash) % colors.length];
   };
 
+  const { setLoading } = useLoading(); // 👈 get loading context
+
+
   return (
-    <div className="min-h-screen flex w-screen">
+    <div className="min-h-screen flex w-screen bg-gray-50">
       <Sidebar onToggle={setIsCollapsed} />
     <div
-      className={`flex flex-col min-h-screen flex-1 transition-all duration-300 ${
-        isCollapsed ? "ml-20" : "ml-64"
-      }`}
-    >
-        <header className="flex justify-between items-center px-6 py-3">
+  className={`flex flex-col min-h-screen flex-1 transition-all duration-300 overflow-y-auto ${
+    isCollapsed ? "ml-20" : "ml-64"
+  }`}
+>
+        <header className="flex justify-between items-center px-6 pt-3">
           <h1 className="text-2xl font-semibold">{title}</h1>
 
           {user && (
           <div className="relative" ref={dropdownRef}>
             <div className="flex items-center space-x-3">
-              <UserAvatar name={user.name} size={40}
+              <UserAvatar name={user.name} size={48}
                 onClick={() => setDropdownOpen((prev) => !prev)}/>
               <div className="text-right">
                 <p className="text-sm font-medium">{user.name}</p>
@@ -184,7 +189,7 @@ function DashboardLayout() {
           )}
         </header>
 
-        <main className="flex-1 px-6 pt-4 pb-6 overflow-y-auto">
+        <main className="flex-1 px-6 pt-4 pb-6">
           <Outlet />
         </main>
       </div>

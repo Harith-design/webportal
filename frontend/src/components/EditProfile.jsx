@@ -7,17 +7,21 @@ import UserAvatar from "../components/UserAvatar";
 function EditProfile() {
   const [formData, setFormData] = useState({
     id: "",
+    firstName: "",
+    lastName: "",
     name: "",
     email: "",
-    // role: "", // ❌ Commented out
     contact: "",
     company: "",
     password: "",
     confirmPassword: "",
-    // companyLogo: null, // ❌ Commented out
-    // logoPreview: null, // ❌ Commented out
     CardCode: "",
     CardName: "",
+    street: "",
+    city: "",
+    county: "",
+    postalCode: "",
+    country: "",
   });
 
   const [profilePic, setProfilePic] = useState(null);
@@ -35,15 +39,19 @@ function EditProfile() {
         const user = res.data;
         setFormData({
           id: user.id,
+          firstName: user.firstName || "",
+          lastName: user.lastName || "",
           name: user.name || "",
           email: user.email || "",
-          // role: user.role || "User", // ❌ Commented out
           contact: user.contact_no || "",
           company: user.company || "",
           CardCode: user.cardcode || "",
           CardName: user.cardname || "",
-          // companyLogo: null, // ❌ Commented out
-          // logoPreview: null, // ❌ Commented out
+          street: user.street || "",
+          city: user.city || "",
+          county: user.county || "",
+          postalCode: user.postalCode || "",
+          country: user.country || "",
           password: "",
           confirmPassword: "",
         });
@@ -68,8 +76,6 @@ function EditProfile() {
       setPreview(URL.createObjectURL(file));
     }
   };
-
-  // ❌ Removed handleLogoChange (not used now)
 
   // SAP Company Search
   const handleCompanySearch = async (e) => {
@@ -100,35 +106,42 @@ function EditProfile() {
 
   // Save profile
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    // Password confirmation check
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setMessage("❌ Passwords do not match!");
-      return;
+  if (formData.password && formData.password !== formData.confirmPassword) {
+    toast.error("❌ Passwords do not match!");
+    return;
+  }
+
+  try {
+    const payload = {
+      firstName: formData.firstName || "",
+      lastName: formData.lastName || "",
+      name: formData.name || "",
+      email: formData.email || "",
+      contact_no: formData.contact || "",
+      cardcode: formData.CardCode || "",
+      cardname: formData.CardName || "",
+      street: formData.street || "",
+      city: formData.city || "",
+      county: formData.county || "",
+      postalCode: formData.postalCode || "",
+      country: formData.country || "",
+    };
+
+    if (formData.password) {
+      payload.password = formData.password;
     }
 
-    try {
-      // Build payload
-      const payload = {
-        name: formData.name || "",
-        email: formData.email || "",
-        contact_no: formData.contact || "",
-        cardcode: formData.CardCode || "",
-        cardname: formData.CardName || "",
-      };
+    await updateUser(formData.id, payload);
 
-      if (formData.password) {
-        payload.password = formData.password;
-      }
+    toast.success("Profile updated successfully!");
+  } catch (error) {
+    console.error("Error updating profile:", error.response || error);
+    toast.error("Failed to update profile. Please try again.");
+  }
+};
 
-      await updateUser(formData.id, payload);
-      setMessage("✅ Profile updated successfully!");
-    } catch (error) {
-      console.error("Error updating profile:", error.response || error);
-      setMessage("❌ Failed to update profile. Please try again.");
-    }
-  };
 
   return (
     <div className="p-6 space-y-10 bg-white rounded-xl shadow-md">
@@ -141,13 +154,24 @@ function EditProfile() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col">
-                <label className="text-[80%] font-medium mb-1">Name</label>
+                <label className="text-[80%] font-medium mb-1">First Name</label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="firstName"
+                  value={formData.firstName}
                   onChange={handleChange}
-                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[80%] font-medium mb-1">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
                 />
               </div>
 
@@ -158,7 +182,7 @@ function EditProfile() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
                 />
               </div>
 
@@ -170,7 +194,7 @@ function EditProfile() {
                   value={formData.contact}
                   onChange={handleChange}
                   placeholder="Enter contact number"
-                  className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-2/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
                 />
               </div>
             </div>
@@ -178,26 +202,32 @@ function EditProfile() {
             {/* Profile Picture */}
             <div className="relative flex flex-col items-center">
               <div className="relative">
-                <img
-                  src={preview || "https://via.placeholder.com/150"}
-                  alt="Profile"
-                  className="w-36 h-36 rounded-full object-cover border shadow-md"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="profilePicInput"
-                  onChange={handlePicChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="profilePicInput"
-                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
-                >
-                  <Pencil size={14} />
-                  <span className="text-xs">Edit</span>
-                </label>
-              </div>
+    {preview ? (
+      <img
+        src={preview}
+        alt="Profile"
+        className="w-36 h-36 rounded-full object-cover border shadow-md"
+      />
+    ) : (
+      <UserAvatar name={formData.name} size={144} />
+    )}
+
+    <input
+      type="file"
+      accept="image/*"
+      id="profilePicInput"
+      onChange={handlePicChange}
+      className="hidden"
+    />
+
+    <label
+      htmlFor="profilePicInput"
+      className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
+    >
+      <Pencil size={14} />
+      <span className="text-xs">Edit</span>
+    </label>
+  </div>
             </div>
           </div>
         </div>
@@ -216,8 +246,8 @@ function EditProfile() {
                 type="text"
                 value={searchTerm}
                 onChange={handleCompanySearch}
-                placeholder="Type to search company..."
-                className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                placeholder="Enter company name"
+                className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
               {loadingSearch && (
                 <p className="text-xs text-gray-500 mt-1">Searching...</p>
@@ -238,63 +268,88 @@ function EditProfile() {
             </div>
 
             <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">Selected Company</label>
+              <label className="text-[80%] font-medium mb-1">
+                Selected Company
+              </label>
               <input
                 type="text"
                 name="company"
                 value={formData.CardName || formData.company}
                 readOnly
-                className="w-3/4 px-2 py-1 border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-3/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
             </div>
+          </div>
+        </div>
 
-            {/* ❌ Role and Company Logo removed */}
-            {/*
+        {/* Company Address */}
+        <div>
+          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+            Company Address
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">Role</label>
+              <label className="text-[80%] font-medium mb-1">Street Address</label>
               <input
                 type="text"
-                name="role"
-                value={formData.role}
+                name="street"
+                value={formData.street}
                 onChange={handleChange}
-                className="w-1/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-3/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
             </div>
 
-            <div className="flex flex-col mt-2">
-              <label className="text-[80%] font-medium mb-1">Company Logo</label>
-              <div className="relative w-32 h-16 border rounded bg-gray-50 flex items-center justify-center shadow-sm">
-                <img
-                  src={
-                    formData.logoPreview ||
-                    "https://via.placeholder.com/120x60?text=Logo"
-                  }
-                  alt="Company Logo"
-                  className="w-full h-full object-contain"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="companyLogoInput"
-                  onChange={handleLogoChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="companyLogoInput"
-                  className="absolute bottom-1 right-1 flex items-center gap-1 bg-white/80 px-2 py-0.5 rounded cursor-pointer border hover:bg-white"
-                >
-                  <Pencil size={12} />
-                  <span className="text-xs">Edit</span>
-                </label>
-              </div>
+            <div className="flex flex-col">
+              <label className="text-[80%] font-medium mb-1">City</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="w-2/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
             </div>
-            */}
+
+            <div className="flex flex-col">
+              <label className="text-[80%] font-medium mb-1">County</label>
+              <input
+                type="text"
+                name="county"
+                value={formData.county}
+                onChange={handleChange}
+                className="w-2/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-[80%] font-medium mb-1">Postal Code</label>
+              <input
+                type="text"
+                name="postalCode"
+                value={formData.postalCode}
+                onChange={handleChange}
+                className="w-1/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-[80%] font-medium mb-1">Country</label>
+              <input
+                type="text"
+                name="country"
+                value={formData.country}
+                onChange={handleChange}
+                className="w-1/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
         {/* Security */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">Security</h3>
+          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+            Security
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">New Password</label>
@@ -304,19 +359,21 @@ function EditProfile() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter new password"
-                className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-2/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
             </div>
 
             <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">Confirm Password</label>
+              <label className="text-[80%] font-medium mb-1">
+                Confirm Password
+              </label>
               <input
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Confirm new password"
-                className="w-2/4 px-2 py-1 border rounded text-[80%] focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-2/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
             </div>
           </div>

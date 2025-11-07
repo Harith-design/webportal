@@ -1,9 +1,55 @@
 // src/pages/AddUserModal.jsx
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { getBusinessPartners } from "../services/api";
 
 function AddUserModal({ show, onClose, newUser, setNewUser, onSave }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [companyResults, setCompanyResults] = useState([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const searchRef = useRef(null);
+
+
+
+  // 🔍 Fetch company list from SAP (like EditProfile)
+  const handleCompanySearch = async (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setLoadingSearch(true);
+    try {
+      const res = await getBusinessPartners(value);
+      setCompanyResults(res.data || []);
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      setCompanyResults([]);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleSelectCompany = (company) => {
+    setNewUser({
+      ...newUser,
+      companyName: company.CardName,
+      cardCode: company.CardCode,
+    });
+    setSearchTerm(company.CardName);
+    setCompanyResults([]);
+  };
+
+  // 🧩 Close dropdown when clicking outside
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (searchRef.current && !searchRef.current.contains(event.target)) {
+      setCompanyResults([]); // close dropdown
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
   if (!show) return null;
 
   return createPortal(
@@ -25,7 +71,8 @@ function AddUserModal({ show, onClose, newUser, setNewUser, onSave }) {
 
         <h2 className="text-lg font-semibold mb-4">Add New User</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          {/* First Name */}
           <input
             type="text"
             placeholder="First Name"
@@ -35,6 +82,8 @@ function AddUserModal({ show, onClose, newUser, setNewUser, onSave }) {
               setNewUser({ ...newUser, firstName: e.target.value })
             }
           />
+
+          {/* Last Name */}
           <input
             type="text"
             placeholder="Last Name"
@@ -44,73 +93,69 @@ function AddUserModal({ show, onClose, newUser, setNewUser, onSave }) {
               setNewUser({ ...newUser, lastName: e.target.value })
             }
           />
+
+          {/* Username */}
           <input
-            type="email"
-            placeholder="Email"
+            type="text"
+            placeholder="Username"
             className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.email}
+            value={newUser.username}
             onChange={(e) =>
-              setNewUser({ ...newUser, email: e.target.value })
+              setNewUser({ ...newUser, username: e.target.value })
             }
           />
+
+          {/* Password */}
           <input
-            type="text"
-            placeholder="BP Code"
+            type="password"
+            placeholder="Password"
             className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.bpCode}
+            value={newUser.password || ""}
             onChange={(e) =>
-              setNewUser({ ...newUser, bpCode: e.target.value })
+              setNewUser({ ...newUser, password: e.target.value })
             }
           />
+
+          {/* Phone Number */}
           <input
             type="text"
-            placeholder="Street Address"
+            placeholder="Phone Number"
             className="border p-2 rounded-md col-span-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.street}
+            value={newUser.phone}
             onChange={(e) =>
-              setNewUser({ ...newUser, street: e.target.value })
+              setNewUser({ ...newUser, phone: e.target.value })
             }
           />
-          <input
-            type="text"
-            placeholder="City"
-            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.city}
-            onChange={(e) =>
-              setNewUser({ ...newUser, city: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="County"
-            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.county}
-            onChange={(e) =>
-              setNewUser({ ...newUser, county: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Postal Code"
-            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.postalCode}
-            onChange={(e) =>
-              setNewUser({ ...newUser, postalCode: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Country"
-            className="border p-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
-            value={newUser.country}
-            onChange={(e) =>
-              setNewUser({ ...newUser, country: e.target.value })
-            }
-          />
+
+          {/* Company Search */}
+         <div className="col-span-2 relative" ref={searchRef}>
+  <input
+    type="text"
+    placeholder="Search Company (from SAP)"
+    className="border p-2 rounded-md w-full focus:outline-none focus:ring-1 focus:ring-blue-400"
+    value={searchTerm}
+    onChange={handleCompanySearch}
+  />
+  {companyResults.length > 0 && (
+    <ul className="absolute z-20 w-full border rounded mt-1 max-h-40 overflow-y-auto bg-white shadow text-sm">
+      {companyResults.map((c) => (
+        <li
+          key={c.CardCode}
+          onClick={() => handleSelectCompany(c)}
+          className="px-2 py-1 cursor-pointer hover:bg-blue-100"
+        >
+          {c.CardCode} - {c.CardName}
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
+
         </div>
 
         {/* Buttons */}
-        <div className="flex justify-end mt-6 gap-3">
+        <div className="flex justify-end mt-6 gap-3 text-sm">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg border hover:bg-gray-100"

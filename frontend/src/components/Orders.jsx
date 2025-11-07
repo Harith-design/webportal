@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Package, Truck, Clock, Search, Calendar } from "lucide-react";
+import { PackageOpen, Truck, Clock, Search, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css"; // <-- your overrides
+import { formatDate } from "../utils/formatDate";
+
 
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -67,6 +69,15 @@ function OrdersPage() {
   const [dueStart, setDueStart] = useState(null);
   const [dueEnd, setDueEnd] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const clearFilters = () => {
+  setStatusFilter("all");
+  setOrderStart(null);
+  setOrderEnd(null);
+  setDueStart(null);
+  setDueEnd(null);
+  setSearchQuery("");
+};
+
 
   // 🔹 Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,15 +87,34 @@ function OrdersPage() {
 
   // 🔹 Filtering logic
   const filteredOrders = orders.filter((order) => {
-    const orderDate = new Date(order.orderDate.replace(/-/g, "/"));
-    const dueDate = new Date(order.dueDate.replace(/-/g, "/"));
+  const orderDate = new Date(order.orderDate.replace(/-/g, "/"));
+  const dueDate = new Date(order.dueDate.replace(/-/g, "/"));
 
 
     if (statusFilter && statusFilter !== "all" && order.status !== statusFilter) return false;
-    if (orderStart && orderDate < orderStart) return false;
-    if (orderEnd && orderDate > orderEnd) return false;
-    if (dueStart && dueDate < dueStart) return false;
-    if (dueEnd && dueDate > dueEnd) return false;
+    if (orderStart && !orderEnd) {
+      // Only filter for the single selected day
+      const sameDay =
+        orderDate.getFullYear() === orderStart.getFullYear() &&
+        orderDate.getMonth() === orderStart.getMonth() &&
+        orderDate.getDate() === orderStart.getDate();
+      if (!sameDay) return false;
+    } else {
+      if (orderStart && orderDate < orderStart) return false;
+      if (orderEnd && orderDate > orderEnd) return false;
+    }
+
+      if (dueStart && !dueEnd) {
+        const sameDay =
+          dueDate.getFullYear() === dueStart.getFullYear() &&
+          dueDate.getMonth() === dueStart.getMonth() &&
+          dueDate.getDate() === dueStart.getDate();
+        if (!sameDay) return false;
+      } else {
+        if (dueStart && dueDate < dueStart) return false;
+        if (dueEnd && dueDate > dueEnd) return false;
+      }
+
 
     if (
       searchQuery &&
@@ -110,7 +140,7 @@ function OrdersPage() {
       case "Open":
         return (
           <span className="flex items-center text-blue-600">
-            <Package size={16} className="mr-1" /> {status}
+            <PackageOpen size={16} className="mr-1" /> {status}
           </span>
         );
       case "Closed":
@@ -131,9 +161,9 @@ function OrdersPage() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto space-y-6">
+    <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col h-[calc(100vh-8rem)] w-full overflow-hidden">
       {/* 🔹 Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
         {/* Left Filters */}
         <div className="flex flex-wrap gap-4">
           {/* Status Dropdown */}
@@ -152,23 +182,26 @@ function OrdersPage() {
 
           {/* Order Dates */}
           <div className="flex items-center gap-2">
-            <label className="text-xs">Order Date:</label>
+            <label className="text-xs">Order Date From</label>
 
             <div className="relative">
               <DatePicker
                 selected={orderStart}
                 onChange={(date) => setOrderStart(date)}
-                placeholderText="From"
+                dateFormat="dd/MM/yyyy"
                 className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
               />
               <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
             </div>
 
+            {/* "to" text */}
+            <span className="text-xs">To</span>
+
             <div className="relative">
               <DatePicker
                 selected={orderEnd}
                 onChange={(date) => setOrderEnd(date)}
-                placeholderText="To"
+                dateFormat="dd/MM/yyyy"
                 className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
               />
               <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
@@ -177,28 +210,39 @@ function OrdersPage() {
 
           {/* Due Dates */}
           <div className="flex items-center gap-2">
-            <label className="text-xs">Due Date:</label>
+            <label className="text-xs">Due Date From</label>
 
             <div className="relative">
               <DatePicker
                 selected={dueStart}
                 onChange={(date) => setDueStart(date)}
-                placeholderText="From"
+                dateFormat="dd/MM/yyyy"
                 className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
               />
               <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
             </div>
 
+            {/* "to" text */}
+            <span className="text-xs">To</span>
+
             <div className="relative">
               <DatePicker
                 selected={dueEnd}
                 onChange={(date) => setDueEnd(date)}
-                placeholderText="To"
+                dateFormat="dd/MM/yyyy"
                 className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
               />
               <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
             </div>
           </div>
+
+           {/* 🔹 Clear Filters Button */}
+    <button
+      onClick={clearFilters}
+      className="flex items-center gap-1 text-xs text-red-500 border border-red-300 rounded-lg px-3 py-1 hover:bg-red-50 transition"
+    >
+      ✕ Clear
+    </button>
         </div>
 
         {/* Right Search Bar */}
@@ -215,34 +259,34 @@ function OrdersPage() {
       </div>
 
       {/* 🔹 Orders Table */}
-      <div className="rounded-xl overflow-hidden shadow-sm min-h-[400px] max-h-[600px] overflow-y-auto">
+      <div className="rounded-xl overflow-hidden shadow-sm flex-1 overflow-y-auto">
         <table className="table-auto w-full border-collapse">
           <thead>
-            <tr className="text-center text-sm text-gray-500 border-b">
-              <th className="px-4 py-2 font-normal">Sales No.</th>
-              <th className="px-4 py-2 font-normal">Customer</th>
-              <th className="px-4 py-2 font-normal">PO No.</th>
-              <th className="px-4 py-2 font-normal">Order Date</th>
-              <th className="px-4 py-2 font-normal">Due Date</th>
-              <th className="px-4 py-2 font-normal">Total</th>
-              <th className="px-4 py-2 font-normal">Currency</th>
-              <th className="px-4 py-2 font-normal">Status</th>
-              <th className="px-4 py-2 font-normal">Download</th>
+            <tr className="text-left text-[75%] font-bold border-b">
+              <th className="px-4 py-2">SALES NO.</th>
+              <th className="px-4 py-2">CUSTOMER</th>
+              <th className="px-4 py-2">PO NO.</th>
+              <th className="px-4 py-2">ORDER DATE</th>
+              <th className="px-4 py-2">DUE DATE</th>
+              <th className="px-4 py-2">AMOUNT</th>
+              <th className="text-center px-4 py-2">CURRENCY</th>
+              <th className="px-4 py-2">STATUS</th>
+              <th className="text-center px-4 py-2">DOWNLOAD</th>
             </tr>
           </thead>
           <tbody className="text-xs">
             {currentOrders.length > 0 ? (
               currentOrders.map((order) => (
-                <tr key={order.id} className="even:bg-gray-50 text-center">
+                <tr key={order.id} className="even:bg-gray-50">
                   <td className="px-4 py-2 text-blue-600 hover:underline">
                     <Link to={`/orders/${order.id}`}>{order.id}</Link>
                   </td>
                   <td className="px-4 py-2">{order.customer}</td>
                   <td className="px-4 py-2">{order.poNo}</td>
-                  <td className="px-4 py-2">{order.orderDate}</td>
-                  <td className="px-4 py-2">{order.dueDate}</td>
-                  <td className="px-4 py-2">{order.total}</td>
-                  <td className="px-4 py-2">{order.currency}</td>
+                  <td className="px-4 py-2">{formatDate(order.orderDate)}</td>
+                  <td className="px-4 py-2">{formatDate(order.dueDate)}</td>
+                  <td className="px-4 py-2">{Number(order.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="text-center px-4 py-2">{order.currency}</td>
                   <td className="px-4 py-2">{renderStatus(order.status)}</td>
                   <td className="px-4 py-2 flex justify-center">
                     <a href="/path/to/file.pdf" target="_blank" rel="noopener noreferrer">
@@ -257,13 +301,10 @@ function OrdersPage() {
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center py-4 text-gray-500">
-                  {loading && (
-  <div className="text-center text-gray-500 py-4">Loading orders...</div>
-)}
-{error && (
-  <div className="text-center text-red-500 py-4">{error}</div>
-)}
+                <td colSpan="9" className="text-center py-4 text-gray-500">
+                  {loading && "Loading orders..."}
+                  {error && error}
+                  {!loading && !error && "No orders found"}      
                 </td>
               </tr>
             )}
@@ -272,7 +313,7 @@ function OrdersPage() {
       </div>
 
       {/* Pagination */}
-<div className="flex justify-center items-center gap-2 mt-4">
+<div className="flex justify-center items-center gap-2 mt-4 shrink-0">
   {/* Prev button */}
   <button
     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

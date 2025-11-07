@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Package, Truck, Clock, Search, Calendar } from "lucide-react";
+import { Receipt, FileCheck, Clock, Search, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
+import { formatDate } from "../utils/formatDate";
 
 function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
@@ -105,13 +106,13 @@ function InvoicesPage() {
       case "Open":
         return (
           <span className="flex items-center text-blue-600">
-            <Package size={16} className="mr-1" /> {status}
+            <Receipt size={16} className="mr-1" /> {status}
           </span>
         );
       case "Delivered":
         return (
           <span className="flex items-center text-green-600">
-            <Truck size={16} className="mr-1" /> {status}
+            <FileCheck size={16} className="mr-1" /> {status}
           </span>
         );
       case "In Transit":
@@ -126,9 +127,9 @@ function InvoicesPage() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto space-y-6">
+    <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col h-[calc(100vh-8rem)] w-full overflow-hidden">
       {/* 🔹 Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
         <div className="flex flex-wrap gap-4">
           {/* Status Dropdown */}
           <div>
@@ -146,37 +147,54 @@ function InvoicesPage() {
 
           {/* Posting Date */}
           <div className="flex items-center gap-2">
-            <label className="text-xs">Posting Date:</label>
-            <DatePicker
-              selected={postStart}
-              onChange={(date) => setPostStart(date)}
-              placeholderText="From"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <DatePicker
-              selected={postEnd}
-              onChange={(date) => setPostEnd(date)}
-              placeholderText="To"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+            <label className="text-xs">Posting Date From</label>
+            <div className="relative">
+                          <DatePicker
+                            selected={postStart}
+                            onChange={(date) => setPostStart(date)}
+                            className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+                          />
+                          <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                        </div>
+            
+                        {/* "to" text */}
+                        <span className="text-xs">To</span>
+            
+                        <div className="relative">
+                          <DatePicker
+                            selected={postEnd}
+                            onChange={(date) => setPostEnd(date)}
+                            className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+                          />
+                          <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                        </div>
           </div>
 
-          {/* Due Date */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs">Due Date:</label>
-            <DatePicker
-              selected={dueStart}
-              onChange={(date) => setDueStart(date)}
-              placeholderText="From"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <DatePicker
-              selected={dueEnd}
-              onChange={(date) => setDueEnd(date)}
-              placeholderText="To"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-          </div>
+          {/* Due Dates */}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs">Due Date From</label>
+          
+                      <div className="relative">
+                        <DatePicker
+                          selected={dueStart}
+                          onChange={(date) => setDueStart(date)}
+                          className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+                        />
+                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                      </div>
+          
+                      {/* "to" text */}
+                      <span className="text-xs">To</span>
+          
+                      <div className="relative">
+                        <DatePicker
+                          selected={dueEnd}
+                          onChange={(date) => setDueEnd(date)}
+                          className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+                        />
+                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                      </div>
+                    </div>
         </div>
 
         {/* Search Bar */}
@@ -193,25 +211,25 @@ function InvoicesPage() {
       </div>
 
       {/* 🔹 Invoices Table */}
-      <div className="rounded-xl overflow-hidden shadow-sm min-h-[400px] max-h-[600px] overflow-y-auto">
+      <div className="rounded-xl overflow-hidden shadow-sm flex-1 overflow-y-auto">
         <table className="table-auto w-full border-collapse">
           <thead>
-            <tr className="text-center text-sm text-gray-500 border-b">
-              <th className="px-4 py-2 font-normal">Invoice No.</th>
-              <th className="px-4 py-2 font-normal">Customer</th>
-              <th className="px-4 py-2 font-normal">PO No.</th>
-              <th className="px-4 py-2 font-normal">Posting Date</th>
-              <th className="px-4 py-2 font-normal">Due Date</th>
-              <th className="px-4 py-2 font-normal">Total</th>
-              <th className="px-4 py-2 font-normal">Currency</th>
-              <th className="px-4 py-2 font-normal">Status</th>
-              <th className="px-4 py-2 font-normal">Download</th>
+            <tr className="text-left text-[75%] font-bold border-b">
+              <th className="px-4 py-2">INVOICE NO.</th>
+              <th className="px-4 py-2">CUSTOMER</th>
+              <th className="px-4 py-2">PO NO.</th>
+              <th className="px-4 py-2">POSTING DATE</th>
+              <th className="px-4 py-2">DUE DATE</th>
+              <th className="px-4 py-2">TOTAL</th>
+              <th className="text-center px-4 py-2">CURRENCY</th>
+              <th className="px-4 py-2">STATUS</th>
+              <th className="text-center px-4 py-2">DOWNLOAD</th>
             </tr>
           </thead>
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
-                <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
+                <tr key={inv.invoiceNo} className="even:bg-gray-50">
                  <td className="px-4 py-2 text-blue-600 hover:underline">
                 <Link 
                   to={`/invoices/${inv.invoiceNo}`} 
@@ -239,10 +257,10 @@ function InvoicesPage() {
 
                   <td className="px-4 py-2">{inv.customer}</td>
                   <td className="px-4 py-2">{inv.poNo}</td>
-                  <td className="px-4 py-2">{inv.postingDate}</td>
-                  <td className="px-4 py-2">{inv.dueDate}</td>
-                  <td className="px-4 py-2">{inv.total}</td>
-                  <td className="px-4 py-2">{inv.currency}</td>
+                  <td className="px-4 py-2">{formatDate(inv.postingDate)}</td>
+                  <td className="px-4 py-2">{formatDate(inv.dueDate)}</td>
+                  <td className="px-4 py-2">{Number(inv.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="text-center px-4 py-2">{inv.currency}</td>
                   <td className="px-4 py-2">{renderStatus(inv.status)}</td>
                   <td className="px-4 py-2 flex justify-center">
                     <a href={inv.download} target="_blank" rel="noopener noreferrer">
@@ -269,7 +287,7 @@ function InvoicesPage() {
       </div>
 
       {/* 🔹 Pagination */}
-      <div className="flex justify-center items-center gap-2 mt-4">
+      <div className="flex justify-center items-center gap-2 mt-4 shrink-0">
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}

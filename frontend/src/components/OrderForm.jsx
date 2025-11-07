@@ -226,7 +226,7 @@ function PlaceOrderPage() {
       );
 
       if (res.data.status === "success") {
-        toast.success(`✅ Sales Order Created! DocNum: ${res.data.data.DocNum}`);
+        toast.success(`Sales Order Created! DocNum: ${res.data.data.DocNum}`);
         confetti({
           particleCount: 150,
           spread: 70,
@@ -238,7 +238,7 @@ function PlaceOrderPage() {
         toast.error(res.data.message || "Failed to create Sales Order.");
       }
     } catch (err) {
-      console.error("❌ Failed to submit order:", err);
+      console.error("Failed to submit order:", err);
       toast.error(
         err.response?.data?.message ||
           "Something went wrong while submitting the order."
@@ -328,11 +328,11 @@ function PlaceOrderPage() {
 
       {/* Table */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <div className="p-6 rounded-xl shadow-md bg-white overflow-x-auto">
+        <div className="p-6 rounded-xl bg-white overflow-x-auto">
           <div className="min-w-[1200px]">
             <table className="table-auto w-full border-collapse">
               <thead>
-                <tr className="text-xs font-semibold border-b text-center align-middle">
+                <tr className="text-[75%] font-bold border-b text-center align-middle">
                   <th className="px-2 py-2 text-left w-2/12">Item No.</th>
                   <th className="px-2 py-2 text-left w-2/12">Item Description</th>
                   <th className="px-2 py-2 w-1/12">Quantity</th>

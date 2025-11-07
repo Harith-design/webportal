@@ -13,6 +13,7 @@ import {
 import "./Sidebar.css";
 import { useLoading } from "../context/LoadingContext";
 import { clearToken } from "../helpers/auth";
+import { performLogout } from "../helpers/logout";
 
 function Sidebar({ onToggle }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -36,16 +37,7 @@ function Sidebar({ onToggle }) {
     }
   };
 
-  const handleLogout = async () => {
-    setLoading(true);
-    try {
-      clearToken();
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      navigate("/login");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleLogout = () => performLogout(setLoading, navigate);
 
   const linkClass = ({ isActive }) =>
     `flex items-center gap-2 p-2 h-10 rounded-lg text-sm transition-all duration-300 ${

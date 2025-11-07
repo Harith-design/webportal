@@ -5,7 +5,7 @@ import {
   ClockAlert,
   ClockFading,
   Flag,
-  CircleEllipsis,
+  PackageOpen,
   Truck,
 } from "lucide-react";
 import {
@@ -17,6 +17,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { formatDate } from "../utils/formatDate";
 
 const purchasesData = [
   { month: "Oct", amount: 1200 },
@@ -201,9 +202,7 @@ function DashboardPage() {
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
                       <td className="px-4 py-2">{order.id}</td>
-                      <td className="px-4 py-2">
-                        {new Date(order.orderDate).toLocaleDateString("en-GB")}
-                      </td>
+                      <td className="px-4 py-2">{formatDate(order.orderDate)}</td>
                       <td className="px-4 py-2 flex items-center gap-2">
                         {order.status.toLowerCase() === "delivered" ? (
                           <span className="text-green-600 flex items-center gap-1">
@@ -211,7 +210,7 @@ function DashboardPage() {
                           </span>
                         ) : (
                           <span className="text-blue-600 flex items-center gap-1">
-                            <CircleEllipsis size={16} /> {order.status}
+                            <PackageOpen size={16} /> {order.status}
                           </span>
                         )}
                       </td>
