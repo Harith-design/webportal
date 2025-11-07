@@ -19,6 +19,7 @@ class User extends Authenticatable
         'contact_no', // backend column
         'cardcode',
         'cardname',
+        'profile_picture', // ✅ allow mass assignment for profile picture
     ];
 
     protected $hidden = [
@@ -50,5 +51,25 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * ✅ Accessor to return full URL for profile picture
+     * Example: https://yourdomain.com/uploads/profile_pictures/avatar.jpg
+     */
+    public function getProfilePictureAttribute($value)
+    {
+        if ($value) {
+            // If already has full URL (like from CDN), return as is
+            if (str_starts_with($value, 'http')) {
+                return $value;
+            }
+
+            // Otherwise, build full path
+            return asset($value);
+        }
+
+        // Return default avatar if not uploaded
+        return asset('uploads/profile_pictures/default.png');
     }
 }

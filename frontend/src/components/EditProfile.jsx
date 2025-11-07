@@ -47,6 +47,11 @@ function EditProfile() {
           password: "",
           confirmPassword: "",
         });
+        // ✅ Load existing profile picture if available
+      if (user.profile_picture) {
+        setPreview(`http://127.0.0.1:8000/${user.profile_picture}`);
+      }
+
       } catch (err) {
         console.error("Error loading user:", err);
       }
@@ -98,37 +103,57 @@ function EditProfile() {
     setSearchTerm(company.CardName);
   };
 
-  // Save profile
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+// Save profile
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    // Password confirmation check
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setMessage("❌ Passwords do not match!");
-      return;
+  // Password confirmation check
+  if (formData.password && formData.password !== formData.confirmPassword) {
+    setMessage("❌ Passwords do not match!");
+    return;
+  }
+
+  try {
+    // Build payload as plain object
+    const payload = {
+      name: formData.name || "",
+      email: formData.email || "",
+      contact_no: formData.contact || "",
+      cardcode: formData.CardCode || "",
+      cardname: formData.CardName || "",
+    };
+
+    // Include password if entered
+    if (formData.password) {
+      payload.password = formData.password;
     }
 
-    try {
-      // Build payload
-      const payload = {
-        name: formData.name || "",
-        email: formData.email || "",
-        contact_no: formData.contact || "",
-        cardcode: formData.CardCode || "",
-        cardname: formData.CardName || "",
-      };
-
-      if (formData.password) {
-        payload.password = formData.password;
-      }
-
-      await updateUser(formData.id, payload);
-      setMessage("✅ Profile updated successfully!");
-    } catch (error) {
-      console.error("Error updating profile:", error.response || error);
-      setMessage("❌ Failed to update profile. Please try again.");
+    // Include profile picture if selected
+    if (profilePic) {
+      payload.profile_picture = profilePic;
     }
-  };
+
+    // Send to API
+    const response = await updateUser(formData.id, payload);
+
+    // Update preview with new profile picture
+    if (response.data.user.profile_picture) {
+      const fullUrl = `http://127.0.0.1:8000/${response.data.user.profile_picture}?t=${Date.now()}`;
+      setPreview(fullUrl);
+    }
+
+    // Update formData with returned user info
+    setFormData((prev) => ({
+      ...prev,
+      ...response.data.user,
+    }));
+
+    setMessage("✅ Profile updated successfully!");
+  } catch (error) {
+    console.error("Error updating profile:", error.response || error);
+    setMessage("❌ Failed to update profile. Please try again.");
+  }
+};
 
   return (
     <div className="p-6 space-y-10 bg-white rounded-xl shadow-md">

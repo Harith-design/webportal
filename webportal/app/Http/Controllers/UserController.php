@@ -35,7 +35,10 @@ class UserController extends Controller
 
         // ✅ Handle profile picture upload (optional)
         if ($request->hasFile('profile_picture')) {
-            $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $file = $request->file('profile_picture');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = 'uploads/profile_pictures/' . $filename;
+            $file->move(public_path('uploads/profile_pictures'), $filename);
             $data['profile_picture'] = $path;
         }
 
@@ -48,7 +51,7 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        // ✅ Base validation (no password required)
+        // ✅ Validation (all optional fields)
         $rules = [
             'name'       => 'nullable|string|max:255',
             'email'      => 'nullable|email|unique:users,email,' . $user->id,
@@ -58,32 +61,37 @@ class UserController extends Controller
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
 
-        // ✅ Only validate password if user filled it in
         if ($request->filled('password')) {
             $rules['password'] = 'required|string|min:6|confirmed';
         }
 
         $request->validate($rules);
 
-        $data = [
-            'name'          => $request->name,
-            'email'         => $request->email,
-            'contact_no'    => $request->contact,
-            'cardcode'      => $request->cardcode,
-            'cardname'      => $request->cardname,
-        ];
+        // ✅ Collect only provided fields
+        $data = $request->only(['name', 'email', 'contact', 'cardcode', 'cardname']);
+        $data = array_filter($data, fn($value) => $value !== null && $value !== '');
 
-        // ✅ Handle password only if filled
+        // ✅ Handle password if filled
         if ($request->filled('password')) {
             $data['password'] = bcrypt($request->password);
         }
 
-        // ✅ Handle profile picture upload
+        // ✅ Handle profile picture upload (if any)
         if ($request->hasFile('profile_picture')) {
-            $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $file = $request->file('profile_picture');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = 'uploads/profile_pictures/' . $filename;
+            $file->move(public_path('uploads/profile_pictures'), $filename);
+
+            // Delete old profile picture if exists
+            if (!empty($user->profile_picture) && file_exists(public_path($user->profile_picture))) {
+                @unlink(public_path($user->profile_picture));
+            }
+
             $data['profile_picture'] = $path;
         }
 
+        // ✅ Update only the provided fields
         $user->update($data);
 
         return response()->json([
@@ -95,6 +103,11 @@ class UserController extends Controller
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+
+        if (!empty($user->profile_picture) && file_exists(public_path($user->profile_picture))) {
+            @unlink(public_path($user->profile_picture));
+        }
+
         $user->delete();
 
         return response()->json(null, 204);

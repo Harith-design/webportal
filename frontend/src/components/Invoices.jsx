@@ -13,33 +13,34 @@ function InvoicesPage() {
 
   useEffect(() => {
     const fetchInvoices = async () => {
+      // fetch company code (start)
+      let user = localStorage.getItem("user") || sessionStorage.getItem("user");
+      const userModel = JSON.parse(user || "{}");
+      // fetch company code (end)
+
       try {
-        setLoading(true);
-
-        // 🔹 Get current user
-        let user = localStorage.getItem("user") || sessionStorage.getItem("user");
-        const userModel = JSON.parse(user);
-
-        // 🔹 Fetch all invoices
         const res = await axios.get("http://127.0.0.1:8000/api/sap/invoices");
 
         if (res.data && res.data.data) {
-          // 🔹 Only include invoices for current user's company
+          // Only include invoices for this company
           const filtered = res.data.data.filter(
-            (inv) => inv.customerCode === userModel.cardcode
+            (v) => v.customerCode === userModel.cardcode
           );
 
-          // 🔹 Map to consistent frontend keys
-          const formatted = filtered.map((inv) => ({
-            invoiceNo: inv.invoiceNo,
-            poNo: inv.poNo,
-            customer: inv.customer,
-            postingDate: inv.postingDate,
-            dueDate: inv.dueDate,
-            total: inv.total,
-            currency: inv.currency,
-            status: inv.status,
-            download: inv.download || "#",
+          // Mirror orders.jsx shape
+          const formatted = filtered.map((v) => ({
+            id: v.invoiceNo,            // ✅ display number used in URL (like orders)
+            invoiceNo: v.invoiceNo,
+            poNo: v.poNo,
+            customer: v.customer,
+            orderDate: v.postingDate,   // ✅ same key name style as orders.jsx
+            dueDate: v.dueDate,
+            total: v.total,
+            currency: v.currency,
+            status: v.status,
+            download: v.download || "#",
+            customerCode: v.customerCode,
+            docEntry: v.docEntry,
           }));
 
           setInvoices(formatted);
@@ -57,10 +58,10 @@ function InvoicesPage() {
     fetchInvoices();
   }, []);
 
-  // 🔹 Filter states
+  // 🔹 States for filters (same pattern as orders.jsx)
   const [statusFilter, setStatusFilter] = useState("all");
-  const [postStart, setPostStart] = useState(null);
-  const [postEnd, setPostEnd] = useState(null);
+  const [orderStart, setOrderStart] = useState(null);
+  const [orderEnd, setOrderEnd] = useState(null);
   const [dueStart, setDueStart] = useState(null);
   const [dueEnd, setDueEnd] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,28 +70,27 @@ function InvoicesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
-  // 🔹 Filtering logic
+  // 🔹 Filtering logic (copied from orders.jsx)
   const filteredInvoices = invoices.filter((inv) => {
-    const postingDate = new Date(inv.postingDate);
-    const dueDate = new Date(inv.dueDate);
+    const orderDate = new Date((inv.orderDate || "").replace(/-/g, "/"));
+    const dueDate = new Date((inv.dueDate || "").replace(/-/g, "/"));
 
-    if (statusFilter !== "all" && inv.status !== statusFilter) return false;
-    if (postStart && postingDate < postStart) return false;
-    if (postEnd && postingDate > postEnd) return false;
+    if (statusFilter && statusFilter !== "all" && inv.status !== statusFilter) return false;
+    if (orderStart && orderDate < orderStart) return false;
+    if (orderEnd && orderDate > orderEnd) return false;
     if (dueStart && dueDate < dueStart) return false;
     if (dueEnd && dueDate > dueEnd) return false;
 
     if (
       searchQuery &&
       !(
-        inv.invoiceNo.toString().includes(searchQuery) ||
-        (inv.poNo && inv.poNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (inv.customer && inv.customer.toLowerCase().includes(searchQuery.toLowerCase()))
+        inv.id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (inv.poNo?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (inv.customer?.toLowerCase() || "").includes(searchQuery.toLowerCase())
       )
     ) {
       return false;
     }
-
     return true;
   });
 
@@ -108,10 +108,10 @@ function InvoicesPage() {
             <Package size={16} className="mr-1" /> {status}
           </span>
         );
-      case "Delivered":
+      case "Closed":
         return (
           <span className="flex items-center text-green-600">
-            <Truck size={16} className="mr-1" /> {status}
+            <Truck size={16} className="mr-1" /> Delivered
           </span>
         );
       case "In Transit":
@@ -127,59 +127,76 @@ function InvoicesPage() {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto space-y-6">
-      {/* 🔹 Filters */}
+      {/* 🔹 Filters (styled like orders.jsx) */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        {/* Left filters */}
         <div className="flex flex-wrap gap-4">
           {/* Status Dropdown */}
           <div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border rounded-lg px-2 py-1 text-xs text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border rounded-lg px-2 py-1 text-xs text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[10%]"
             >
               <option value="all">All Status</option>
               <option value="Open">Open</option>
-              <option value="Delivered">Delivered</option>
+              <option value="Closed">Delivered</option>
               <option value="In Transit">In Transit</option>
             </select>
           </div>
 
-          {/* Posting Date */}
+          {/* Posting (Order) Dates */}
           <div className="flex items-center gap-2">
             <label className="text-xs">Posting Date:</label>
-            <DatePicker
-              selected={postStart}
-              onChange={(date) => setPostStart(date)}
-              placeholderText="From"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <DatePicker
-              selected={postEnd}
-              onChange={(date) => setPostEnd(date)}
-              placeholderText="To"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+
+            <div className="relative">
+              <DatePicker
+                selected={orderStart}
+                onChange={(date) => setOrderStart(date)}
+                placeholderText="From"
+                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+              />
+              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            </div>
+
+            <div className="relative">
+              <DatePicker
+                selected={orderEnd}
+                onChange={(date) => setOrderEnd(date)}
+                placeholderText="To"
+                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+              />
+              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            </div>
           </div>
 
-          {/* Due Date */}
+          {/* Due Dates */}
           <div className="flex items-center gap-2">
             <label className="text-xs">Due Date:</label>
-            <DatePicker
-              selected={dueStart}
-              onChange={(date) => setDueStart(date)}
-              placeholderText="From"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <DatePicker
-              selected={dueEnd}
-              onChange={(date) => setDueEnd(date)}
-              placeholderText="To"
-              className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+
+            <div className="relative">
+              <DatePicker
+                selected={dueStart}
+                onChange={(date) => setDueStart(date)}
+                placeholderText="From"
+                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+              />
+              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            </div>
+
+            <div className="relative">
+              <DatePicker
+                selected={dueEnd}
+                onChange={(date) => setDueEnd(date)}
+                placeholderText="To"
+                className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
+              />
+              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            </div>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Right Search Bar */}
         <div className="relative w-full md:w-64">
           <Search size={16} className="text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
           <input
@@ -210,42 +227,22 @@ function InvoicesPage() {
           </thead>
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
-              currentInvoices.map((inv) => (
-                <tr key={inv.invoiceNo} className="even:bg-gray-50 text-center">
-                 <td className="px-4 py-2 text-blue-600 hover:underline">
-                <Link 
-                  to={`/invoices/${inv.invoiceNo}`} 
-                                  state={{
-                  invoice: {
-                    id: inv.invoiceNo,
-                    ponum: inv.poNo,
-                    customer: inv.customer,
-                    invoiceDate: inv.postingDate,
-                    dueDate: inv.dueDate,
-                    status: inv.status,
-                    currency: inv.currency,
-                    items: inv.items || [],       // fallback if items are missing
-                    discount: inv.discount || 0,
-                    vat: inv.vat || 0,
-                    billTo: inv.billTo || "",
-                    shipTo: inv.shipTo || ""
-                  }
-                }}
-                // ✅ pass invoice object to details page
-                >
-                  {inv.invoiceNo}
-                </Link>
-               </td>
-
-                  <td className="px-4 py-2">{inv.customer}</td>
-                  <td className="px-4 py-2">{inv.poNo}</td>
-                  <td className="px-4 py-2">{inv.postingDate}</td>
-                  <td className="px-4 py-2">{inv.dueDate}</td>
-                  <td className="px-4 py-2">{inv.total}</td>
-                  <td className="px-4 py-2">{inv.currency}</td>
-                  <td className="px-4 py-2">{renderStatus(inv.status)}</td>
+              currentInvoices.map((invoice) => (
+                <tr key={invoice.id} className="even:bg-gray-50 text-center">
+                  <td className="px-4 py-2 text-blue-600 hover:underline">
+                    <Link to={`/invoices/${invoice.id}?de=${invoice.docEntry}`}>
+                    {invoice.id}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2">{invoice.customer}</td>
+                  <td className="px-4 py-2">{invoice.poNo}</td>
+                  <td className="px-4 py-2">{invoice.orderDate}</td>
+                  <td className="px-4 py-2">{invoice.dueDate}</td>
+                  <td className="px-4 py-2">{invoice.total}</td>
+                  <td className="px-4 py-2">{invoice.currency}</td>
+                  <td className="px-4 py-2">{renderStatus(invoice.status)}</td>
                   <td className="px-4 py-2 flex justify-center">
-                    <a href={inv.download} target="_blank" rel="noopener noreferrer">
+                    <a href={invoice.download} target="_blank" rel="noopener noreferrer">
                       <img
                         src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
                         alt="PDF"
@@ -268,8 +265,9 @@ function InvoicesPage() {
         </table>
       </div>
 
-      {/* 🔹 Pagination */}
+      {/* 🔹 Pagination (same style as orders.jsx) */}
       <div className="flex justify-center items-center gap-2 mt-4">
+        {/* Prev */}
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
@@ -278,18 +276,31 @@ function InvoicesPage() {
           Prev
         </button>
 
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i + 1}
-            onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded text-xs ${
-              currentPage === i + 1 ? "bg-blue-500 text-white" : ""
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
+        {/* Always show page 1 */}
+        <button
+          onClick={() => setCurrentPage(1)}
+          className={`px-3 py-1 border rounded text-xs ${
+            currentPage === 1 ? "bg-blue-500 text-white" : ""
+          }`}
+        >
+          1
+        </button>
 
+        {/* Show page 2+ only if needed */}
+        {totalPages > 1 &&
+          Array.from({ length: totalPages - 1 }, (_, i) => (
+            <button
+              key={i + 2}
+              onClick={() => setCurrentPage(i + 2)}
+              className={`px-3 py-1 border rounded text-xs ${
+                currentPage === i + 2 ? "bg-blue-500 text-white" : ""
+              }`}
+            >
+              {i + 2}
+            </button>
+          ))}
+
+        {/* Next */}
         <button
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
