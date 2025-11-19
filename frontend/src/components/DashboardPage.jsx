@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   ShoppingCart,
   ClockAlert,
@@ -13,92 +14,208 @@ import {
   Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { formatDate } from "../utils/formatDate";
-
-const purchasesData = [
-  { month: "Oct", amount: 1200 },
-  { month: "Nov", amount: 1500 },
-  { month: "Dec", amount: 1800 },
-  { month: "Jan", amount: 2000 },
-  { month: "Feb", amount: 1750 },
-  { month: "Mar", amount: 2200 },
-  { month: "Apr", amount: 1900 },
-  { month: "May", amount: 2500 },
-  { month: "Jun", amount: 2300 },
-  { month: "Jul", amount: 2100 },
-  { month: "Aug", amount: 2600 },
-  { month: "Sep", amount: 2400 },
-];
+// import { formatDate } from "../utils/formatDate";
 
 function DashboardPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Cards
   const [totalCount, setTotalCount] = useState(0);
+  const [pastDueAmt, setPastDueAmt] = useState(0);          // from invoices
+  const [dueSoonAmt, setDueSoonAmt] = useState(0);          // from orders
+  const [totalOutstandingAmt, setTotalOutstandingAmt] = useState(0); // from OCRD.Balance
+
+  // Tables & chart
   const [recentOrders, setRecentOrders] = useState([]);
+  const [outstanding, setOutstanding] = useState([]);
+  const [purchasesData, setPurchasesData] = useState([]);
 
-  useEffect(() => {
-  const fetchOrders = async () => {
+  // CONFIG for "Due Soon" from orders
+  const DUE_SOON_DAYS = 60;              // change to 30/90/etc.
+  const USE_CALENDAR_MODE = false;       // set true to include until end of next month
 
-    // fetch company code (start)
-    var user = localStorage.getItem("user");
-    if(!user){
-      user = sessionStorage.getItem("user");
-    }
-    var userModel = JSON.parse(user);
-    // fetch company code (end)
-
-
-    try {
-      const res = await axios.get("http://127.0.0.1:8000/api/sap/orders");
-
-      
-      if (res.data && res.data.data) {
-        // 🔹 Transform API keys to match frontend field names if needed
-
-        const filtered = res.data.data.filter(
-          (o) => o.customerCode === userModel.cardcode  // 🔹 Only include orders for this company
-        );
-
-
-         const formatted = filtered.map((o) => ({
-          id: o.salesNo,
-          poNo: o.poNo,
-          customer: o.customer,
-          orderDate: o.orderDate,
-          dueDate: o.dueDate,
-          total: o.total,
-          currency: o.currency,
-          status: o.status,
-          download: o.download,
-
-        }));
-        setOrders(formatted);
-        setTotalCount(formatted.length); 
+  // Helpers
+  const fmtMYR = (v, ccy = "MYR") =>
+    new Intl.NumberFormat("en-MY", { style: "currency", currency: ccy }).format(
+      Number(v || 0)
+    );
 
   
-        const sorted = [...formatted].sort(
-          (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
-        );
+    const shortMonth = (d) => d.toLocaleString("en-GB", { month: "short" });
+  const ymKey = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const toNumber = (v) =>
+    Number(String(v ?? 0).toString().replace(/[^0-9.-]/g, "")) || 0;
 
-        // ✅ Take only 4 latest
-        const latestFour = sorted.slice(0, 4);
-        setRecentOrders(latestFour);
-
-      }
-      console.log(res);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-    } finally {
-      setLoading(false);
-    }
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const endOfNextMonth = (fromDate) => {
+    const y = fromDate.getFullYear();
+    const m = fromDate.getMonth();
+    const lastDay = new Date(y, m + 2, 0);
+    return new Date(lastDay.getFullYear(), lastDay.getMonth(), lastDay.getDate(), 23, 59, 59, 999);
   };
 
-  fetchOrders();
-}, []);
+  const buildMonthlySeries = (orderRows) => {
+    const now = new Date();
+    const months = [];
+    const bucket = new Map();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ label: shortMonth(d), key: ymKey(d) });
+      bucket.set(ymKey(d), 0);
+    }
+    for (const row of orderRows) {
+      if (!row.orderDate) continue;
+      const d = new Date(String(row.orderDate).replace(/-/g, "/"));
+      if (isNaN(d)) continue;
+      const key = ymKey(new Date(d.getFullYear(), d.getMonth(), 1));
+      if (bucket.has(key)) bucket.set(key, bucket.get(key) + toNumber(row.total));
+    }
+    return months.map(({ label, key }) => ({ month: label, amount: bucket.get(key) || 0 }));
+  };
+
+  useEffect(() => {
+      const fetchEverything = async () => {
+        let user = localStorage.getItem("user") || sessionStorage.getItem("user");
+        const userModel = JSON.parse(user || "{}");
+        const cardcode = userModel.cardcode;
+  
+        try {
+          // ---- fetch in parallel ----
+          const [ordersRes, invoicesRes, bpRes] = await Promise.allSettled([
+            axios.get("http://127.0.0.1:8000/api/sap/orders"),
+            axios.get("http://127.0.0.1:8000/api/sap/invoices"),
+            cardcode
+              ? axios.get(`http://127.0.0.1:8000/api/sap/business-partners/${encodeURIComponent(cardcode)}`)
+              : Promise.resolve({ status: "fulfilled", value: { data: null } }),
+          ]);
+  
+          // -------- ORDERS → count, recent, chart, due soon --------
+          if (ordersRes.status === "fulfilled" && ordersRes.value?.data?.data) {
+            const filtered = ordersRes.value.data.data.filter(
+              (o) => o.customerCode === cardcode
+            );
+  
+            const formatted = filtered.map((o) => ({
+              id: o.salesNo,
+              poNo: o.poNo,
+              customer: o.customer,
+              orderDate: o.orderDate,
+              dueDate: o.dueDate,
+              total: o.total,
+              currency: o.currency,
+              status: o.status,
+              download: o.download,
+              docEntry: o.docEntry,
+            }));
+  
+            setOrders(formatted);
+            setTotalCount(formatted.length);
+  
+            const sorted = [...formatted].sort(
+              (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
+            );
+            setRecentOrders(sorted.slice(0, 4));
+            setPurchasesData(buildMonthlySeries(formatted));
+  
+            // Due Soon (Open orders due within window)
+            const today = startOfDay(new Date());
+            const cutoff = USE_CALENDAR_MODE
+              ? endOfNextMonth(today)
+              : new Date(today.getTime() + DUE_SOON_DAYS * 24 * 60 * 60 * 1000);
+  
+            const dueSoonTotal = formatted
+              .filter((o) => {
+                const open = (o.status || "").toLowerCase().trim() === "open";
+                if (!open || !o.dueDate) return false;
+                const d = new Date(String(o.dueDate).replace(/-/g, "/"));
+                if (isNaN(d)) return false;
+                return d >= today && d <= cutoff;
+              })
+              .reduce((sum, o) => sum + toNumber(o.total), 0);
+  
+            setDueSoonAmt(dueSoonTotal);
+          }
+  
+          // -------- INVOICES → past due + outstanding table --------
+          let openInvoices = [];
+          if (invoicesRes.status === "fulfilled" && invoicesRes.value?.data?.data) {
+            openInvoices = invoicesRes.value.data.data
+              .filter((v) => v.customerCode === cardcode)
+              .map((v) => {
+                const docTotal   = toNumber(v.total ?? v.DocTotal ?? 0);
+                const paidToDate = toNumber(v.paidToDate ?? v.PaidToDate ?? 0);
+                const remaining  = Math.max(0, docTotal - paidToDate);
+                return {
+                  id: v.invoiceNo,
+                  docEntry: v.docEntry,
+                  status: v.status,
+                  dueDate: v.dueDate,
+                  currency: v.currency || "MYR",
+                  total: docTotal,
+                  paidToDate,
+                  remaining,
+                };
+              });
+  
+            // Past Due = sum remaining where Open and dueDate < today
+            const today = startOfDay(new Date());
+            const pastDue = openInvoices
+              .filter((inv) => {
+                if ((inv.status || "").toLowerCase().trim() !== "open") return false;
+                if (!inv.dueDate) return false;
+                const d = new Date(String(inv.dueDate).replace(/-/g, "/"));
+                if (isNaN(d) || inv.remaining <= 0) return false;
+                return d < today;
+              })
+              .reduce((sum, inv) => sum + inv.remaining, 0);
+            setPastDueAmt(pastDue);
+  
+            // Outstanding table (top 4 by nearest due)
+            const outstandingRows = openInvoices
+              .filter((inv) => (inv.status || "").toLowerCase().trim() === "open" && inv.remaining > 0 && inv.dueDate)
+              .sort(
+                (a, b) =>
+                  new Date(a.dueDate.replace(/-/g, "/")) -
+                  new Date(b.dueDate.replace(/-/g, "/"))
+              )
+              .slice(0, 4)
+              .map((inv) => ({
+                id: inv.id,
+                docEntry: inv.docEntry,
+                dueDate: inv.dueDate,
+                total: inv.remaining,
+                currency: inv.currency,
+              }));
+            setOutstanding(outstandingRows);
+          }
+  
+          // -------- TOTAL OUTSTANDING from OCRD.Balance --------
+          if (bpRes.status === "fulfilled" && bpRes.value?.data?.data) {
+            const bal = toNumber(bpRes.value.data.data.balance);
+            setTotalOutstandingAmt(bal);
+          } else {
+            // Fallback: sum remaining of all open invoices
+            const fallback = openInvoices
+              .filter((inv) => (inv.status || "").toLowerCase().trim() === "open")
+              .reduce((sum, inv) => sum + inv.remaining, 0);
+            setTotalOutstandingAmt(fallback);
+          }
+        } catch (err) {
+          console.error("Error fetching dashboard data:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+  
+      fetchEverything();
+    }, []);
+
+  
 
   return (
     <div className="space-y-6">
@@ -115,26 +232,26 @@ function DashboardPage() {
             },
             {
               title: "Past Due",
-              value: "RM 2299.65",
+              value: fmtMYR(pastDueAmt),
               icon: <ClockAlert size={30} color="black" />,
               bg: "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
             },
             {
               title: "Due Soon",
-              value: "RM 369.22",
+              value: fmtMYR(dueSoonAmt),
               icon: <ClockFading size={30} color="black" />,
               bg: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
             },
             {
               title: "Total Outstanding",
-              value: "RM 1,568.50",
+              value: fmtMYR(totalOutstandingAmt),
               icon: <Flag size={30} color="black" />,
               bg: "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)",
             },
           ].map((card) => (
             <div
               key={card.title}
-              className="bg-white p-5 rounded-xl shadow-md w-full h-32"
+              className="bg-white p-5 rounded-xl w-full h-32"
               style={{ background: card.bg }}
             >
               <div className="flex flex-col h-full justify-between">
@@ -151,8 +268,8 @@ function DashboardPage() {
           ))}
         </div>
 
-        {/* Right side - Chart */}
-<div className="bg-white p-4 rounded-xl shadow-md overflow-hidden">
+        {/* Right side - Chart (from orders) */}
+<div className="bg-white p-4 rounded-md border overflow-hidden">
   <h3 className="text-sm mb-4">Your Purchases in the Last 12 Months</h3>
   <div style={{ width: "100%", height: 200 }}>
   <ResponsiveContainer width="100%" height="100%">
@@ -161,11 +278,23 @@ function DashboardPage() {
       margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
     >
       {/* <CartesianGrid strokeDasharray="3 3" /> */}
-      <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} tickLine={false}/>
-      <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false}/>
+      <XAxis 
+        dataKey="month" 
+        tick={{ fontSize: 12 }}
+        axisLine={false} 
+        tickLine={false}/>
+      <YAxis 
+        tick={{ fontSize: 12 }} 
+        axisLine={false} 
+        tickLine={false}/>
       <Tooltip
-        formatter={(value) => `RM ${value}`}
-        contentStyle={{ fontSize: "14px" }} // prevents layout shift
+        formatter={(value) =>
+                    new Intl.NumberFormat("en-MY", {
+                      style: "currency",
+                      currency: "MYR",
+                    }).format(Number(value))
+                  }
+                  contentStyle={{ fontSize: "14px" }}
       />
       <Line
         type="monotone"
@@ -187,7 +316,7 @@ function DashboardPage() {
       {/* Row 2 - Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Orders */}
-        <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
+        <div className="bg-white p-6 rounded-md overflow-x-auto border">
           <h3 className="text-lg mb-4">Recent Orders</h3>
           <div className="min-w-[400px]">
             <table className="table-auto w-full border-collapse">
@@ -202,7 +331,7 @@ function DashboardPage() {
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
                       <td className="px-4 py-2">{order.id}</td>
-                      <td className="px-4 py-2">{formatDate(order.orderDate)}</td>
+                      <td className="px-4 py-2">{new Date(order.orderDate).toLocaleDateString("en-GB")}</td>
                       <td className="px-4 py-2 flex items-center gap-2">
                         {order.status.toLowerCase() === "delivered" ? (
                           <span className="text-green-600 flex items-center gap-1">
@@ -222,8 +351,8 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* Outstanding Payments */}
-        <div className="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
+        {/* Outstanding Payments *from invoices) */}
+        <div className="bg-white p-6 rounded-md border overflow-x-auto">
           <h3 className="text-lg mb-4">Outstanding Payments</h3>
           <div className="min-w-[400px]">
             <table className="table-auto w-full border-collapse">
@@ -235,16 +364,36 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="text-xs">
+                {outstanding.length ? (
+                outstanding.map((inv) => (
+                  <tr key={inv.id}>
+                    <td className="px-4 py-2">
+                      <Link
+                        to={`/invoices/${inv.id}?de=${inv.docEntry}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {inv.id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2">
+                      {inv.dueDate
+                        ? new Date(
+                            inv.dueDate.replace(/-/g, "/")
+                          ).toLocaleDateString("en-GB")
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-2">
+                      {fmtMYR(inv.total, inv.currency)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td className="px-4 py-2">1001</td>
-                  <td className="px-4 py-2">25-08-2025</td>
-                  <td className="px-4 py-2">RM 3,800</td>
+                  <td colSpan={3} className="px-4 py-2 text-gray-500">
+                    {loading ? "Loading…" : "No outstanding invoices"}
+                  </td>
                 </tr>
-                <tr>
-                  <td className="px-4 py-2">1002</td>
-                  <td className="px-4 py-2">24-07-2025</td>
-                  <td className="px-4 py-2">RM 380</td>
-                </tr>
+              )}
               </tbody>
             </table>
           </div>

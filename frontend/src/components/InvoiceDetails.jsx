@@ -1,67 +1,139 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import API from "../services/api";
+import axios from "axios";
+import { Receipt, FileCheck } from "lucide-react";
+
+/* -------- Reusable Status Badge (same as OrderDetails) -------- */
+const StatusBadge = ({ status }) => {
+  const statusConfig = {
+    Open: {
+      label: "Open",
+      icon: <Receipt size={14} className="mr-1" />,
+      style: {
+        background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
+        color: "#007edf",
+      },
+    },
+    Closed: {
+      label: "Delivered",
+      icon: <FileCheck size={14} className="mr-1" />,
+      style: {
+        background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
+        color: "#16aa3dff",
+      },
+    },
+  };
+
+  const cfg = statusConfig[status] || statusConfig.Open;
+
+  return (
+    <span
+      className="inline-flex items-center rounded-xl px-2 text-xs font-medium"
+      style={cfg.style}
+    >
+      {cfg.icon}
+      {cfg.label}
+    </span>
+  );
+};
 
 function InvoiceDetails() {
-  const { id } = useParams();  // invoiceNo in the path
+  const { id } = useParams();
   const location = useLocation();
-  const docEntryQP = new URLSearchParams(location.search).get("de"); // docEntry in query param
+  const docEntryQP = new URLSearchParams(location.search).get("de");
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchFromDetails = async (docEntry, header) => {
-      try {
-        const det = await API.get(`/sap/invoices/${docEntry}/details`);
-        const payload = det.data?.data;
+  // Address states
+  const [bpAddresses, setBpAddresses] = useState({ shipTo: [], billTo: [], defaults: {} });
+  const [shipToFull, setShipToFull] = useState("");
+  const [billToFull, setBillToFull] = useState("");
 
-        // Log the response to ensure data is being received
-        console.log("Fetched Invoice Details:", payload);  // Debug log here
+  const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+
+  /* -------- Address Formatting (same as OrderDetails) -------- */
+  const formatAddress = (a, labelOverride) => {
+    if (!a) return "";
+    const firstLine = labelOverride || a.AddressName || "";
+    const lines = [
+      firstLine,
+      [a.Building, a.Street].filter(Boolean).join(", "),
+      [a.ZipCode, a.City].filter(Boolean).join(" "),
+      [a.County, a.Country].filter(Boolean).join(", "),
+    ].filter(Boolean);
+
+    return lines.join("\n");
+  };
+
+  const fetchBpAddresses = async (cardCode) => {
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const res = await axios.get(
+        `${apiUrl}/api/sap/business-partners/${encodeURIComponent(cardCode)}/addresses`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.status === "success") {
+        const pack = {
+          shipTo: res.data.shipTo || [],
+          billTo: res.data.billTo || [],
+          defaults: res.data.defaults || {},
+        };
+        setBpAddresses(pack);
+        return pack;
+      }
+    } catch (e) {
+      console.error("BP address fetch failed:", e);
+    }
+    const fallback = { shipTo: [], billTo: [], defaults: {} };
+    setBpAddresses(fallback);
+    return fallback;
+  };
+
+  const setResolvedAddresses = (headerLike, bpAddr) => {
+    const shipCode = headerLike?.shipTo || bpAddr.defaults?.shipTo || "";
+    const billCode = headerLike?.billTo || bpAddr.defaults?.billTo || "";
+
+    const shipObj =
+      bpAddr.shipTo.find((x) => x.AddressName === shipCode) ||
+      bpAddr.shipTo.find((x) => x.IsDefault) ||
+      bpAddr.shipTo[0];
+
+    const billObj =
+      bpAddr.billTo.find((x) => x.AddressName === billCode) ||
+      bpAddr.billTo.find((x) => x.IsDefault) ||
+      bpAddr.billTo[0];
+
+    setShipToFull(formatAddress(shipObj, "Ship To"));
+    setBillToFull(formatAddress(billObj, "Bill To"));
+  };
+
+  /* -------- Fetch Invoice + Items -------- */
+  useEffect(() => {
+    const fetchItems = async (docEntry, header) => {
+      try {
+        const res = await API.get(`/sap/invoices/${docEntry}/details`);
+        const payload = res.data?.data;
 
         let items = [];
+
         if (payload?.DocumentLines?.length) {
-          // Map the items to display the code and description
           items = payload.DocumentLines.map((line, idx) => ({
             no: idx + 1,
-            itemCode: line.ItemCode || "-",
-            description: line.ItemDescription || "-",
-            qty: Number(line.Quantity || 0),
-            price: Number(line.Price || 0),
-            total: Number(line.LineTotal || 0),
+            itemCode: line.ItemCode,
+            itemName: line.ItemDescription,
+            qty: Number(line.Quantity),
+            price: Number(line.Price),
+            total: Number(line.LineTotal),
           }));
         }
 
-        if (!items.length) {
-          items = [
-            {
-              no: 1,
-              itemCode: "-",
-              description: "Item details not available",
-              qty: 1,
-              price: Number(header.total || 0),
-              total: Number(header.total || 0),
-            },
-          ];
-        }
-
-        const updatedInvoice = { ...(header || {}), items };
-        setInvoice(updatedInvoice);
-
-        console.log("Updated Invoice State:", updatedInvoice); // Debug log after state update
+        setInvoice({ ...header, items });
       } catch (e) {
         console.error("Details fetch failed:", e);
-        setInvoice((prev) => ({
-          ...(prev || {}),
-          items: [
-            {
-              no: 1,
-              itemCode: "-",
-              description: "Item details not available",
-            },
-          ],
-        }));
       }
     };
 
@@ -69,87 +141,45 @@ function InvoiceDetails() {
       try {
         setLoading(true);
 
-        // current user for company filter
-        const userStr =
-          localStorage.getItem("user") || sessionStorage.getItem("user");
+        const userStr = localStorage.getItem("user") || sessionStorage.getItem("user");
         const userModel = JSON.parse(userStr || "{}");
 
-        const buildHeader = (found) => ({
-          invoiceNo: found.invoiceNo,
-          poNo: found.poNo || "-",
-          customer: found.customer || "-",
-          postingDate: found.postingDate || found.orderDate || "-",
-          dueDate: found.dueDate || "-",
-          status: found.status || "Open",
-          currency: found.currency || "RM",
-          billTo: found.billTo || "",
-          shipTo: found.shipTo || "",
-          discount: found.discount || 0,
-          vat: found.vat || 0,
-          total: found.total || 0,
-          docEntry: found.docEntry || null,
-          items: [],
-        });
-
-        if (docEntryQP) {
-          const listRes = await API.get(`/sap/invoices`);
-          const list = (listRes.data?.data || []).filter(
-            (v) => v.customerCode === userModel.cardcode
-          );
-          const foundHeader = list.find(
-            (v) => v.invoiceNo?.toString() === id?.toString()
-          );
-          const header = buildHeader(
-            foundHeader || {
-              invoiceNo: id,
-              poNo: "-",
-              customer: "-",
-              postingDate: "-",
-              dueDate: "-",
-              status: "Open",
-              currency: "RM",
-              total: 0,
-              docEntry: docEntryQP,
-            }
-          );
-          setInvoice(header);
-
-          await fetchFromDetails(docEntryQP, header);
-          return;
-        }
-
-        const res = await API.get(`/sap/invoices`);
-        const list = (res.data?.data || []).filter(
+        const listRes = await API.get(`/sap/invoices`);
+        const list = (listRes.data?.data || []).filter(
           (v) => v.customerCode === userModel.cardcode
         );
-        const found = list.find(
-          (v) => v.invoiceNo?.toString() === id?.toString()
-        );
+
+        const found = list.find((v) => v.invoiceNo?.toString() === id.toString());
 
         if (!found) {
           setError("Invoice not found or does not belong to your company.");
           return;
         }
 
-        const header = buildHeader(found);
+        const header = {
+          invoiceNo: found.invoiceNo,
+          poNo: found.poNo,
+          postingDate: found.postingDate,
+          dueDate: found.dueDate,
+          status: found.status,
+          currency: found.currency || "RM",
+          billTo: found.billTo,
+          shipTo: found.shipTo,
+          discount: Number(found.discount || 0),
+          vat: Number(found.vat || 0),
+          total: Number(found.total || 0),
+        };
+
         setInvoice(header);
 
+        const pack = await fetchBpAddresses(userModel.cardcode);
+        setResolvedAddresses(header, pack);
+
         if (found.docEntry) {
-          await fetchFromDetails(found.docEntry, header);
-        } else {
-          setInvoice((prev) => ({
-            ...(prev || header),
-            items: [
-              {
-                no: 1,
-                itemCode: "-",
-                description: "Item details not available",
-              },
-            ],
-          }));
+          await fetchItems(found.docEntry, header);
         }
-      } catch (err) {
-        console.error("Error fetching invoice:", err);
+      } catch (e) {
+        console.log("Error invoice fetch:", e);
         setError("Failed to load invoice details.");
       } finally {
         setLoading(false);
@@ -157,110 +187,96 @@ function InvoiceDetails() {
     };
 
     fetchInvoice();
-  }, [id, docEntryQP]);
+  }, [id, docEntryQP, apiUrl]);
 
-  if (loading) {
-    return (
-      <div className="p-6 text-gray-500 font-medium">
-        Loading invoice details...
-      </div>
-    );
-  }
+  if (loading) return <p className="p-6 text-gray-500">Loading invoice...</p>;
+  if (error) return <p className="p-6 text-red-600">{error}</p>;
+  if (!invoice) return <p className="p-6 text-gray-500">Invoice not found</p>;
 
-  if (error) {
-    return <div className="p-6 text-red-600 font-semibold">{error}</div>;
-  }
+  const subtotal = invoice.items?.reduce(
+    (sum, item) => sum + item.qty * item.price,
+    0
+  );
 
-  if (!invoice) {
-    return (
-      <div className="p-6 text-red-600 font-semibold">⚠️ Invoice not found</div>
-    );
-  }
-
-  const subtotal =
-    invoice.items?.reduce(
-      (sum, item) => sum + Number(item.qty) * Number(item.price),
-      0
-    ) || 0;
-  const finalTotal = subtotal - (invoice.discount || 0) + (invoice.vat || 0);
-
-  const renderStatus = (status) => {
-    switch (status) {
-      case "Open":
-        return <span className="text-blue-600">Open</span>;
-      case "Closed":
-      case "Delivered":
-        return <span className="text-green-600">Delivered</span>;
-      case "In Transit":
-        return <span className="text-orange-600">In Transit</span>;
-      default:
-        return status;
-    }
-  };
+  const finalTotal = subtotal - invoice.discount + invoice.vat;
 
   return (
-    <div className="p-6 space-y-8 bg-white rounded-xl shadow-md">
-      {/* Header */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+    <div className="px-16 py-2 space-y-8">
+
+      {/* -------- Header (Matches OrderDetails Layout) -------- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-xs">
+
+        {/* Left: Invoice Info */}
         <div className="space-y-1">
+          <h2 className="font-semibold text-sm">Invoice Details</h2>
+
           <p>
-            <span className="font-semibold">Invoice No:</span>{" "}
+            <span className="font-medium inline-block w-60">Invoice No:</span>
             {invoice.invoiceNo}
           </p>
+
           <p>
-            <span className="font-semibold">PO Number:</span> {invoice.poNo}
+            <span className="font-medium inline-block w-60">PO No:</span>
+            {invoice.poNo}
           </p>
+
           <p>
-            <span className="font-semibold">Invoice Date:</span>{" "}
+            <span className="font-medium inline-block w-60">Invoice Date:</span>
             {invoice.postingDate}
           </p>
+
           <p>
-            <span className="font-semibold">Due Date:</span> {invoice.dueDate}
+            <span className="font-medium inline-block w-60">Due Date:</span>
+            {invoice.dueDate}
           </p>
-          <p>
-            <span className="font-semibold">Status:</span>{" "}
-            {renderStatus(invoice.status)}
+
+          <p className="flex items-center">
+            <span className="font-medium inline-block w-60">Status:</span>
+            <StatusBadge status={invoice.status} />
           </p>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-sm">Bill To</h3>
-          <p className="text-xs">{invoice.billTo || "-"}</p>
+        {/* Right: Bill To + Ship To */}
+        <div className="flex justify-end gap-10">
+          <div className="w-60">
+            <h2 className="font-semibold text-sm mb-1">Bill To</h2>
+            <p className="text-xs whitespace-pre-line">{billToFull}</p>
+          </div>
+
+          <div className="w-60">
+            <h2 className="font-semibold text-sm mb-1">Ship To</h2>
+            <p className="text-xs whitespace-pre-line">{shipToFull}</p>
+          </div>
         </div>
 
-        <div>
-          <h3 className="font-semibold text-sm">Ship To</h3>
-          <p className="text-xs">{invoice.shipTo || "-"}</p>
-        </div>
       </div>
 
-      {/* Items */}
+      {/* -------- Items Table -------- */}
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 text-xs">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-3 py-2">No.</th>
-              <th className="border px-3 py-2">Item</th>
-              <th className="border px-3 py-2">Description</th>
-              <th className="border px-3 py-2">Qty</th>
-              <th className="border px-3 py-2">Price</th>
-              <th className="border px-3 py-2">Total</th>
+        <table className="min-w-full border-collapse mt-4 text-xs border-b border-gray-300">
+          <thead>
+            <tr className="text-left border-b border-gray-300">
+              <th>No.</th>
+              <th>Item Code</th>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
             </tr>
           </thead>
+
           <tbody>
-            {invoice.items?.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="border px-3 py-2 text-center">
-                  {item.no || index + 1}
+            {invoice.items?.map((item) => (
+              <tr key={item.no} className="text-xs">
+                <td>{item.no}</td>
+                <td>{item.itemCode}</td>
+                <td>{item.itemName}</td>
+                <td>{item.qty}</td>
+                <td>
+                  {invoice.currency} {item.price.toFixed(2)}
                 </td>
-                <td className="border px-3 py-2">{item.itemCode}</td>
-                <td className="border px-3 py-2">{item.description}</td>
-                <td className="border px-3 py-2 text-center">{item.qty}</td>
-                <td className="border px-3 py-2 text-right">
-                  {invoice.currency} {Number(item.price).toFixed(2)}
-                </td>
-                <td className="border px-3 py-2 text-right">
-                  {invoice.currency} {Number(item.total).toFixed(2)}
+                <td>
+                  {invoice.currency} {(item.qty * item.price).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -268,33 +284,29 @@ function InvoiceDetails() {
         </table>
       </div>
 
-      {/* Totals */}
-      <div className="max-w-sm ml-auto text-sm space-y-1">
+      {/* -------- Totals -------- */}
+      <div className="max-w-sm ml-auto text-xs">
         <div className="flex justify-between">
           <span>Subtotal:</span>
-          <span>
-            {invoice.currency} {subtotal.toFixed(2)}
-          </span>
+          <span>{invoice.currency} {subtotal.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between">
+
+        <div className="flex justify-between mt-1">
           <span>Discount:</span>
-          <span>
-            - {invoice.currency} {(invoice.discount || 0).toFixed(2)}
-          </span>
+          <span>- {invoice.currency} {invoice.discount.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between">
+
+        <div className="flex justify-between mt-1">
           <span>VAT:</span>
-          <span>
-            + {invoice.currency} {(invoice.vat || 0).toFixed(2)}
-          </span>
+          <span>+ {invoice.currency} {invoice.vat.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between font-semibold text-gray-800 border-t pt-2">
+
+        <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-300 pt-2 mt-2">
           <span>Final Amount:</span>
-          <span>
-            {invoice.currency} {finalTotal.toFixed(2)}
-          </span>
+          <span>{invoice.currency} {finalTotal.toFixed(2)}</span>
         </div>
       </div>
+
     </div>
   );
 }

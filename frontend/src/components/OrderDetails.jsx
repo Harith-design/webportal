@@ -1,166 +1,335 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import axios from "axios";
+import { PackageOpen, Truck} from "lucide-react";
+
+const StatusBadge = ({ status }) => {
+  const statusConfig = {
+    Open: {
+      label: "Open",
+      icon: <PackageOpen size={14} className="mr-1" />,
+      style: {
+        background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
+        color: "#007edf",
+      },
+    },
+    Closed: {
+      label: "Delivered",
+      icon: <Truck size={14} className="mr-1" />,
+      style: {
+        background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
+        color: "#16aa3dff",
+      },
+    },
+  };
+
+  const cfg = statusConfig[status] || statusConfig.Open;
+
+  return (
+    <span
+      className="inline-flex items-center rounded-xl px-2 text-xs font-medium"
+      style={cfg.style}
+    >
+      {cfg.icon}
+      {cfg.label}
+    </span>
+  );
+};
 
 function OrderDetails() {
   const { id } = useParams();
   const location = useLocation();
-  const type = new URLSearchParams(location.search).get("type") || "sales"; // default to sales
+  const searchParams = new URLSearchParams(location.search);
+
+  const type = searchParams.get("type") || "sales"; // "sales" or "invoice"
+  const docEntryFromQuery = searchParams.get("de"); // for sales
+  const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchOrder = async () => {
+  // Address state (same approach as OrderForm.jsx)
+    const [bpAddresses, setBpAddresses] = useState({ 
+      shipTo: [], 
+      billTo: [], 
+      defaults: {} 
+    });
+    const [shipToFull, setShipToFull] = useState("");
+    const [billToFull, setBillToFull] = useState("");
+  
+    // add labelOverride: if provided, it replaces the first line (AddressName)
+    const formatAddress = (a, labelOverride) => {
+      if (!a) return "";
+      const firstLine = labelOverride || a.AddressName || "";
+      const lines = [
+        firstLine,
+        [a.Building, a.Street].filter(Boolean).join(", "),
+        [a.ZipCode, a.City].filter(Boolean).join(" "),
+        [a.County, a.Country].filter(Boolean).join(", "),
+      ].filter(Boolean);
+      return lines.join("\n");
+    };
+  
+    // Fetch BP addresses for the current user company
+    const fetchBpAddresses = async (cardCode, token) => {
       try {
-        let user = localStorage.getItem("user") || sessionStorage.getItem("user");
-        const userModel = JSON.parse(user);
-
-        let endpoint = "";
-        if (type === "invoice") {
-          endpoint = `http://127.0.0.1:8000/api/sap/invoices/${id}`;
-        } else {
-          // 🔹 Get full list of sales orders like before
-          endpoint = `http://127.0.0.1:8000/api/sap/orders`;
+        const res = await axios.get(
+          `${apiUrl}/api/sap/business-partners/${encodeURIComponent(cardCode)}/addresses`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data?.status === "success") {
+          const { shipTo, billTo, defaults } = res.data;
+          const pack = { 
+            shipTo: shipTo || [], 
+            billTo: billTo || [], 
+            defaults: defaults || {} 
+          };
+          setBpAddresses(pack);
+          return pack;
         }
-
-        const res = await axios.get(endpoint);
-
-        if (res.data && res.data.data) {
-          let found;
-
-          if (type === "invoice") {
-            // Invoice API already returns single object
-            found = res.data.data;
-          } else {
-            // Sales Order API returns array — find the matching one
-            found = res.data.data.find(
-              (o) =>
-                o.salesNo.toString() === id.toString() &&
-                o.customerCode === userModel.cardcode
-            );
-          }
-
-          if (found) {
-            setOrder(found);
-          } else {
-            setError(
-              `${type === "invoice" ? "Invoice" : "Sales Order"} not found or does not belong to your company.`
-            );
-          }
-        } else {
-          setError(`No ${type} data received from SAP API.`);
-        }
-      } catch (err) {
-        console.error("Error fetching order:", err);
-        setError(`Failed to load ${type} details.`);
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error("Failed to fetch BP addresses:", e);
       }
+      const pack = { shipTo: [], billTo: [], defaults: {} };
+      setBpAddresses(pack);
+      return pack;
+    };
+  
+    // Resolve and set full address text for preview (with label override)
+    const setResolvedAddresses = (headerLike, bpAddr) => {
+      const shipCode = headerLike?.shipTo || bpAddr.defaults?.shipTo || "";
+      const billCode = headerLike?.billTo || bpAddr.defaults?.billTo || "";
+  
+      const shipObj =
+        bpAddr.shipTo.find((x) => x.AddressName === shipCode) ||
+        bpAddr.shipTo.find((x) => x.IsDefault) ||
+        bpAddr.shipTo[0];
+      const billObj =
+        bpAddr.billTo.find((x) => x.AddressName === billCode) ||
+        bpAddr.billTo.find((x) => x.IsDefault) ||
+        bpAddr.billTo[0];
+  
+      // Force the displayed header line, data stays the same
+      setShipToFull(formatAddress(shipObj, "Ship To"));
+      setBillToFull(formatAddress(billObj, "Bill To"));
     };
 
-    fetchOrder();
-  }, [id, type]);
+    useEffect(() => {
+      const fetchOrder = async () => {
+            try {
+              setLoading(true);
+      
+              const userStr =
+                localStorage.getItem("user") || sessionStorage.getItem("user");
+              const userModel = JSON.parse(userStr || "{}");
+              const token =
+                localStorage.getItem("token") || sessionStorage.getItem("token");
+              const headers = token
+                ? { headers: { Authorization: `Bearer ${token}` } }
+                : {};
+      
+              if (!userModel.cardcode) {
+                setError("User company not found.");
+                return;
+              }
+      
+              let headerLike = {};
+              let fullOrder = null;
+      
+              if (type === "invoice") {
+                // ------------ INVOICE DETAILS ------------
+                const res = await axios.get(
+                  `${apiUrl}/api/sap/invoices/${id}/details`,
+                  headers
+                );
+                if (!res.data || !res.data.data) {
+                  setError("No invoice data received from SAP API.");
+                  return;
+                }
+                fullOrder = res.data.data;
+      
+                headerLike = {
+                  shipTo: fullOrder.ShipToCode,
+                  billTo: fullOrder.PayToCode,
+                };
+              } else {
+                // ------------ SALES ORDER DETAILS ------------
+                const docEntry = docEntryFromQuery || id; // prefer ?de=, fallback id
+                if (!docEntry) {
+                  setError("Missing sales order DocEntry.");
+                  return;
+                }
+      
+                const res = await axios.get(
+                  `${apiUrl}/api/sap/orders/${docEntry}`,
+                  headers
+                );
+                if (!res.data || !res.data.data) {
+                  setError("No sales order data received from SAP API.");
+                  return;
+                }
+      
+                fullOrder = res.data.data;
+      
+                headerLike = {
+                  shipTo: fullOrder.ShipToCode,
+                  billTo: fullOrder.PayToCode,
+                };
+              }
+      
+              setOrder(fullOrder);
+      
+              const bpAddr = await fetchBpAddresses(userModel.cardcode, token);
+              setResolvedAddresses(headerLike, bpAddr);
+            } catch (err) {
+              console.error("Error fetching order:", err);
+              setError(`Failed to load ${type} details.`);
+            } finally {
+              setLoading(false);
+            }
+          };
+      
+          fetchOrder();
+        }, [id, type, apiUrl, docEntryFromQuery]);
 
   if (loading) return <p className="p-6 text-gray-500">Loading {type} details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
   if (!order) return <p className="p-6 text-gray-500">No {type} found.</p>;
 
-  // Map items
+  const currency = order.DocCurrency || order.currency || "MYR";
+
+  const statusText =
+    order.DocumentStatus === "bost_Open" || order.status === "Open"
+      ? "Open"
+      : order.status || "Closed";
+
+  const orderDateDisplay =
+    order.orderDate ||
+    order.postingDate ||
+    (order.DocDate ? order.DocDate.substring(0, 10) : "-");
+
+  const dueDateDisplay =
+    order.dueDate ||
+    (order.DocDueDate ? order.DocDueDate.substring(0, 10) : "-");
+
+  const salesNoDisplay = order.DocNum || order.salesNo || "-";
+  const invoiceNoDisplay = order.DocNum || order.invoiceNo || "-";
+
+  // ---------- Items ----------
+  let rawItems = [];
+
+  if (type === "invoice" && Array.isArray(order.DocumentLines)) {
+    rawItems = order.DocumentLines.map((line, index) => ({
+      no: index + 1,
+      itemCode: line.ItemCode || "-",
+      itemName: line.ItemDescription || line.Text || "-",
+      qty: Number(line.Quantity ?? 0),
+      price: Number(line.UnitPrice ?? line.Price ?? 0),
+    }));
+  } else if (Array.isArray(order.Lines) && order.Lines.length) {
+    rawItems = order.Lines.map((line, index) => ({
+      no: index + 1,
+      itemCode: line.ItemCode || "-",
+      itemName: line.ItemName || line.Description || "-",
+      qty: Number(line.Quantity ?? 0),
+      price: Number(line.UnitPrice ?? line.Price ?? 0),
+    }));
+  } else if (Array.isArray(order.DocumentLines) && order.DocumentLines.length) {
+    // in case backend only sends raw DocumentLines
+    rawItems = order.DocumentLines.map((line, index) => ({
+      no: index + 1,
+      itemCode: line.ItemCode || "-",
+      itemName: line.ItemDescription || line.Text || "-",
+      qty: Number(line.Quantity ?? 0),
+      price: Number(line.UnitPrice ?? line.Price ?? 0),
+    }));
+  }
+
   const items =
-    order.items && order.items.length
-      ? order.items.map((item, index) => ({
-          no: index + 1,
-          itemCode: item.itemCode || "-",
-          itemName: item.itemName || "-",
-          qty: item.quantity || 0,
-          price: item.price || 0,
-        }))
+    rawItems && rawItems.length
+      ? rawItems
       : [
           {
             no: 1,
             itemCode: "-",
             itemName: "Item details not available",
             qty: 1,
-            price: order.total || 0,
+            price: Number(order.DocTotal || order.total || 0),
           },
         ];
 
   const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  const discount = order.discount || 0;
-  const vat = order.vat || 0;
+  const discount = Number(order.discount || 0);
+  const vat = Number(order.vat || 0);
   const finalTotal = subtotal - discount + vat;
 
   return (
-    <div className="p-6 space-y-8 bg-white rounded-xl shadow-md">
+    <div className="px-16 py-2 space-y-8">
       {/* Order Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-        <div className="space-y-1">
-          <p>
-            <span className="font-semibold">{type === "invoice" ? "Invoice No:" : "Sales No:"}</span>{" "}
-            {type === "invoice" ? order.invoiceNo : order.salesNo}
-          </p>
-          <p>
-            <span className="font-semibold">PO No:</span> {order.poNo || "-"}
-          </p>
-          <p>
-            <span className="font-semibold">{type === "invoice" ? "Invoice Date:" : "Order Date:"}</span>{" "}
-            {order.orderDate || order.postingDate || "-"}
-          </p>
-          <p>
-            <span className="font-semibold">Due Date:</span> {order.dueDate || "-"}
-          </p>
-          <p>
-            <span className="font-semibold">Status:</span>{" "}
-            <span
-              className={`ml-1 px-2 py-0.5 rounded text-xs ${
-                order.status === "Delivered"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-yellow-100 text-yellow-600"
-              }`}
-            >
-              {order.status}
-            </span>
-          </p>
-        </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-xs">
+  {/* Left: Order Details */}
+  <div className="space-y-1">
+    <h2 className="font-semibold text-sm">Order Details</h2>
+    <p>
+      <span className="font-medium inline-block w-60">{type === "invoice" ? "Invoice No:" : "Sales No"}</span>{" "}
+      {type === "invoice" ? invoiceNoDisplay : salesNoDisplay}
+    </p>
+    <p>
+      <span className="font-medium inline-block w-60">PO No</span> {order.NumAtCard || order.poNo || "-"}
+    </p>
+    <p>
+      <span className="font-medium inline-block w-60">{type === "invoice" ? "Invoice Date:" : "Order Date"}</span>{" "}
+      {orderDateDisplay}
+    </p>
+    <p>
+      <span className="font-medium inline-block w-60">Due Date</span> {dueDateDisplay}
+    </p>
+    <p className="flex items-center">
+        <span className="font-medium inline-block w-60">Status</span>
+        <StatusBadge className="text-xs" status={order.status} />
+      </p>
+  </div>
 
-        <div>
-          <h3 className="font-semibold text-sm">Bill To</h3>
-          <p className="text-xs">{order.billTo || "-"}</p>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-sm">Ship To</h3>
-          <p className="text-xs">{order.shipTo || "-"}</p>
-        </div>
-      </div>
+  {/* Right: Bill To + Ship To */}
+  <div className="flex justify-end gap-10">
+    <div className="w-60">
+      <h2 className="font-semibold text-sm mb-1">Bill To</h2>
+      <p className="text-xs">{billToFull || "-"}</p>
+    </div>
+    <div className="w-60">
+      <h2 className="font-semibold text-sm mb-1">Ship To</h2>
+      <p className="text-xs">{shipToFull || "-"}</p>
+    </div>
+  </div>
+</div>
 
       {/* Items Table */}
-      <div className="p-4 overflow-x-auto">
-        <table className="min-w-full border-collapse mt-4 text-xs">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border px-4 py-2">No.</th>
-              <th className="border px-4 py-2">Item Code</th>
-              <th className="border px-4 py-2">Description</th>
-              <th className="border px-4 py-2">Qty</th>
-              <th className="border px-4 py-2">Price</th>
-              <th className="border px-4 py-2">Total</th>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse mt-4 text-xs border-b border-gray-300">
+          <thead>
+            <tr className="text-left border-b px-4 py-2 border-gray-300">
+              <th>No.</th>
+              <th>Item Code</th>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Total</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr key={item.no} className="text-xs">
-                <td className="border px-4 py-2 text-center">{item.no}</td>
-                <td className="border px-4 py-2">{item.itemCode}</td>
-                <td className="border px-4 py-2">{item.itemName}</td>
-                <td className="border px-4 py-2 text-center">{item.qty}</td>
-                <td className="border px-4 py-2 text-right">
-                  {order.currency} {item.price.toFixed(2)}
+                <td className="px-4 py-2">{item.no}</td>
+                <td className="px-4 py-2">{item.itemCode}</td>
+                <td className="px-4 py-2">{item.itemName}</td>
+                <td className="px-4 py-2">{item.qty}</td>
+                <td className="px-4 py-2r">
+                  {currency} {item.price.toFixed(2)}
                 </td>
-                <td className="border px-4 py-2 text-right">
-                  {order.currency} {(item.qty * item.price).toFixed(2)}
+                <td className="px-4 py-2">
+                  {currency} {(item.qty * item.price).toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -169,29 +338,29 @@ function OrderDetails() {
       </div>
 
       {/* Totals */}
-      <div className="max-w-sm ml-auto text-sm space-y-1">
+      <div className="max-w-sm ml-auto text-xs">
         <div className="flex justify-between">
           <span>Subtotal:</span>
           <span>
-            {order.currency} {subtotal.toFixed(2)}
+            {currency} {subtotal.toFixed(2)}
           </span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-1">
           <span>Discount:</span>
           <span>
-            - {order.currency} {discount.toFixed(2)}
+            - {currency} {discount.toFixed(2)}
           </span>
         </div>
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-1">
           <span>VAT:</span>
           <span>
-            + {order.currency} {vat.toFixed(2)}
+            + {currency} {vat.toFixed(2)}
           </span>
         </div>
-        <div className="flex justify-between font-semibold text-gray-800 border-t pt-2">
+        <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-300 pt-2 mt-2">
           <span>Final Amount:</span>
           <span>
-            {order.currency} {finalTotal.toFixed(2)}
+            {currency} {finalTotal.toFixed(2)}
           </span>
         </div>
       </div>

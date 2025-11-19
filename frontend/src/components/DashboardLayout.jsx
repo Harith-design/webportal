@@ -1,118 +1,106 @@
-// src/components/DashboardLayout.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, {useEffect, useState, useRef } from "react";
 import Sidebar from "./Sidebar";
-import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Outlet, useLocation, useParams, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
 import { isTokenValid, clearToken } from "../helpers/auth";
-import { performLogout } from "../helpers/logout";
-import { useLoading } from "../context/LoadingContext";
-import UserAvatar from "./UserAvatar";
+
 
 function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { id } = useParams(); // ✅ grab dynamic params (like :id)
+  const { id } = useParams();
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null); // ✅ reference for dropdown wrapper
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const dropdownRef = useRef(null);
+  const [imgError, setImgError] = useState(false);
 
-  // 🔹 Logout helper
-  const handleLogout = async () => {
-  await performLogout(setLoading, navigate);
-};
+  // Optional: fake user for demo; remove if you don't need a user dropdown
+  // const user = { name: "Guest User", role: "Visitor" };
 
+  // Logout
+    const handleLogout = () => {
+      clearToken();
+      // navigate("/login");
+  };
 
   useEffect(() => {
-    if (!isTokenValid()) {
-      handleLogout();
-      return;
-    }
-
-    // 🔹 Set auto-logout timer
-    const expiry =
-      parseInt(localStorage.getItem("token_expiry")) ||
-      parseInt(sessionStorage.getItem("token_expiry"));
-    const now = new Date().getTime();
-    const timeout = setTimeout(() => {
-      handleLogout();
-    }, expiry - now);
-
-    // 🔹 Fetch user profile
-    getCurrentUser()
-      .then((res) => setUser(res.data))
-      .catch((err) => {
-        console.error("Error fetching user:", err);
+      if (!isTokenValid()) {
         handleLogout();
-      });
-
-    // 🔹 Cleanup timeout on unmount
-    return () => clearTimeout(timeout);
-  }, [navigate]);
-
-  // ✅ Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
+        return;
       }
-    }
+  
+      // Auto logout timer
+      const expiry =
+        parseInt(localStorage.getItem("token_expiry")) ||
+        parseInt(sessionStorage.getItem("token_expiry"));
+      const now = new Date().getTime();
+      const timeout = setTimeout(() => {
+        handleLogout();
+      }, expiry - now);
+  
+      // Fetch current user
+      getCurrentUser()
+        .then((res) => setUser(res.data))
+        .catch((err) => {
+          console.error("Error fetching user:", err);
+          handleLogout();
+        });
+  
+      return () => clearTimeout(timeout);
+    }, [navigate]);
 
-    if (dropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside);
-    }
+  // Close dropdown when clicking outside
+  useEffect(() => {
+      function handleClickOutside(event) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setDropdownOpen(false);
+        }
+      }
+      if (dropdownOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+      } else {
+        document.removeEventListener("mousedown", handleClickOutside);
+      }
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownOpen]);
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [dropdownOpen]);
-
-  // 🔹 Page title patterns
+  // Page titles
   const pageTitles = {
     "/dashboardpage": "Dashboard",
     "/orders": "Orders",
-    "/orders/:id": "Order #{id}",     // ✅ dynamic pattern
+    "/orders/:id": "Order #{id}",
     "/orderform": "Place an Order",
     "/invoices": "Invoices",
-    "/invoices/:id": "Invoice #{id}", // ✅ dynamic pattern
+    "/invoices/:id": "Invoice #{id}",
     "/settings": "Settings",
     "/customers": "Customers",
     "/editprofile": "Edit Profile",
     "/users": "Users",
-    "/edituser/:id": "Edit User"
+    "/edituser/:id": "Edit User",
   };
 
-  const getPageTitle = (pathname, id) => {
-    // Exact match first
-    if (pageTitles[pathname]) {
-      return pageTitles[pathname];
-    }
-
-    // Match patterns like /orders/:id
+  const getPageTitle = (pathname, idParam) => {
+    if (pageTitles[pathname]) return pageTitles[pathname];
     for (const pattern in pageTitles) {
       if (pattern.includes(":id")) {
         const base = pattern.replace("/:id", "");
-        if (pathname.startsWith(base + "/") && id) {
-          return pageTitles[pattern].replace("{id}", id);
+        if (pathname.startsWith(base + "/") && idParam) {
+          return pageTitles[pattern].replace("{id}", idParam);
         }
       }
     }
-
     return "Page";
   };
 
-  const title = getPageTitle(location.pathname, id);
-
-  const getInitials = (name) =>
+    // Helpers for initials avatar
+  const getInitials = (name = "") =>
     name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
 
-  const getColorFromName = (name) => {
+  const getColorFromName = (name = "") => {
     const colors = [
       "bg-red-500",
       "bg-green-500",
@@ -130,34 +118,77 @@ function DashboardLayout() {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  const { setLoading } = useLoading(); // 👈 get loading context
+  // Build avatar URL from backend-stored path
+  const backendOrigin = "http://127.0.0.1:8000";
+  const buildAvatarUrl = (p) => {
+    if (!p) return null;
+    const full = /^https?:\/\//.test(p)
+      ? p
+      : `${backendOrigin.replace(/\/$/, "")}/${String(p).replace(/^\//, "")}`;
+    return `${full}?t=${user?.updated_at || Date.now()}`; // cache-buster
+  };
 
+  const avatarUrl = buildAvatarUrl(user?.profile_picture);
+  const showImage = !!avatarUrl && !imgError;
+
+  const title = getPageTitle(location.pathname, id);
 
   return (
     <div className="min-h-screen flex w-screen bg-gray-50">
-      <Sidebar onToggle={setIsCollapsed} />
-    <div
-  className={`flex flex-col min-h-screen flex-1 transition-all duration-300 overflow-y-auto ${
-    isCollapsed ? "ml-20" : "ml-64"
-  }`}
->
-        <header className="flex justify-between items-center px-6 pt-3">
-          <h1 className="text-2xl font-semibold">{title}</h1>
+      {/* Sidebar */}
+      <Sidebar />
 
+      {/* Main content */}
+      <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto relative z-20">
+        <header className="flex justify-between items-center px-4 sm:px-6 py-2 bg-white border-b flex-shrink-0">
+          <h1
+            className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate"
+            style={{ marginLeft: 80}}
+          >
+            {title}
+          </h1>
+
+          {/* User dropdown (optional) */}
           {user && (
-          <div className="relative" ref={dropdownRef}>
-            <div className="flex items-center space-x-3">
-              <UserAvatar name={user.name} size={48}
-                onClick={() => setDropdownOpen((prev) => !prev)}/>
-              <div className="text-right">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.role || "User"}</p>
-              </div>
-            </div>
+            <div className="relative" ref={dropdownRef}>
+              <div className="flex items-center space-x-3">
+                {/* Avatar (image if available, otherwise initials) */}
+                <button
+                  onClick={() => setDropdownOpen((prev) => !prev)}
+                  className="relative rounded-full overflow-hidden border"
+                  style={{ width: 45, height: 45 }}
+                  aria-label="User menu"
+                >
+                  {showImage && (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      onError={() => setImgError(true)}
+                    />
+                  )}
 
-          {/* Dropdown */}
+                  {/* Fallback when there's no picture OR image fails */}
+                  {(!avatarUrl || imgError) && (
+                    <div
+                      className={`w-full h-full ${getColorFromName(
+                        user.name || ""
+                      )} text-white flex items-center justify-center font-semibold`}
+                    >
+                      {getInitials(user.name)}
+                    </div>
+                  )}
+                </button>
+
+                <div className="text-right">
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.role || "User"}</p>
+                </div>
+              </div>
+
+              {/* Dropdown */}
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border py-2 z-50">
                   <p className="px-4 py-2 text-sm text-gray-700 font-medium">
                     {user.name}
                   </p>
@@ -171,25 +202,22 @@ function DashboardLayout() {
                   >
                     Edit Profile
                   </button>
-                  {/* <button
-                    onClick={() => navigate("/settings")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Settings
-                  </button> */}
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Logout
                   </button>
                 </div>
               )}
-        </div>
+            </div>
           )}
         </header>
 
-        <main className="flex-1 px-6 pt-4 pb-6">
+        <main
+          className="flex-1 px-2 sm:px-4 md:px-6 pt-3"
+          style={{ marginLeft: 80}}
+        >
           <Outlet />
         </main>
       </div>

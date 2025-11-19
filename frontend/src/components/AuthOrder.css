@@ -7,6 +7,7 @@
 
 .bg-dark-gradient {
   background: linear-gradient(135deg, #0a0a0a, #444, #d4af37, #222, #0a0a0a);
+  /* background: linear-gradient(135deg, #0a0a0a, #444, #d4af37, #ffffff, #ec0707); */
   background-size: 400% 400%;
   animation: gradientShift 12s ease infinite;
 }

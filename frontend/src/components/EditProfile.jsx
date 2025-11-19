@@ -4,6 +4,104 @@ import { getBusinessPartners, updateUser, getCurrentUser } from "../services/api
 import toast from "react-hot-toast";
 import UserAvatar from "../components/UserAvatar";
 
+const BACKEND = "http://127.0.0.1:8000";
+
+// Build a safe absolute URL for images
+const toAbsoluteUrl = (path) => {
+  if (!path) return "";
+  const s = String(path).trim();
+  if (
+    s.startsWith("http://") ||
+    s.startsWith("https://") ||
+    s.startsWith("blob:") ||
+    s.startsWith("data:")
+  ) {
+    return s;
+  }
+  if (s.startsWith("/")) return `${BACKEND}${s}`;
+  return `${BACKEND}/${s.replace(/^\/+/, "")}`;
+};
+
+// Local fallback avatar (SVG data URI)
+const FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e5e7eb"/><stop offset="1" stop-color="#f3f4f6"/></linearGradient></defs>
+      <rect width="144" height="144" rx="72" fill="url(#g)"/>
+      <circle cx="72" cy="54" r="26" fill="#d1d5db"/>
+      <path d="M20 128a52 52 0 0 1 104 0" fill="#d1d5db"/>
+    </svg>`
+  );
+
+// === Image helpers ===
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const REJECTED_TYPES = ["image/heic", "image/heif", "image/avif"]; // browsers may not decode these reliably
+const MAX_SIDE = 2000; // px
+const MAX_BYTES_BEFORE_COMPRESS = 7 * 1024 * 1024; // 7MB
+
+async function downscaleAndCompress(file) {
+  // If type is not directly accepted, bail out early
+  if (REJECTED_TYPES.includes(file.type)) {
+    throw new Error(
+      "This image format isn't supported by the browser/backend. Please use JPG/PNG/WebP."
+    );
+  }
+
+  // If it's already small and an accepted type, return as-is
+  if (ACCEPTED_TYPES.includes(file.type) && file.size <= MAX_BYTES_BEFORE_COMPRESS) {
+    return file;
+  }
+
+  // Try to decode the image
+  const blobURL = URL.createObjectURL(file);
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(await (await fetch(blobURL)).blob());
+  } catch (e) {
+    URL.revokeObjectURL(blobURL);
+    throw new Error("Could not read this image. Try a different file (JPG/PNG/WebP).");
+  }
+  URL.revokeObjectURL(blobURL);
+
+  // Compute target size
+  let { width, height } = bitmap;
+  const scale = Math.min(1, MAX_SIDE / Math.max(width, height));
+  const targetW = Math.round(width * scale);
+  const targetH = Math.round(height * scale);
+
+  // Draw to canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d", { alpha: true });
+
+  // If original is PNG with transparency and we later export JPEG, set white bg
+  if (file.type === "image/png") {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, targetW, targetH);
+  }
+
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+  // Choose output format: prefer JPEG, fallback to WebP if browser prefers it
+  const preferWebP = file.type === "image/webp";
+  const outType = preferWebP ? "image/webp" : "image/jpeg";
+  const quality = 0.9;
+
+  const outBlob = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), outType, quality)
+  );
+
+  if (!outBlob) throw new Error("Failed to process the image.");
+
+  // Name the file sensibly
+  const ext = outType === "image/webp" ? "webp" : "jpg";
+  const outFile = new File([outBlob], `profile.${ext}`, { type: outType, lastModified: Date.now() });
+  return outFile;
+}
+
 function EditProfile() {
   const [formData, setFormData] = useState({
     id: "",
@@ -22,63 +120,82 @@ function EditProfile() {
     county: "",
     postalCode: "",
     country: "",
+    profile_picture: "",
   });
 
-  const [profilePic, setProfilePic] = useState(null);
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [companyResults, setCompanyResults] = useState([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const [picError, setPicError] = useState("");
 
   // Load current user info
   useEffect(() => {
-    async function fetchUser() {
+    (async () => {
       try {
         const res = await getCurrentUser();
-        const user = res.data;
+        const u = res.data;
         setFormData({
-          id: user.id,
-          firstName: user.firstName || "",
-          lastName: user.lastName || "",
-          name: user.name || "",
-          email: user.email || "",
-          contact: user.contact_no || "",
-          company: user.company || "",
-          CardCode: user.cardcode || "",
-          CardName: user.cardname || "",
-          street: user.street || "",
-          city: user.city || "",
-          county: user.county || "",
-          postalCode: user.postalCode || "",
-          country: user.country || "",
+          id: u.id,
+          firstName: u.firstName || "",
+          lastName: u.lastName || "",
+          name: u.name || "",
+          email: u.email || "",
+          contact: u.contact_no || "",
+          company: u.company || "",
+          CardCode: u.cardcode || "",
+          CardName: u.cardname || "",
+          street: u.street || "",
+          city: u.city || "",
+          county: u.county || "",
+          postalCode: u.postalCode || "",
+          country: u.country || "",
           password: "",
           confirmPassword: "",
+          profile_picture: u.profile_picture || "",
         });
         // ✅ Load existing profile picture if available
-      if (user.profile_picture) {
-        setPreview(`http://127.0.0.1:8000/${user.profile_picture}`);
+      if (u.profile_picture) 
+      setPreview(toAbsoluteUrl(u.profile_picture));
+      else setPreview(null);
+      } catch (e) {
+        console.error("Failed to load current user:", e);
       }
-
-      } catch (err) {
-        console.error("Error loading user:", err);
-      }
-    }
-    fetchUser();
+    })();
   }, []);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
   };
 
-  const handlePicChange = (e) => {
+  const handlePicChange = async (e) => {
+    setPicError("");
     const file = e.target.files[0];
-    if (file) {
-      setProfilePic(file);
-      setPreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    try {
+      // Validate basic MIME first
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        if (REJECTED_TYPES.includes(file.type)) {
+          throw new Error("HEIC/HEIF/AVIF is not supported. Please choose JPG/PNG/WebP.");
+        }
+        // Some devices report empty type; still try to process
+      }
+
+      const processed = await downscaleAndCompress(file);
+
+      // Show preview (blob URL)
+      const objectUrl = URL.createObjectURL(processed);
+      setPreview(objectUrl);
+
+      setFormData((p) => ({ ...p, _file: processed }));
+    } catch (err) {
+      console.error(err);
+      setPicError(err.message || "Invalid or unsupported image file.");
+      // revert input if failed
+      e.target.value = "";
     }
   };
 
@@ -112,9 +229,11 @@ function EditProfile() {
   // Save profile
   const handleSubmit = async (e) => {
   e.preventDefault();
+  setMessage("");
+  setPicError("");
 
   if (formData.password && formData.password !== formData.confirmPassword) {
-    toast.error("❌ Passwords do not match!");
+    toast.error("Passwords do not match!");
     return;
   }
 
@@ -134,22 +253,46 @@ function EditProfile() {
       country: formData.country || "",
     };
 
-    if (formData.password) {
-      payload.password = formData.password;
+    if (formData.password) payload.password = formData.password;
+    if (formData._file) payload.profile_picture = formData._file;
+
+    const resp = await updateUser(formData.id, payload);
+    const u = resp.data.user;
+
+    setFormData((p) => ({
+        ...p,
+        name: u.name ?? p.name,
+        email: u.email ?? p.email,
+        contact: u.contact_no ?? p.contact,
+        CardCode: u.cardcode ?? p.CardCode,
+        CardName: u.cardname ?? p.CardName,
+        company: u.cardname ?? p.company,
+        profile_picture: u.profile_picture ?? p.profile_picture,
+        password: "",
+        confirmPassword: "",
+        _file: undefined,
+      }));
+
+    if (u.profile_picture) {
+        setPreview(`${toAbsoluteUrl(u.profile_picture)}?t=${Date.now()}`);
+      }
+
+      toast.success("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error.response || error);
+      toast.error("Failed to update profile. Please try again.");
     }
-
-    await updateUser(formData.id, payload);
-
-    toast.success("Profile updated successfully!");
-  } catch (error) {
-    console.error("Error updating profile:", error.response || error);
-    toast.error("Failed to update profile. Please try again.");
-  }
 };
 
+// Decide which src to render
+  const imgSrc =
+    preview ||
+    (formData.profile_picture
+      ? `${toAbsoluteUrl(formData.profile_picture)}?t=${Date.now()}`
+      : FALLBACK);
 
   return (
-    <div className="p-6 space-y-10 bg-white rounded-xl shadow-md">
+    <div className="p-6 space-y-10">
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Personal Info */}
         <div>
@@ -204,35 +347,35 @@ function EditProfile() {
               </div>
             </div>
 
-            {/* Profile Picture */}
+            {/* Avatar */}
             <div className="relative flex flex-col items-center">
               <div className="relative">
-    {preview ? (
-      <img
-        src={preview}
-        alt="Profile"
-        className="w-36 h-36 rounded-full object-cover border shadow-md"
-      />
-    ) : (
-      <UserAvatar name={formData.name} size={144} />
-    )}
-
-    <input
-      type="file"
-      accept="image/*"
-      id="profilePicInput"
-      onChange={handlePicChange}
-      className="hidden"
-    />
-
-    <label
-      htmlFor="profilePicInput"
-      className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
-    >
-      <Pencil size={14} />
-      <span className="text-xs">Edit</span>
-    </label>
-  </div>
+                <img
+                  src={imgSrc}
+                  alt="Profile"
+                  onError={(e) => (e.currentTarget.src = FALLBACK)}
+                  className="w-36 h-36 rounded-full object-cover border shadow-md bg-gray-100"
+                />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp" // narrow to reliable types
+                  id="profilePicInput"
+                  onChange={handlePicChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="profilePicInput"
+                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
+                >
+                  <Pencil size={14} />
+                  <span className="text-xs">Edit</span>
+                </label>
+              </div>
+              {picError && (
+                <p className="mt-2 text-xs text-red-600 max-w-[18rem] text-center">
+                  {picError}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -255,7 +398,7 @@ function EditProfile() {
                 className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
               />
               {loadingSearch && (
-                <p className="text-xs text-gray-500 mt-1">Searching...</p>
+                <p className="text-sm text-gray-500 mt-1">Searching...</p>
               )}
               {companyResults.length > 0 && (
                 <ul className="border rounded mt-1 max-h-40 overflow-y-auto bg-white shadow text-sm w-3/4">
@@ -388,7 +531,7 @@ function EditProfile() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition font-semibold"
           >
             Save
           </button>

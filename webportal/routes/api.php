@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Http;
 */
 
 // ------------------- Authentication Routes -------------------
-// Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -43,7 +42,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users', [UserController::class, 'store']);
     Route::post('/users/{id}', [UserController::class, 'update']); // ✅ changed from PUT
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
-
 });
 
 // ------------------- Sales Order Routes (internal app logic) -------------------
@@ -77,6 +75,12 @@ Route::prefix('sap')->group(function () {
 
     // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
+    // 🔹 Single BP (Total Outstanding / OCRD.Balance)
+    Route::get('/business-partners/{cardcode}', [SapController::class, 'getBusinessPartnerByCode']);
+    // 🔹 NEW: BP Addresses (Ship-To/Bill-To)
+    Route::get('/business-partners/{cardcode}/addresses', [SapController::class, 'getBusinessPartnerAddresses']);
+
+    // (If you actually implement these CRUD endpoints, keep them. Otherwise you can remove.)
     Route::post('/business-partners', [SapController::class, 'createBusinessPartner']);
     Route::put('/business-partners/{CardCode}', [SapController::class, 'updateBusinessPartner']);
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
@@ -87,21 +91,13 @@ Route::prefix('sap')->group(function () {
     Route::get('/invoices/{docEntry}/documentlines', [SapController::class, 'getInvoiceDocumentLines']);
     Route::get('/invoices/{docEntry}/pdf', [SapController::class, 'invoicePdf']);
 
+    // ---------------- Orders ----------------
+    Route::get('/orders', [SapController::class, 'getSalesOrders']);
+    Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']);
 
-    // ---------------- Sales Orders ----------------
-    Route::get('/orders', [SapController::class, 'getSalesOrders']); 
-    Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']); 
-    Route::get('/sales-orders/{docEntry}/pdf', [App\Http\Controllers\SapController::class, 'salesOrderPdf']);
-
+    // Orders PDF (separate safe route)
+    Route::get('/sales-orders/{docEntry}/pdf', [SapController::class, 'salesOrderPdf']);
 
     // ------- Create Sales Order (for Place Order Page) -------------------
     Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
-
-    
-
-
-    
 });
-
-
-

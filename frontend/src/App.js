@@ -31,34 +31,51 @@ function App() {
     <Router>
       <LoadingProvider>
         <Routes>
-          {/* Public routes */}
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgotpassword" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+         {/* Public routes */}
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        {/* <Route path="/dashboardpage" element={<DashboardPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orderform" element={<PlaceOrderPage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/orders/:id" element={<OrderDetails />} />
+          <Route path="/invoices/:id" element={<InvoiceDetails />} />
+          <Route path="/editprofile" element={<EditProfile />} />
+          <Route path="/users" element={<UserList />} />
+          <Route path="/edituser/:id" element={<EditUser />} /> */}
 
-          {/* Protected Dashboard routes */}
-          <Route
-            element={
-              
-                <DashboardLayout />
-              
-            }
-          >
-            <Route path="/dashboardpage" element={<DashboardPage />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/orderform" element={<PlaceOrderPage />} />
-            <Route path="/invoices" element={<InvoicesPage />} />
-            <Route path="/orders/:id" element={<OrderDetails />} />
-            <Route path="/invoices/:id" element={<InvoiceDetails />} />
-            <Route path="/customers" element={<CustomerList />} />
-            <Route path="/editprofile" element={<EditProfile />} />
-            <Route path="/users" element={<UserList />} />
-            <Route path="/edituser/:id" element={<EditUser />} />
-          </Route>
+        {/* Protected Dashboard routes */}
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboardpage" element={<DashboardPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orderform" element={<PlaceOrderPage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/orders/:id" element={<OrderDetails />} />
+          <Route path="/invoices/:id" element={<InvoiceDetails />} />
+          <Route path="/customers" element={<CustomerList />} />
+          <Route path="/editprofile" element={<EditProfile />} />
+          <Route path="/users" element={<UserList />} />
+          <Route path="/edituser/:id" element={<EditUser />} />
+        </Route>
 
-          {/* Default route */}
-          <Route path="*" element={<Login />} />
+        {/* Dashboard pages – now public */}
+        {/* <Route element={<DashboardLayout />}>
+          <Route path="/dashboardpage" element={<DashboardPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orderform" element={<PlaceOrderPage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/orders/:id" element={<OrderDetails />} />
+          <Route path="/invoices/:id" element={<InvoiceDetails />} />
+          <Route path="/customers" element={<CustomerList />} />
+          <Route path="/editprofile" element={<EditProfile />} />
+          <Route path="/users" element={<UserList />} />
+          <Route path="/edituser/:id" element={<EditUser />} />
+        </Route> */}
+
+        {/* Catch-all fallback */}
+        <Route path="*" element={<Login />} />
         </Routes>
 
         {/* ✅ Add this at the bottom so toast works globally */}

@@ -108,22 +108,22 @@ function Login() {
             {message && <p className="error-text">{message}</p>}
 
             <div className="login-options">
-              <label className="remember-me">
+              {/* <label className="remember-me">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={handleCheckbox}
                 />{" "}
                 Remember me
-              </label>
+              </label> */}
               <a href="/forgotpassword" className="forgot-password">
                 Forgot password?
               </a>
             </div>
 
-            <p className="signup-text">
+            {/* <p className="signup-text">
               Don't have an account? <a href="/signup">Create Account</a>
-            </p>
+            </p> */}
           </form>
         </div>
       </div>

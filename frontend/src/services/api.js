@@ -1,11 +1,11 @@
 import axios from "axios";
 
-// 👇 Directly point to your Laravel backend
+// Point to your Laravel backend
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api", // backend API URL
+  baseURL: "http://127.0.0.1:8000/api",
 });
 
-// ✅ Attach token from localStorage OR sessionStorage
+// Attach token from localStorage OR sessionStorage
 API.interceptors.request.use((config) => {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -23,34 +23,47 @@ export const getCurrentUser = () => API.get("/user/me");
 
 // ---------- USERS ----------
 export const getUsers = () => API.get("/users");
+
+/**
+ * Create user.
+ * If you add avatars to create flow later, you can switch this to FormData as we do in updateUser.
+ */
 export const createUser = (data) => API.post("/users", data);
 
-// ✅ UPDATED: no manual Content-Type, Axios handles multipart automatically
+/**
+ * Update user using multipart/form-data explicitly.
+ * - Automatically maps a plain object into FormData
+ * - Only attaches `profile_picture` when it's a real File/Blob
+ */
 export const updateUser = async (id, data) => {
   const formData = new FormData();
 
-  for (const key in data) {
-    if (data[key] !== null && data[key] !== undefined) {
-      formData.append(key, data[key]);
-    }
-  }
+  Object.entries(data || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === "") return;
 
-  return await API.post(`/users/${id}`, formData);
+    if (key === "profile_picture") {
+      // Append only if it's a File/Blob
+      if (value instanceof File || value instanceof Blob) {
+        formData.append("profile_picture", value);
+      }
+      return;
+    }
+
+    formData.append(key, value);
+  });
+
+  // Force multipart so the browser doesn't default to JSON
+  return await API.post(`/users/${id}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 };
 
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 
 // ---------- SAP / Business Partners ----------
 export const getBusinessPartners = async (search = "") => {
-  try {
-    const res = await API.get("/sap/business-partners", {
-      params: { search },
-    });
-    return res.data;
-  } catch (err) {
-    console.error("Error fetching business partners:", err);
-    throw err;
-  }
+  const res = await API.get("/sap/business-partners", { params: { search } });
+  return res.data;
 };
 
 export const createBusinessPartner = (data) =>
@@ -72,13 +85,8 @@ export const createInvoice = (data) =>
 
 // ---------- SAP / Items ----------
 export const getItems = async (search = "") => {
-  try {
-    const res = await API.get("/sap/items", { params: { search } });
-    return res.data;
-  } catch (err) {
-    console.error("Error fetching items:", err);
-    throw err;
-  }
+  const res = await API.get("/sap/items", { params: { search } });
+  return res.data;
 };
 
 export default API;

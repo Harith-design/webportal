@@ -3,7 +3,10 @@
 }
 
 .table-wrapper {
-  overflow-x: auto;
+  overflow-x: visible;
   min-width: 100%;
   table-layout: fixed;
+  overflow-y: visible;
+  position: re;
+  border: #e60000;
 }

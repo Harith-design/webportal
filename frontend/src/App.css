@@ -1,3 +1,29 @@
-html {
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@font-face {
+  font-family: 'Consolas';
+  src: url('./assets/fonts/Consolas.ttf') format('truetype');
+  
+}
+@font-face {
+  font-family: 'Droid Sans Mono';
+  src: url('./assets/fonts/DroidSansMono.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: #f3f4f6; /* light gray background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-size: clamp(12px, 1.2vw, 16px) !important;
 }
+
+h1 {
+  font-family: 'Poppins';
+}
+

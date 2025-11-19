@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { Receipt, FileCheck, Clock, Search, Calendar } from "lucide-react";
+import { Receipt, FileCheck, Clock, Search, Calendar, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -8,33 +8,31 @@ import "./DatePicker.css";
 import { formatDate } from "../utils/formatDate";
 
 function InvoicesPage() {
+  
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 🔹 Fetch invoices
   useEffect(() => {
     const fetchInvoices = async () => {
-      // fetch company code (start)
       let user = localStorage.getItem("user") || sessionStorage.getItem("user");
       const userModel = JSON.parse(user || "{}");
-      // fetch company code (end)
 
       try {
         const res = await axios.get("http://127.0.0.1:8000/api/sap/invoices");
 
-        if (res.data && res.data.data) {
-          // Only include invoices for this company
+        if (res.data?.data) {
           const filtered = res.data.data.filter(
             (v) => v.customerCode === userModel.cardcode
           );
 
-          // Mirror orders.jsx shape
           const formatted = filtered.map((v) => ({
-            id: v.invoiceNo,            // ✅ display number used in URL (like orders)
+            id: v.invoiceNo,
             invoiceNo: v.invoiceNo,
             poNo: v.poNo,
             customer: v.customer,
-            orderDate: v.postingDate,   // ✅ same key name style as orders.jsx
+            orderDate: v.postingDate,
             dueDate: v.dueDate,
             total: v.total,
             currency: v.currency,
@@ -42,6 +40,11 @@ function InvoicesPage() {
             download: v.download || "#",
             customerCode: v.customerCode,
             docEntry: v.docEntry,
+            items: v.items || [],
+            discount: v.discount || 0,
+            vat: v.vat || 0,
+            billTo: v.billTo || "",
+            shipTo: v.shipTo || "",
           }));
 
           setInvoices(formatted);
@@ -59,7 +62,8 @@ function InvoicesPage() {
     fetchInvoices();
   }, []);
 
-  // 🔹 States for filters (same pattern as orders.jsx)
+
+  // 🔹 Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [orderStart, setOrderStart] = useState(null);
   const [orderEnd, setOrderEnd] = useState(null);
@@ -67,35 +71,83 @@ function InvoicesPage() {
   const [dueEnd, setDueEnd] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 🔹 Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setOrderStart(null);
+    setOrderEnd(null);
+    setDueStart(null);
+    setDueEnd(null);
+    setSearchQuery("");
+  };
 
-  // 🔹 Filtering logic (copied from orders.jsx)
-  const filteredInvoices = invoices.filter((inv) => {
-    const orderDate = new Date((inv.orderDate || "").replace(/-/g, "/"));
-    const dueDate = new Date((inv.dueDate || "").replace(/-/g, "/"));
+  // 🔹 Table container ref for dynamic rows
+  const tableContainerRef = useRef(null);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    if (statusFilter && statusFilter !== "all" && inv.status !== statusFilter) return false;
-    if (orderStart && orderDate < orderStart) return false;
-    if (orderEnd && orderDate > orderEnd) return false;
-    if (dueStart && dueDate < dueStart) return false;
-    if (dueEnd && dueDate > dueEnd) return false;
+  
 
-    if (
-      searchQuery &&
-      !(
-        inv.id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (inv.poNo?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (inv.customer?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-      )
-    ) {
-      return false;
-    }
+  // 🔹 Dynamic rows calculation
+  useEffect(() => {
+    const updateRowsPerPage = () => {
+      if (!tableContainerRef.current) return;
+
+      const containerHeight = tableContainerRef.current.clientHeight;
+      const header = tableContainerRef.current.querySelector("thead");
+      const row = tableContainerRef.current.querySelector("tbody tr");
+
+      if (!header || !row) return;
+
+      const headerHeight = header.getBoundingClientRect().height;
+      const rowHeight = row.getBoundingClientRect().height;
+
+      const maxRows = Math.floor((containerHeight - headerHeight) / rowHeight);
+      setRowsPerPage(Math.max(1, maxRows));
+    };
+
+    if (!loading && invoices.length > 0) updateRowsPerPage();
+
+    window.addEventListener("resize", updateRowsPerPage);
+    return () => window.removeEventListener("resize", updateRowsPerPage);
+  }, [loading, invoices]);
+
+  // 🔹 Filter functions
+  const filterByStatus = (inv, status) =>
+    !status || status === "all" ? true : inv.status === status;
+
+  const filterByDate = (dateStr, start, end) => {
+    if (!start && !end) return true;
+    const date = new Date(dateStr.replace(/-/g, "/"));
+    if (start && !end)
+      return (
+        date.getFullYear() === start.getFullYear() &&
+        date.getMonth() === start.getMonth() &&
+        date.getDate() === start.getDate()
+      );
+    if (start && date < start) return false;
+    if (end && date > end) return false;
     return true;
-  });
+  };
 
-  // 🔹 Pagination logic
+  const filterBySearch = (inv, query) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      inv.id.toString().toLowerCase().includes(q) ||
+      (inv.poNo?.toLowerCase() || "").includes(q) ||
+      (inv.customer?.toLowerCase() || "").includes(q)
+    );
+  };
+
+  const filteredInvoices = invoices.filter(
+    (inv) =>
+      filterByStatus(inv, statusFilter) &&
+      filterByDate(inv.orderDate, orderStart, orderEnd) &&
+      filterByDate(inv.dueDate, dueStart, dueEnd) &&
+      filterBySearch(inv, searchQuery)
+  );
+
+  // 🔹 Pagination
+  const [currentPage, setCurrentPage] = useState(1);
   const indexOfLast = currentPage * rowsPerPage;
   const indexOfFirst = indexOfLast - rowsPerPage;
   const currentInvoices = filteredInvoices.slice(indexOfFirst, indexOfLast);
@@ -105,14 +157,14 @@ function InvoicesPage() {
     switch (status) {
       case "Open":
         return (
-          <span className="flex items-center text-blue-600">
+          <span className="inline-flex items-center rounded-xl  text-[#007edf] px-2 font-medium" style={{ background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)" }}>
             <Receipt size={16} className="mr-1" /> {status}
           </span>
         );
       case "Closed":
         return (
-          <span className="flex items-center text-green-600">
-            <FileCheck size={16} className="mr-1" /> {status}
+          <span className="inline-flex items-center rounded-xl  text-[#16aa3dff] px-2 font-medium" style={{ background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)" }}>
+            <FileCheck size={16} className="mr-1" /> Delivered
           </span>
         );
       case "In Transit":
@@ -127,77 +179,131 @@ function InvoicesPage() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col h-[calc(100vh-8rem)] w-full overflow-hidden">
-      {/* 🔹 Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
+    <div className="px-6 pt-2 flex flex-col h-[calc(100vh-6rem)] w-full overflow-hidden">
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between flex-wrap gap-4 mb-4">
         <div className="flex flex-wrap gap-4">
-          {/* Status Dropdown */}
-          <div>
+          {/* Status */}
+          <div className="relative min-w-[10%]">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border rounded-lg px-2 py-1 text-xs text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[10%]"
+              className="border rounded-lg px-2 pr-7 py-1 text-xs text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
             >
               <option value="all">All Status</option>
               <option value="Open">Open</option>
               <option value="Closed">Delivered</option>
               <option value="In Transit">In Transit</option>
             </select>
+            {statusFilter !== "all" && (
+              <button
+                onClick={() => setStatusFilter("all")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                type="button"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
-          {/* Posting (Order) Dates */}
+          {/* Order Dates */}
           <div className="flex items-center gap-2">
             <label className="text-xs">Posting Date From</label>
             <div className="relative">
-                          <DatePicker
-                            selected={postStart}
-                            onChange={(date) => setPostStart(date)}
-                            className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
-                          />
-                          <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                        </div>
-            
-                        {/* "to" text */}
-                        <span className="text-xs">To</span>
-            
-                        <div className="relative">
-                          <DatePicker
-                            selected={postEnd}
-                            onChange={(date) => setPostEnd(date)}
-                            className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
-                          />
-                          <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                        </div>
+              <DatePicker
+                selected={orderStart}
+                onChange={setOrderStart}
+                dateFormat="dd/MM/yyyy"
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
+              />
+              {orderStart ? (
+                <button
+                  onClick={() => setOrderStart(null)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                  type="button"
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+              )}
+            </div>
+            <span className="text-xs">To</span>
+            <div className="relative">
+              <DatePicker
+                selected={orderEnd}
+                onChange={setOrderEnd}
+                dateFormat="dd/MM/yyyy"
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
+              />
+              {orderEnd ? (
+                <button
+                  onClick={() => setOrderEnd(null)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                  type="button"
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+              )}
+            </div>
           </div>
 
           {/* Due Dates */}
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs">Due Date From</label>
-          
-                      <div className="relative">
-                        <DatePicker
-                          selected={dueStart}
-                          onChange={(date) => setDueStart(date)}
-                          className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
-                        />
-                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                      </div>
-          
-                      {/* "to" text */}
-                      <span className="text-xs">To</span>
-          
-                      <div className="relative">
-                        <DatePicker
-                          selected={dueEnd}
-                          onChange={(date) => setDueEnd(date)}
-                          className="border rounded-lg px-2 py-1 text-xs w-28 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[15%]"
-                        />
-                        <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-                      </div>
-                    </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs">Due Date From</label>
+            <div className="relative">
+              <DatePicker
+                selected={dueStart}
+                onChange={setDueStart}
+                dateFormat="dd/MM/yyyy"
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
+              />
+              {dueStart ? (
+                <button
+                  onClick={() => setDueStart(null)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                  type="button"
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+              )}
+            </div>
+            <span className="text-xs">To</span>
+            <div className="relative">
+              <DatePicker
+                selected={dueEnd}
+                onChange={setDueEnd}
+                dateFormat="dd/MM/yyyy"
+                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
+              />
+              {dueEnd ? (
+                <button
+                  onClick={() => setDueEnd(null)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                  type="button"
+                >
+                  <X size={13} />
+                </button>
+              ) : (
+                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+              )}
+            </div>
+          </div>
+
+          {/* Clear */}
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 text-xs text-[#e60000] border border-[#e60000] font-semibold rounded-lg px-3 py-1 hover:bg-red-50 transition"
+          >
+            ✕ Clear
+          </button>
         </div>
 
-        {/* Right Search Bar */}
+        {/* Search */}
         <div className="relative w-full md:w-64">
           <Search size={16} className="text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
           <input
@@ -205,65 +311,72 @@ function InvoicesPage() {
             placeholder="Search invoices..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 py-1 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500"
+            className="w-full pl-8 pr-6 py-1 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500 text-gray-500"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+              type="button"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 🔹 Invoices Table */}
-      <div className="rounded-xl overflow-hidden shadow-sm flex-1 overflow-y-auto">
-        <table className="table-auto w-full border-collapse">
+      {/* Invoices Table */}
+      <div ref={tableContainerRef} className="rounded-xl overflow-hidden border flex-1">
+        <table className="table-auto w-full">
           <thead>
-            <tr className="text-left text-[75%] font-bold border-b">
-              <th className="px-4 py-2">INVOICE NO.</th>
-              <th className="px-4 py-2">CUSTOMER</th>
-              <th className="px-4 py-2">PO NO.</th>
-              <th className="px-4 py-2">POSTING DATE</th>
-              <th className="px-4 py-2">DUE DATE</th>
-              <th className="px-4 py-2">TOTAL</th>
-              <th className="text-center px-4 py-2">CURRENCY</th>
-              <th className="px-4 py-2">STATUS</th>
-              <th className="text-center px-4 py-2">DOWNLOAD</th>
+            <tr className="text-left text-xs border-b font-medium">
+              <th className="px-4 py-2">Invoice No.</th>
+              <th className="px-4 py-2">Customer</th>
+              <th className="px-4 py-2">PO No.</th>
+              <th className="px-4 py-2">Posting Date</th>
+              <th className="px-4 py-2">Due Date</th>
+              <th className="px-4 py-2">Total</th>
+              <th className="text-center px-4 py-2">Currency</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="text-center px-4 py-2">Download</th>
             </tr>
           </thead>
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
-                <tr key={inv.invoiceNo} className="even:bg-gray-50">
-                 <td className="px-4 py-2 text-blue-600 hover:underline">
-                <Link 
-                  to={`/invoices/${inv.invoiceNo}`} 
-                                  state={{
-                  invoice: {
-                    id: inv.invoiceNo,
-                    ponum: inv.poNo,
-                    customer: inv.customer,
-                    invoiceDate: inv.postingDate,
-                    dueDate: inv.dueDate,
-                    status: inv.status,
-                    currency: inv.currency,
-                    items: inv.items || [],       // fallback if items are missing
-                    discount: inv.discount || 0,
-                    vat: inv.vat || 0,
-                    billTo: inv.billTo || "",
-                    shipTo: inv.shipTo || ""
-                  }
-                }}
-                // ✅ pass invoice object to details page
-                >
-                  {inv.invoiceNo}
-                </Link>
-               </td>
-
+                <tr key={inv.id} className="even:bg-gray-50">
+                  <td className="px-4 py-2 text-blue-600 hover:underline">
+                    <Link
+                      to={`/invoices/${inv.invoiceNo}`}
+                      state={{
+                        invoice: {
+                          id: inv.invoiceNo,
+                          ponum: inv.poNo,
+                          customer: inv.customer,
+                          invoiceDate: inv.orderDate,
+                          dueDate: inv.dueDate,
+                          status: inv.status,
+                          currency: inv.currency,
+                          items: inv.items,
+                          discount: inv.discount,
+                          vat: inv.vat,
+                          billTo: inv.billTo,
+                          shipTo: inv.shipTo,
+                        },
+                      }}
+                    >
+                      {inv.invoiceNo}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">{inv.customer}</td>
                   <td className="px-4 py-2">{inv.poNo}</td>
-                  <td className="px-4 py-2">{formatDate(inv.postingDate)}</td>
+                  <td className="px-4 py-2">{formatDate(inv.orderDate)}</td>
                   <td className="px-4 py-2">{formatDate(inv.dueDate)}</td>
                   <td className="px-4 py-2">{Number(inv.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className="text-center px-4 py-2">{inv.currency}</td>
                   <td className="px-4 py-2">{renderStatus(inv.status)}</td>
                   <td className="px-4 py-2 flex justify-center">
-                    <a href={invoice.download} target="_blank" rel="noopener noreferrer">
+                    <a href={inv.download} target="_blank" rel="noopener noreferrer">
                       <img
                         src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
                         alt="PDF"
@@ -276,9 +389,7 @@ function InvoicesPage() {
             ) : (
               <tr>
                 <td colSpan="9" className="text-center py-4 text-gray-500">
-                  {loading && "Loading invoices..."}
-                  {error && error}
-                  {!loading && !error && "No invoices found"}
+                  {loading ? "Loading invoices..." : error || "No invoices found"}
                 </td>
               </tr>
             )}
@@ -286,7 +397,7 @@ function InvoicesPage() {
         </table>
       </div>
 
-      {/* 🔹 Pagination */}
+      {/* Pagination */}
       <div className="flex justify-center items-center gap-2 mt-4 shrink-0">
         <button
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -296,31 +407,16 @@ function InvoicesPage() {
           Prev
         </button>
 
-        {/* Always show page 1 */}
-        <button
-          onClick={() => setCurrentPage(1)}
-          className={`px-3 py-1 border rounded text-xs ${
-            currentPage === 1 ? "bg-blue-500 text-white" : ""
-          }`}
-        >
-          1
-        </button>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i + 1}
+            onClick={() => setCurrentPage(i + 1)}
+            className={`px-3 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-blue-500 text-white" : ""}`}
+          >
+            {i + 1}
+          </button>
+        ))}
 
-        {/* Show page 2+ only if needed */}
-        {totalPages > 1 &&
-          Array.from({ length: totalPages - 1 }, (_, i) => (
-            <button
-              key={i + 2}
-              onClick={() => setCurrentPage(i + 2)}
-              className={`px-3 py-1 border rounded text-xs ${
-                currentPage === i + 2 ? "bg-blue-500 text-white" : ""
-              }`}
-            >
-              {i + 2}
-            </button>
-          ))}
-
-        {/* Next */}
         <button
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}

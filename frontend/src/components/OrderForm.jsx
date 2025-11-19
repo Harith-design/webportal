@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Trash2, Search, Loader2 } from "lucide-react";
+import { Trash2, Search, Loader2, Calendar } from "lucide-react";
 import { getItems } from "../services/api";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
 import axios from "axios";
 import "./OrderForm.css";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "./DatePicker.css";
 
 function PlaceOrderPage() {
   const [order, setOrder] = useState({
@@ -14,6 +17,15 @@ function PlaceOrderPage() {
     shippingAddress: "",
   });
 
+  // 🧩 BP addresses (fetched from backend)
+    const [bpAddresses, setBpAddresses] = useState({
+      shipTo: [],
+      billTo: [],
+      defaults: {},
+    });
+    const [shipToFull, setShipToFull] = useState(""); // preview
+    const [billToFull, setBillToFull] = useState(""); // preview
+
   const [rows, setRows] = useState([
     {
       product: "",
@@ -21,8 +33,8 @@ function PlaceOrderPage() {
       quantity: "",
       unitPrice: "",
       weight: "",
-      totalWeight: "0.00",
-      lineTotal: "0.00",
+      totalWeight: "",
+      lineTotal: "",
       taxCode: "",
       active: true,
     },
@@ -32,8 +44,8 @@ function PlaceOrderPage() {
       quantity: "",
       unitPrice: "",
       weight: "",
-      totalWeight: "0.00",
-      lineTotal: "0.00",
+      totalWeight: "",
+      lineTotal: "",
       taxCode: "",
       active: false,
     },
@@ -54,42 +66,113 @@ function PlaceOrderPage() {
     setOrderTotal(total.toFixed(2));
   }, [rows]);
 
-  // 🔹 Fetch user's company info from backend on load
-  useEffect(() => {
-    const fetchUserCompany = async () => {
-      try {
-        var token = localStorage.getItem("token");
-        if(!token){
-          token = sessionStorage.getItem("token");
-        }
+  // 👉 friendly label for dropdowns (don’t show “Bill to” in Ship-To list)
+  const displayAddressName = (a, kind /* 'ship' | 'bill' */) => {
+    const raw = (a?.AddressName || "").trim();
+    if (!raw) return "";
+    if (raw.toLowerCase() === "bill to") {
+      return kind === "ship" ? "Ship To" : "Bill To";
+    }
+    if (raw.toLowerCase() === "ship to") {
+      return kind === "ship" ? "Ship To" : "Bill To";
+    }
+    return raw;
+  };
 
-        const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
-        const res = await axios.get(
-          // "http://192.168.100.189:8000/api/user/company",
-          `${apiUrl}/api/user/company`,
-          {
+  // 👉 format full address for preview with a forced first line label
+  const formatAddressForDisplay = (a, kind /* 'ship' | 'bill' */) => {
+    if (!a) return "";
+    const firstLine = kind === "ship" ? "Ship To" : "Bill To";
+    const lines = [
+      firstLine,
+      [a.Building, a.Street].filter(Boolean).join(", "),
+      [a.ZipCode, a.City].filter(Boolean).join(" "),
+      [a.County, a.Country].filter(Boolean).join(", "),
+    ].filter(Boolean);
+    return lines.join("\n");
+  };
+
+  /// 🔹 Fetch user's company, then their BP addresses (defaults populate)
+    useEffect(() => {
+      const fetchUserCompany = async () => {
+        try {
+          const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+          const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+  
+          const res = await axios.get(`${apiUrl}/api/user/company`, {
             headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        console.log(res);
-        if (res.data && res.data.cardcode && res.data.cardname) {
-          setUserCompany({
-            cardcode: res.data.cardcode,
-            cardname: res.data.cardname,
           });
-        } else {
-          toast.error("Company info not found. Please update your profile.");
+  
+          if (res.data?.cardcode && res.data?.cardname) {
+            const comp = { cardcode: res.data.cardcode, cardname: res.data.cardname };
+            setUserCompany(comp);
+            await fetchBpAddresses(comp.cardcode);
+          } else {
+            toast.error("Company info not found. Please update your profile.");
+          }
+        } catch (err) {
+          console.error("Failed to fetch company info:", err);
+          toast.error("Unable to get company info.");
         }
-      } catch (err) {
-        console.error("Failed to fetch company info:", err);
-        toast.error("Unable to get company info.");
-      }
-    };
+      };
+  
+      const fetchBpAddresses = async (cardCode) => {
+        try {
+          const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+          const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+  
+          const addrRes = await axios.get(
+            `${apiUrl}/api/sap/business-partners/${encodeURIComponent(cardCode)}/addresses`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+  
+          if (addrRes.data?.status === "success") {
+            const { shipTo, billTo } = addrRes.data;
+  
+            const shipList = Array.isArray(shipTo) ? shipTo : [];
+            const billList = Array.isArray(billTo) ? billTo : [];
+  
+            setBpAddresses({
+              shipTo: shipList,
+              billTo: billList,
+              defaults: addrRes.data.defaults || {},
+            });
+  
+            // pick defaults (or first) per type and reflect in state + preview
+            const defShip = shipList.find((x) => x.IsDefault) || shipList[0] || null;
+            const defBill = billList.find((x) => x.IsDefault) || billList[0] || null;
+  
+            setOrder((prev) => ({
+              ...prev,
+              shippingAddress: defShip?.AddressName || "",
+              billingAddress: defBill?.AddressName || "",
+            }));
+            setShipToFull(formatAddressForDisplay(defShip, "ship"));
+            setBillToFull(formatAddressForDisplay(defBill, "bill"));
+          } else {
+            toast.error("Failed to fetch BP addresses.");
+          }
+        } catch (e) {
+          console.error("Failed to fetch BP addresses:", e);
+          toast.error("Unable to fetch Ship-To/Bill-To.");
+        }
+      };
+  
+      fetchUserCompany();
+    }, []);
 
-    fetchUserCompany();
-  }, []);
+    // keep previews synced if state changes elsewhere
+      useEffect(() => {
+        const s = bpAddresses.shipTo.find((x) => x.AddressName === order.shippingAddress);
+        setShipToFull(formatAddressForDisplay(s, "ship"));
+      }, [order.shippingAddress, bpAddresses.shipTo]);
+    
+      useEffect(() => {
+        const b = bpAddresses.billTo.find((x) => x.AddressName === order.billingAddress);
+        setBillToFull(formatAddressForDisplay(b, "bill"));
+      }, [order.billingAddress, bpAddresses.billTo]);
 
-  const handleChange = (index, field, value) => {
+    const handleChange = (index, field, value) => {
     const updated = [...rows];
     updated[index][field] = value;
 
@@ -114,8 +197,8 @@ function PlaceOrderPage() {
           quantity: "",
           unitPrice: "",
           weight: "",
-          totalWeight: "0.00",
-          lineTotal: "0.00",
+          totalWeight: "",
+          lineTotal: "",
           taxCode: "",
           active: false,
         });
@@ -135,8 +218,8 @@ function PlaceOrderPage() {
           quantity: "",
           unitPrice: "",
           weight: "",
-          totalWeight: "0.00",
-          lineTotal: "0.00",
+          totalWeight: "",
+          lineTotal: "",
           taxCode: "",
           active: false,
         });
@@ -185,7 +268,7 @@ function PlaceOrderPage() {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
       if (!userCompany.cardcode || !userCompany.cardname) {
         toast.error("Missing company info. Please update your profile.");
@@ -199,6 +282,9 @@ function PlaceOrderPage() {
         DocDate: new Date().toISOString().split("T")[0],
         DocDueDate: order.deliveryDate || new Date().toISOString().split("T")[0],
         Comments: order.ponum || "",
+        // send AddressName codes selected in the dropdowns
+        ShipToCode: order.shippingAddress || undefined,
+        PayToCode: order.billingAddress || undefined,
         DocumentLines: rows
           .filter((row) => row.active && row.product)
           .map((r) => ({
@@ -247,79 +333,97 @@ function PlaceOrderPage() {
   };
 
   return (
-    <div className="max-w-full mx-auto p-6 rounded-xl shadow-md order-form-page w-full bg-white">
+    <div className="max-w-full mx-auto order-form-page w-full">
       {/* Header */}
       <div className="flex justify-between py-2 rounded-lg gap-x-10">
-        <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-2 gap-6">
-          <div className="flex items-center gap-4">
-            <label className="w-[190px] text-xs">Requested Delivery Date</label>
-            <input
-              type="date"
-              name="deliveryDate"
-              value={order.deliveryDate}
-              onChange={(e) =>
-                setOrder({ ...order, [e.target.name]: e.target.value })
-              }
-              className="w-2/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-              required
-            />
+        <form onSubmit={handleSubmit} className="w-full max-w-2xl grid grid-cols-2 gap-6">
+
+          <div className="flex items-center gap-2 w-full">
+            <label className="w-40 text-xs">Requested Delivery Date</label>
+            <div className="relative flex-1 min-w-0">
+              <DatePicker
+                selected={order.deliveryDate ? new Date(order.deliveryDate) : null}
+                onChange={(date) => {
+                  const formattedDate = date ? date.toISOString().split("T")[0] : "";
+                  setOrder({ ...order, deliveryDate: formattedDate });
+                }}
+                dateFormat="dd-MM-yyyy"
+                className="w-full border rounded-lg px-3 pr-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+                wrapperClassName="w-full"
+                required
+              />
+              <Calendar
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                size={14}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="w-[50px] text-xs">Ship To</label>
+          <div className="flex items-center gap-2 w-full">
+            <label className="w-24 text-xs">Ship To</label>
             <select
               name="shippingAddress"
               value={order.shippingAddress}
-              onChange={(e) =>
-                setOrder({ ...order, [e.target.name]: e.target.value })
-              }
-              className="w-2/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-            >
-              <option value="">Select Ship To</option>
-              <option value="Warehouse A">Warehouse A</option>
-              <option value="Warehouse B">Warehouse B</option>
-              <option value="Warehouse C">Warehouse C</option>
+              onChange={(e) => {
+                const val = e.target.value;
+                setOrder((p) => ({ ...p, shippingAddress: val }));
+                const a = bpAddresses.shipTo.find((x) => x.AddressName === val);
+                setShipToFull(formatAddressForDisplay(a, "ship"));
+              }}
+              className={`flex-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 ${order.shippingAddress === "" ? "text-gray-500" : "text-gray-500"}`}
+              >
+              <option value="" disabled selected className="text-gray-500">Select Ship To</option>
+              {bpAddresses.shipTo.map((a) => (
+                <option className="text-gray-500" key={a.AddressName} value={a.AddressName}>
+                  {displayAddressName(a, "ship")}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="w-[190px] text-xs">PO Reference</label>
-            <span className="w-2/3 px-3 py-2 text-xs border rounded-lg bg-gray-100 text-gray-100">
-              {order.poref || "—"}
+          <div className="flex items-center gap-2 w-full">
+            <label className="w-40 text-xs">PO Reference</label>
+            <span className="flex-1 px-3 py-2 text-xs border rounded-lg bg-gray-100 text-gray-700">
+              {order.poref || "-"}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="w-[50px] text-xs">Bill To</label>
+          <div className="flex items-center gap-2 w-full">
+            <label className="w-24 text-xs">Bill To</label>
             <select
               name="billingAddress"
               value={order.billingAddress}
-              onChange={(e) =>
-                setOrder({ ...order, [e.target.name]: e.target.value })
-              }
-              className="w-2/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xs"
-            >
-              <option value="">Select Bill To</option>
-              <option value="Head Office">Head Office</option>
-              <option value="Finance Dept">Finance Dept</option>
-              <option value="Branch Office">Branch Office</option>
+              onChange={(e) => {
+                const val = e.target.value;
+                setOrder((p) => ({ ...p, billingAddress: val }));
+                const a = bpAddresses.billTo.find((x) => x.AddressName === val);
+                setBillToFull(formatAddressForDisplay(a, "bill"));
+              }}
+              className={`flex-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 ${order.billingAddress === "" ? "text-gray-500" : "text-gray-500"}`}
+              >
+              <option value="" disabled selected className="text-gray-400">Select Bill To</option>
+              {bpAddresses.billTo.map((a) => (
+                <option className="text-black" key={a.AddressName} value={a.AddressName}>
+                  {displayAddressName(a, "bill")}
+                </option>
+              ))}
             </select>
           </div>
         </form>
 
         {/* Preview */}
-        <div className="flex-1 p-4 border rounded-lg shadow-sm bg-gray-50 max-w-sm">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 max-w-md">
+          <div className="grid grid-cols-2 gap-4 mr-8">
             <div>
-              <p className="text-xs font-semibold mb-1">Shipping Address</p>
+              <p className="text-xs font-semibold mb-2">Shipping Address</p>
               <p className="text-xs">
-                {order.shippingAddress || "Select from form"}
+                {shipToFull || "Select from dropdown"}
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold mb-1">Billing Address</p>
+              <p className="text-xs font-semibold mb-2">Billing Address</p>
               <p className="text-xs">
-                {order.billingAddress || "Select from form"}
+                {billToFull || "Select from dropdown"}
               </p>
             </div>
           </div>
@@ -328,19 +432,19 @@ function PlaceOrderPage() {
 
       {/* Table */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <div className="p-6 rounded-xl bg-white overflow-x-auto">
+        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-21rem)] overflow-y-auto">
           <div className="min-w-[1200px]">
             <table className="table-auto w-full border-collapse">
-              <thead>
-                <tr className="text-[75%] font-bold border-b text-center align-middle">
-                  <th className="px-2 py-2 text-left w-2/12">Item No.</th>
-                  <th className="px-2 py-2 text-left w-2/12">Item Description</th>
-                  <th className="px-2 py-2 w-1/12">Quantity</th>
-                  <th className="px-2 py-2 w-1/12">Unit Price</th>
-                  <th className="px-2 py-2 w-1/12">Weight</th>
-                  <th className="px-2 py-2 w-1/12">Total Weight</th>
-                  <th className="px-2 py-2 w-1/12">Line Total</th>
-                  <th className="px-2 py-2 w-1/12">Delete</th>
+              <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-300">
+                <tr className="text-xs font-semibold border-b border-gray-300 text-center align-middle">
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item No.</th>
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item Description</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Quantity</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Unit Price</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Weight</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Weight</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Amount</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold ">Delete</th>
                 </tr>
               </thead>
 
@@ -353,7 +457,7 @@ function PlaceOrderPage() {
                   const inputBase =
                     "w-full box-border border rounded px-2 py-1 text-xs";
                   const inputActive =
-                    "bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400";
+                    "placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400";
                   const inputInactive = "placeholder-gray-300";
                   const inputClass = `${inputBase} ${
                     isActive ? inputActive : inputInactive
@@ -363,7 +467,7 @@ function PlaceOrderPage() {
                     <tr
                       key={index}
                       className={`text-center align-middle ${
-                        isActive ? "bg-white text-black" : "text-gray-400"
+                        isActive ? "text-black" : "text-gray-400"
                       }`}
                     >
                       {/* Item Code Search */}
@@ -392,7 +496,7 @@ function PlaceOrderPage() {
                           </span>
 
                           {items.length > 0 && (
-                            <ul className="absolute z-10 bg-white border rounded shadow-md w-full text-xs mt-1 max-h-40 overflow-y-auto">
+                            <ul className="bg-white absolute z-50 border rounded shadow-md w-full text-xs mt-1 max-h-40 overflow-y-auto">
                               {items.map((item) => (
                                 <li
                                   key={item.ItemCode}
@@ -413,6 +517,7 @@ function PlaceOrderPage() {
                         <input
                           type="text"
                           value={row.description}
+                          readOnly
                           onChange={(e) =>
                             handleChange(index, "description", e.target.value)
                           }
@@ -468,10 +573,11 @@ function PlaceOrderPage() {
                       <td className="px-2 py-2">
                         <input
                           type="number"
+                          placeholder="0.00"
                           value={row.totalWeight}
-                          disabled
                           readOnly
-                          className={`${inputBase} text-gray-400`}
+                          disabled={!isActive}
+                          className={inputClass}
                         />
                       </td>
 
@@ -479,10 +585,11 @@ function PlaceOrderPage() {
                       <td className="px-2 py-2">
                         <input
                           type="number"
+                          placeholder="0.00"
                           value={row.lineTotal}
-                          disabled
                           readOnly
-                          className={`${inputBase} text-gray-400`}
+                          disabled={!isActive}
+                          className={inputClass}
                         />
                       </td>
 
@@ -511,20 +618,20 @@ function PlaceOrderPage() {
       </div>
 
       {/* ✅ Live Order Total */}
-      <div className="flex justify-end mt-6 pr-4">
-        <p className="text-sm">
+      <div className="flex justify-end mt-6 px-6">
+      <div className="inline-flex flex-col">
+        <p className="text-xs mb-2">
           Total Order: <span className="ml-2">RM {orderTotal}</span>
         </p>
-      </div>
 
-      <div className="flex justify-end mt-6">
         <button
           type="submit"
           onClick={handleSubmit}
-          className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+          className="bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition w-full"
         >
           Submit Order
         </button>
+      </div>
       </div>
     </div>
   );
