@@ -220,9 +220,9 @@ function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Row 1 - Cards + Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 pt-6">
         {/* Left side - Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 h-full">
           {[
             {
               title: "Total Orders",
@@ -269,9 +269,9 @@ function DashboardPage() {
         </div>
 
         {/* Right side - Chart (from orders) */}
-<div className="bg-white p-4 rounded-md border overflow-hidden">
+<div className="bg-white p-4 rounded-md border overflow-hidden h-full flex flex-col">
   <h3 className="text-sm mb-4">Your Purchases in the Last 12 Months</h3>
-  <div style={{ width: "100%", height: 200 }}>
+  <div className="flex-1">
   <ResponsiveContainer width="100%" height="100%">
     <LineChart
       data={purchasesData}
@@ -314,7 +314,7 @@ function DashboardPage() {
       </div>
 
       {/* Row 2 - Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6">
         {/* Recent Orders */}
         <div className="bg-white p-6 rounded-md overflow-x-auto border">
           <h3 className="text-lg mb-4">Recent Orders</h3>

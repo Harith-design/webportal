@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, UserPlus, CheckCircle, XCircle, MoreVertical } from "lucide-react";
+import { Search, UserPlus, Smile, Frown, MoreVertical } from "lucide-react";
 import AddUserModal from "./AddUserModal";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -115,8 +115,17 @@ function UserList() {
   const indexOfFirstUser = indexOfLastUser - rowsPerPage;
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
-
-  const renderStatus = (status) => status === "Active" ? <span className="flex text-green-600"><CheckCircle size={16} className="mr-1"/> Active</span> : <span className="flex text-red-600"><XCircle size={16} className="mr-1"/> Inactive</span>;
+  
+  const renderStatus = (status) => {
+    switch (status) {
+      case "Active":
+        return <span className="inline-flex items-center rounded-xl  text-[#007edf] px-2 font-medium" style={{ background: "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)" }}><Smile size={16} className="mr-1"/>{status}</span>;
+      case "Inactive":
+        return <span className="inline-flex items-center rounded-xl  text-[#16aa3dff] px-2 font-medium" style={{ background: "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)" }}><Frown size={16} className="mr-1" />{status}</span>;
+      default:
+        return status;
+    }
+  };
 
   const handleMenuToggle = (id) => setOpenMenu(openMenu === id ? null : id);
 
@@ -230,7 +239,7 @@ function UserList() {
                 <td className="px-4 py-2">{user.company}</td>
                 <td className="px-4 py-2">{renderStatus(user.status)}</td>
                 <td className="px-4 py-2 text-center relative">
-                  <button className="p-2 hover:bg-gray-200 rounded-full" onClick={() => handleMenuToggle(user.id)}>
+                  <button className="hover:bg-gray-200 rounded-full" onClick={() => handleMenuToggle(user.id)}>
                     <MoreVertical size={18}/>
                   </button>
                   {openMenu === user.id && (
