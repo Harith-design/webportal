@@ -335,8 +335,8 @@ function PlaceOrderPage() {
   return (
     <div className="max-w-full mx-auto order-form-page w-full">
       {/* Header */}
-      <div className="flex justify-between py-2 rounded-lg gap-x-10">
-        <form onSubmit={handleSubmit} className="w-full max-w-2xl grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 w-full py-2 lg:pr-10 rounded-lg bg-green-200">
+        <form onSubmit={handleSubmit} className="justify-self-start grid lg:grid-cols-2 md:grid-cols-1 md:gap-x-60 md:gap-y-2 lg:gap-3 bg-red-200 ">
 
           <div className="flex items-center gap-2 w-full">
             <label className="w-40 text-xs">Requested Delivery Date</label>
@@ -353,14 +353,13 @@ function PlaceOrderPage() {
                 required
               />
               <Calendar
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                size={14}
+                className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-2 w-full">
-            <label className="w-24 text-xs">Ship To</label>
+            <label className="w-20 md:w-24 text-xs">Ship To</label>
             <select
               name="shippingAddress"
               value={order.shippingAddress}
@@ -389,7 +388,7 @@ function PlaceOrderPage() {
           </div>
 
           <div className="flex items-center gap-2 w-full">
-            <label className="w-24 text-xs">Bill To</label>
+            <label className="w-20 md:w-24 text-xs">Bill To</label>
             <select
               name="billingAddress"
               value={order.billingAddress}
@@ -412,8 +411,8 @@ function PlaceOrderPage() {
         </form>
 
         {/* Preview */}
-        <div className="flex-1 max-w-md">
-          <div className="grid grid-cols-2 gap-4 mr-8">
+        <div className="flex-1 bg-gray-200 justify-self-end">
+          <div className="grid grid-cols-2 gap-10 mr-8">
             <div>
               <p className="text-xs font-semibold mb-2">Shipping Address</p>
               <p className="text-xs">
