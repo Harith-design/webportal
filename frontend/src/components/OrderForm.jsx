@@ -335,8 +335,8 @@ function PlaceOrderPage() {
   return (
     <div className="max-w-full mx-auto order-form-page w-full">
       {/* Header */}
-      <div className="grid grid-cols-1 md:grid-cols-2 w-full py-2 lg:pr-10 rounded-lg bg-green-200">
-        <form onSubmit={handleSubmit} className="justify-self-start grid lg:grid-cols-2 md:grid-cols-1 md:gap-x-60 md:gap-y-2 lg:gap-3 bg-red-200 ">
+      <div className="grid grid-cols-1 grid-cols-2 w-full py-2 lg:pr-10 rounded-lg">
+        <form onSubmit={handleSubmit} className="justify-self-start grid lg:grid-cols-2 grid-cols-1 gap-x-60 gap-y-2 lg:gap-3">
 
           <div className="flex items-center gap-2 w-full">
             <label className="w-40 text-xs">Requested Delivery Date</label>
@@ -411,8 +411,8 @@ function PlaceOrderPage() {
         </form>
 
         {/* Preview */}
-        <div className="flex-1 bg-gray-200 justify-self-end">
-          <div className="grid grid-cols-2 gap-10 mr-8">
+        <div className="flex-1 justify-self-end">
+          <div className="grid grid-cols-2 gap-20">
             <div>
               <p className="text-xs font-semibold mb-2">Shipping Address</p>
               <p className="text-xs">
