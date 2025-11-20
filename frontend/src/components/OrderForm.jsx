@@ -335,7 +335,7 @@ function PlaceOrderPage() {
   return (
     <div className="max-w-full mx-auto order-form-page w-full">
       {/* Header */}
-      <div className="grid grid-cols-1 grid-cols-2 w-full py-2 lg:pr-10 rounded-lg">
+      <div className="grid grid-cols-1 grid-cols-2 w-full py-2 lg:pr-10 rounded-lg px-6">
         <form onSubmit={handleSubmit} className="justify-self-start grid lg:grid-cols-2 grid-cols-1 gap-x-60 gap-y-2 lg:gap-3">
 
           <div className="flex items-center gap-2 w-full">
@@ -348,7 +348,7 @@ function PlaceOrderPage() {
                   setOrder({ ...order, deliveryDate: formattedDate });
                 }}
                 dateFormat="dd-MM-yyyy"
-                className="w-full border rounded-lg px-3 pr-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+                className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
                 wrapperClassName="w-full"
                 required
               />
