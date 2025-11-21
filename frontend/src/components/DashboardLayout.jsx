@@ -136,14 +136,20 @@ function DashboardLayout() {
   return (
     <div className="min-h-screen flex w-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar className="fixed top-0 left-0 h-full w-20 z-10"/>
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto relative z-20">
-        <header className="flex justify-between items-center px-4 sm:px-6 py-2 bg-white border-b flex-shrink-0">
+      <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto">
+        <header className="flex items-center py-2 bg-white border-b flex-shrink-0 z-50">
+          
+        {/* Replace src with your logo path */}
+        <img
+          src="/logo-giib-cat-2.png"
+          alt="Logo"
+          className="h-10 w-16 sm:w-20 object-contain"
+        />
           <h1
-            className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate"
-            style={{ marginLeft: 80}}
+            className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate sm:ml-8 ml-0"
           >
             {title}
           </h1>
@@ -215,8 +221,7 @@ function DashboardLayout() {
         </header>
 
         <main
-          className="flex-1 px-2 sm:px-4 md:px-6 pt-3"
-          style={{ marginLeft: 80}}
+          className="flex-1 px-2 pt-3 bg-gray-100 ml-0 sm:ml-20"
         >
           <Outlet />
         </main>
