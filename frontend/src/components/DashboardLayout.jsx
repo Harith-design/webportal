@@ -148,6 +148,7 @@ function DashboardLayout() {
           alt="Logo"
           className="h-10 w-16 sm:w-20 object-contain"
         />
+        <div className="flex flex-row flex-1 justify-between items-center">
           <h1
             className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate sm:ml-8 ml-0"
           >
@@ -156,7 +157,7 @@ function DashboardLayout() {
 
           {/* User dropdown (optional) */}
           {user && (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative sm:mr-8 mr-4" ref={dropdownRef}>
               <div className="flex items-center space-x-3">
                 {/* Avatar (image if available, otherwise initials) */}
                 <button
@@ -218,6 +219,7 @@ function DashboardLayout() {
               )}
             </div>
           )}
+          </div>
         </header>
 
         <main
