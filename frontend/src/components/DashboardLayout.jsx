@@ -2,7 +2,9 @@ import React, {useEffect, useState, useRef } from "react";
 import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useParams, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
-import { isTokenValid, clearToken } from "../helpers/auth";
+import { isTokenValid} from "../helpers/auth";
+import { performLogout } from "../helpers/logout";
+import { useLoading } from "../context/LoadingContext";
 
 
 function DashboardLayout() {
@@ -18,10 +20,10 @@ function DashboardLayout() {
   // const user = { name: "Guest User", role: "Visitor" };
 
   // Logout
-    const handleLogout = () => {
-      clearToken();
-      // navigate("/login");
-  };
+    
+    const handleLogout = async () => {
+      await performLogout(setLoading, navigate);
+    };
 
   useEffect(() => {
       if (!isTokenValid()) {
@@ -34,6 +36,7 @@ function DashboardLayout() {
         parseInt(localStorage.getItem("token_expiry")) ||
         parseInt(sessionStorage.getItem("token_expiry"));
       const now = new Date().getTime();
+
       const timeout = setTimeout(() => {
         handleLogout();
       }, expiry - now);
@@ -132,6 +135,7 @@ function DashboardLayout() {
   const showImage = !!avatarUrl && !imgError;
 
   const title = getPageTitle(location.pathname, id);
+  const { setLoading } = useLoading(); // 👈 get loading context
 
   return (
     <div className="min-h-screen flex w-screen bg-gray-50">
