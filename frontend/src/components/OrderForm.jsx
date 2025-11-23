@@ -339,7 +339,7 @@ function PlaceOrderPage() {
         <form onSubmit={handleSubmit} className="grid lg:grid-cols-2 grid-cols-1 gap-y-3 gap-x-6">
 
   {/* Requested Delivery Date */}
-  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full bg-red-200 ">
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
     <label className="text-xs whitespace-nowrap">Requested Delivery Date</label>
     <div className="relative w-full">
       <DatePicker
