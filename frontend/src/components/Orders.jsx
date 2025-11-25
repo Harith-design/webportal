@@ -374,7 +374,7 @@ useEffect(() => {
       </div>
 
       {/* Orders Table */}
-      <div ref={tableContainerRef} className="rounded-xl overflow-x-auto border flex-1">
+      <div ref={tableContainerRef} className="rounded-xl overflow-x-auto border border-gray-300 flex-1">
         <table className="table-auto min-w-max w-full">
           <thead>
             <tr className="text-left text-xs border-b font-medium">

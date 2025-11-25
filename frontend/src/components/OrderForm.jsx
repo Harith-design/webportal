@@ -436,19 +436,19 @@ function PlaceOrderPage() {
       </div>
 
       {/* Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-21rem)] overflow-y-auto">
+      <div className="grid grid-cols-1">
+        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-20rem)] overflow-y-auto">
           <div className="min-w-[1200px]">
-            <table className="table-auto w-full border-collapse">
-              <thead className="sticky top-0 z-20 bg-gray-100 border-b border-gray-300">
-                <tr className="text-xs font-semibold border-b border-gray-300 text-center align-middle">
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item No.</th>
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item Description</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Quantity</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Unit Price</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Weight</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Weight</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Amount</th>
+            <table className="table-auto w-full border-separate px-2 rounded-xl border border-gray-300 order-form-table">
+              <thead className="sticky top-0 z-20 border-gray-300 font-semibold">
+                <tr className="text-xs font-semibold align-middle border">
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item No.</th>
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item Description</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Quantity</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Unit Price</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Amount</th>
                   <th className="px-2 py-2 w-1/12 font-semibold ">Delete</th>
                 </tr>
               </thead>
@@ -460,10 +460,10 @@ function PlaceOrderPage() {
                   const isLoading = loadingRow === index;
 
                   const inputBase =
-                    "w-full box-border border rounded px-2 py-1 text-xs";
+                    "w-full border-b px-2 py-1 text-xs bg-transparent";
                   const inputActive =
-                    "placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400";
-                  const inputInactive = "placeholder-gray-300";
+                    "placeholder-gray-500 focus:outline-none";
+                  const inputInactive = "placeholder-gray-400";
                   const inputClass = `${inputBase} ${
                     isActive ? inputActive : inputInactive
                   }`;
@@ -506,7 +506,7 @@ function PlaceOrderPage() {
                                 <li
                                   key={item.ItemCode}
                                   onClick={() => handleSelectItem(index, item)}
-                                  className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
+                                  className="px-2 py-1 cursor-pointer"
                                 >
                                   {item.ItemCode} —{" "}
                                   {item.ItemName || item.Description}
@@ -518,7 +518,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Description */}
-                      <td className="px-2 py-2 text-left">
+                      <td className="p-2 text-left">
                         <input
                           type="text"
                           value={row.description}
@@ -632,7 +632,7 @@ function PlaceOrderPage() {
         <button
           type="submit"
           onClick={handleSubmit}
-          className="bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition w-full"
+          className="bg-blue-600 text-white text-xs font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition w-full"
         >
           Submit Order
         </button>
