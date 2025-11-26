@@ -5,6 +5,7 @@ import axios from "axios";
 import { Receipt, FileCheck } from "lucide-react";
 
 /* -------- Reusable Status Badge (same as OrderDetails) -------- */
+
 const StatusBadge = ({ status }) => {
   const statusConfig = {
     Open: {
@@ -193,6 +194,12 @@ function InvoiceDetails() {
   if (error) return <p className="p-6 text-red-600">{error}</p>;
   if (!invoice) return <p className="p-6 text-gray-500">Invoice not found</p>;
 
+  
+const statusText =
+    invoice.DocumentStatus === "bost_Open" || invoice.status === "Open"
+      ? "Open"
+      : invoice.status || "Closed";
+
   const subtotal = invoice.items?.reduce(
     (sum, item) => sum + item.qty * item.price,
     0
@@ -201,51 +208,43 @@ function InvoiceDetails() {
   const finalTotal = subtotal - invoice.discount + invoice.vat;
 
   return (
-    <div className="px-16 py-2 space-y-8">
+    <div className="px-2 lg:px-16 py-2 space-y-8">
 
       {/* -------- Header (Matches OrderDetails Layout) -------- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-xs">
+      <div className="grid grid-cols-2 text-xs">
 
         {/* Left: Invoice Info */}
-        <div className="space-y-1">
-          <h2 className="font-semibold text-sm">Invoice Details</h2>
+        <div className="grid grid-cols-2 gap-y-1">
+          <h2 className="font-semibold text-sm col-span-2">Invoice Details</h2>
 
-          <p>
-            <span className="font-medium inline-block w-60">Invoice No:</span>
+            <span className="font-medium">Invoice No</span>
             {invoice.invoiceNo}
-          </p>
 
-          <p>
-            <span className="font-medium inline-block w-60">PO No:</span>
+            <span className="font-medium">PO No</span>
             {invoice.poNo}
-          </p>
 
-          <p>
-            <span className="font-medium inline-block w-60">Invoice Date:</span>
+            <span className="font-medium">Invoice Date</span>
             {invoice.postingDate}
-          </p>
 
-          <p>
-            <span className="font-medium inline-block w-60">Due Date:</span>
+            <span className="font-medium">Due Date</span>
             {invoice.dueDate}
-          </p>
 
-          <p className="flex items-center">
-            <span className="font-medium inline-block w-60">Status:</span>
-            <StatusBadge status={invoice.status} />
-          </p>
+           <span className="font-medium">Status</span>
+          <div className="w-fit">
+          <StatusBadge className="text-xs " status={statusText} />
+          </div>
         </div>
 
         {/* Right: Bill To + Ship To */}
-        <div className="flex justify-end gap-10">
+        <div className="flex flex-col md:flex-row justify-self-end gap-4 md:gap-10">
           <div className="w-60">
             <h2 className="font-semibold text-sm mb-1">Bill To</h2>
-            <p className="text-xs whitespace-pre-line">{billToFull}</p>
+            <p className="text-xs">{billToFull}</p>
           </div>
 
           <div className="w-60">
             <h2 className="font-semibold text-sm mb-1">Ship To</h2>
-            <p className="text-xs whitespace-pre-line">{shipToFull}</p>
+            <p className="text-xs">{shipToFull}</p>
           </div>
         </div>
 

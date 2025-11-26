@@ -292,15 +292,47 @@ function EditProfile() {
       : FALLBACK);
 
   return (
-    <div className="p-6 space-y-10">
-      <form className="space-y-8" onSubmit={handleSubmit}>
+    <div className="py-4 px-10 lg:px-40 mt-1 md:px-16">
+      <form className="space-y-10" onSubmit={handleSubmit}>
+        
         {/* Personal Info */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Personal Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 grid-cols-1 gap-6 items-center">
+            {/* Avatar */}
+            <div className="relative flex flex-col justify-self-start md:order-last m-5 md:m-0">
+              <div className="relative">
+                <img
+                  src={imgSrc}
+                  alt="Profile"
+                  onError={(e) => (e.currentTarget.src = FALLBACK)}
+                  className="w-52 h-52 rounded-full object-cover border shadow-md bg-gray-100"
+                />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp" // narrow to reliable types
+                  id="profilePicInput"
+                  onChange={handlePicChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="profilePicInput"
+                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
+                >
+                  <Pencil size={14} />
+                  <span className="text-xs">Edit</span>
+                </label>
+              </div>
+              {picError && (
+                <p className="mt-2 text-xs text-red-600 max-w-[18rem] text-center">
+                  {picError}
+                </p>
+              )}
+            </div>
+            <div className="md:col-span-2 grid grid-cols-1 gap-2">
               <div className="flex flex-col">
                 <label className="text-[80%] font-medium mb-1">First Name</label>
                 <input
@@ -347,45 +379,15 @@ function EditProfile() {
               </div>
             </div>
 
-            {/* Avatar */}
-            <div className="relative flex flex-col items-center">
-              <div className="relative">
-                <img
-                  src={imgSrc}
-                  alt="Profile"
-                  onError={(e) => (e.currentTarget.src = FALLBACK)}
-                  className="w-36 h-36 rounded-full object-cover border shadow-md bg-gray-100"
-                />
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp" // narrow to reliable types
-                  id="profilePicInput"
-                  onChange={handlePicChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="profilePicInput"
-                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/80 px-2 py-1 rounded-lg cursor-pointer transition hover:bg-white border"
-                >
-                  <Pencil size={14} />
-                  <span className="text-xs">Edit</span>
-                </label>
-              </div>
-              {picError && (
-                <p className="mt-2 text-xs text-red-600 max-w-[18rem] text-center">
-                  {picError}
-                </p>
-              )}
-            </div>
           </div>
         </div>
 
         {/* Company Info */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Company Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">
                 Search Company (from SAP)
@@ -432,10 +434,10 @@ function EditProfile() {
 
         {/* Company Address */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Company Address
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">Street Address</label>
               <input
@@ -495,10 +497,10 @@ function EditProfile() {
 
         {/* Security */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Security
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">New Password</label>
               <input

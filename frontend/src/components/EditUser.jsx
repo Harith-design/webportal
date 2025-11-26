@@ -347,15 +347,15 @@ if (initializing) {
       : FALLBACK);
 
   return (
-    <div className="p-6 space-y-10">
-      <form className="space-y-8" onSubmit={handleSubmit}>
+    <div className="py-4  px-10 lg:px-40 mt-1 md:px-16">
+      <form className="space-y-10" onSubmit={handleSubmit}>
         {/* Personal Info */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Personal Information
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="flex flex-col">
                 <label className="text-[80%] font-medium mb-1">First Name</label>
                 <input
@@ -403,7 +403,7 @@ if (initializing) {
             </div>
 
             {/* Avatar */}
-            <div className="relative flex flex-col items-center">
+            <div className="relative flex flex-col items-center md:justify-self-end md:order-last order-first m-5 md:m-0">
               <div className="relative">
                 <img
                   src={imgSrc}
@@ -437,10 +437,10 @@ if (initializing) {
 
         {/* Company Info */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Company Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">
                 Search Company (from SAP)
@@ -487,10 +487,10 @@ if (initializing) {
 
         {/* Company Address */}
         <div>
-          <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
+          <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Company Address
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">Street Address</label>
               <input
@@ -553,7 +553,7 @@ if (initializing) {
           <h3 className="font-semibold text-gray-700 border-b pb-2 mb-4">
             Security
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">New Password</label>
               <input

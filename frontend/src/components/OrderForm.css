@@ -1,6 +1,11 @@
-.order-form-page .OrderForm tr:hover td {
+.OrderForm tr:hover td {
   background: none !important;
 }
+
+.order-form-table tr:hover td {
+  background: transparent !important;
+}
+
 
 .table-wrapper {
   overflow-x: visible;
@@ -10,3 +15,5 @@
   position: re;
   border: #e60000;
 }
+
+

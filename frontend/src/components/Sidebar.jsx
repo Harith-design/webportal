@@ -30,13 +30,7 @@ function Sidebar() {
 
       <nav className="space-y-6">
         {/* Logo */}
-        <div className="flex justify-center">
-        {/* Replace src with your logo path */}
-        <img
-          src="/logo-giib-cat-2.png"
-          alt="Logo"
-          className="h-14 w-14 object-contain"
-        />
+        <div className="flex justify-center mt-10">
       </div>
         <SidebarLink to="/dashboardpage" icon={<Blocks size={32} />} label="Dashboard"/>
         <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>

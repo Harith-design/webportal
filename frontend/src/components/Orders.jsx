@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { PackageOpen, Truck, Clock, Search, Calendar, X } from "lucide-react";
+import { PackageOpen, Truck, Clock, Search, X, PackagePlus, ListFilter, ClipboardList, CalendarArrowUp, CalendarClock} from "lucide-react";
 import { Link } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -12,6 +12,13 @@ function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Temporary (inside popup)
+  const [tempStatus, setTempStatus] = useState("all");
+  const [tempOrderStart, setTempOrderStart] = useState(null);
+  const [tempOrderEnd, setTempOrderEnd] = useState(null);
+  const [tempDueStart, setTempDueStart] = useState(null);
+  const [tempDueEnd, setTempDueEnd] = useState(null);
+
   // 🔹 Filters
   const [statusFilter, setStatusFilter] = useState("all");
   const [orderStart, setOrderStart] = useState(null);
@@ -20,7 +27,16 @@ function OrdersPage() {
   const [dueEnd, setDueEnd] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef(null);
+
   const clearFilters = () => {
+    setTempStatus("all");
+    setTempOrderStart(null);
+    setTempOrderEnd(null);
+    setTempDueStart(null);
+    setTempDueEnd(null);
+
     setStatusFilter("all");
     setOrderStart(null);
     setOrderEnd(null);
@@ -32,6 +48,16 @@ function OrdersPage() {
   // 🔹 Table container ref for dynamic rows
   const tableContainerRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (filterRef.current && !filterRef.current.contains(event.target)) {
+      setIsFilterOpen(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // 🔹 Fetch orders
   useEffect(() => {
@@ -170,24 +196,22 @@ useEffect(() => {
   return (
     <div className="px-6 pt-2 flex flex-col h-[calc(100vh-6rem)] w-full overflow-hidden">
       {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between flex-wrap gap-4 mb-4">
-        <div className="flex flex-wrap gap-4">
-          {/* Status */}
-          <div className="relative min-w-[10%]">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border rounded-lg px-2 pr-7 py-1 text-xs text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
-            >
-              <option value="all">All Status</option>
-              <option value="Open">Open</option>
-              <option value="Closed">Delivered</option>
-              <option value="In Transit">In Transit</option>
-            </select>
-            {statusFilter !== "all" && (
+      <div className="flex flex-row items-end justify-between gap-4 mb-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Search */}
+          <div className="relative w-64 bg-white rounded-xl">
+            <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"/>
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 py-1 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500"
+            />
+            {searchQuery && (
               <button
-                onClick={() => setStatusFilter("all")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
                 type="button"
               >
                 <X size={13} />
@@ -195,134 +219,168 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Order Dates */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs">Order Date From</label>
-            <div className="relative">
-              <DatePicker
-                selected={orderStart}
-                onChange={setOrderStart}
-                dateFormat="dd/MM/yyyy"
-                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
-              />
-              {orderStart ? (
-                <button
-                  onClick={() => setOrderStart(null)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                  type="button"
-                >
-                  <X size={13} />
-                </button>
-              ) : (
-                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              )}
-            </div>
-            <span className="text-xs">To</span>
-            <div className="relative">
-              <DatePicker
-                selected={orderEnd}
-                onChange={setOrderEnd}
-                dateFormat="dd/MM/yyyy"
-                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
-              />
-              {orderEnd ? (
-                <button
-                  onClick={() => setOrderEnd(null)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                  type="button"
-                >
-                  <X size={13} />
-                </button>
-              ) : (
-                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              )}
-            </div>
-          </div>
-
-          {/* Due Dates */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs">Due Date From</label>
-            <div className="relative">
-              <DatePicker
-                selected={dueStart}
-                onChange={setDueStart}
-                dateFormat="dd/MM/yyyy"
-                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
-              />
-              {dueStart ? (
-                <button
-                  onClick={() => setDueStart(null)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
-                  type="button"
-                >
-                  <X size={13} />
-                </button>
-              ) : (
-                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              )}
-            </div>
-            <span className="text-xs">To</span>
-            <div className="relative">
-              <DatePicker
-                selected={dueEnd}
-                onChange={setDueEnd}
-                dateFormat="dd/MM/yyyy"
-                className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 w-full xs:w-28 md:w-32 text-gray-500"
-              />
-              {dueEnd ? (
-                <button
-                  onClick={() => setDueEnd(null)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
-                  type="button"
-                >
-                  <X size={13} />
-                </button>
-              ) : (
-                <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              )}
-            </div>
-          </div>
-
-          {/* Clear */}
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1 text-xs text-[#e60000] border border-[#e60000] rounded-lg px-3 py-1 hover:bg-red-50 transition font-semibold"
-          >
-            ✕ Clear
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-full md:w-64">
-          <Search size={16} className="text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search orders..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-6 py-1 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500 text-gray-500"
-          />
-          {searchQuery && (
+          {/* Filter Icon */}
+          <div className="relative" ref={filterRef}>
             <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
-              type="button"
+              // onClick={() => setModalOpen(true)} you can handle opening your modal here
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2 px-2 py-1 border rounded-lg text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-xs"
             >
-              <X size={13} />
+              <ListFilter size={16} /> Filter
             </button>
-          )}
+            {isFilterOpen && (
+              <div className="absolute left-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-50 p-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1">
+                    <ClipboardList className="w-4 h-4 text-gray-700 mr-1"/>
+                    <label className="text-xs font-medium">Status</label>
+                  </div>
+                  <select
+                    value={tempStatus}
+                    onChange={(e) => setTempStatus(e.target.value)}
+                    className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Delivered</option>
+                  </select>
+
+                  <div className="flex items-center gap-1">
+                  <CalendarArrowUp className="w-4 h-4 text-gray-700 mr-1"/>
+                  <label className="text-xs font-medium">Order Date</label>
+                  </div>
+
+                  <div className="relative w-full">
+                  <DatePicker
+                    selected={tempOrderStart}
+                    onChange={(date) => setTempOrderStart(date)}
+                    placeholderText="Start"
+                    dateFormat="dd/MM/yyyy"
+                    className="border rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    wrapperClassName="w-full"
+                  />
+                  {tempOrderStart && (
+                    <button
+                      onClick={() => setTempOrderStart(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                      type="button"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  </div>
+
+                  <div className="relative w-full">
+                  <DatePicker
+                    selected={tempOrderEnd}
+                    onChange={(date) => setTempOrderEnd(date)}
+                    selectsEnd
+                    placeholderText="End"
+                    dateFormat="dd/MM/yyyy"
+                    className="border rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    wrapperClassName="w-full"
+                  />
+                  {tempOrderEnd && (
+                    <button
+                      onClick={() => setTempOrderEnd(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                      type="button"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                  <CalendarClock className="w-4 h-4 text-gray-700 mr-1"/>
+                  <label className="text-xs font-medium">Due Date</label>
+                  </div>
+
+                  <div className="relative w-full">
+                  <DatePicker
+                    selected={tempDueStart}
+                    onChange={(date) => setTempDueStart(date)}
+                    placeholderText="Start"
+                    dateFormat="dd/MM/yyyy"
+                    className="border rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    wrapperClassName="w-full"
+                  />
+                  {tempDueStart && (
+                    <button
+                      onClick={() => tempDueStart(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                      type="button"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  </div>
+
+                  <div className="relative w-full">
+                  <DatePicker
+                    selected={tempDueEnd}
+                    onChange={(date) => setTempDueEnd(date)}
+                    placeholderText="End"
+                    dateFormat="dd/MM/yyyy"
+                    className="border rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    wrapperClassName="w-full"
+                  />
+                  {tempDueEnd && (
+                    <button
+                      onClick={() => tempDueEnd(null)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                      type="button"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  </div>
+
+                  <div className="flex justify-end gap-1 mt-2 font-semibold">
+                    <button
+                      onClick={clearFilters}
+                      className="px-3 py-2 rounded-lg text-xs hover:bg-gray-200"
+                    >
+                      Clear Filters
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStatusFilter(tempStatus);
+                        setOrderStart(tempOrderStart);
+                        setOrderEnd(tempOrderEnd);
+                        setDueStart(tempDueStart);
+                        setDueEnd(tempDueEnd);
+                        }
+                        }
+                      className="px-3 py-2 rounded-lg bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Add Order */}
+        <div className="flex justify-end">
+          <Link 
+          to="/orderform"
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-blue-600 text-white text-xs hover:bg-blue-700 transition font-semibold">
+            <PackagePlus size={16}/> Add Order
+          </Link>
+        </div>
       </div>
 
       {/* Orders Table */}
-      <div ref={tableContainerRef} className="rounded-xl overflow-hidden border flex-1">
-        <table className="table-auto w-full">
+      <div ref={tableContainerRef} className="rounded-xl overflow-x-auto border border-gray-300 flex-1">
+        <table className="table-auto min-w-max w-full">
           <thead>
             <tr className="text-left text-xs border-b font-medium">
               <th className="px-4 py-2">Sales No.</th>
               <th className="px-4 py-2">Customer</th>
-              <th className="px-4 py-2">Po No.</th>
+              <th className="px-4 py-2">PO No.</th>
               <th className="px-4 py-2">Order Date</th>
               <th className="px-4 py-2">Due Date</th>
               <th className="px-4 py-2">Amount</th>

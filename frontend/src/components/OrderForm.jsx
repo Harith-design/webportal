@@ -335,85 +335,90 @@ function PlaceOrderPage() {
   return (
     <div className="max-w-full mx-auto order-form-page w-full">
       {/* Header */}
-      <div className="flex justify-between py-2 rounded-lg gap-x-10">
-        <form onSubmit={handleSubmit} className="w-full max-w-2xl grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 grid-cols-2 w-full py-2 rounded-lg px-6 gap-5 lg:gap-26">
+        <form onSubmit={handleSubmit} className="grid lg:grid-cols-2 grid-cols-1 gap-y-3 gap-x-6">
 
-          <div className="flex items-center gap-2 w-full">
-            <label className="w-40 text-xs">Requested Delivery Date</label>
-            <div className="relative flex-1 min-w-0">
-              <DatePicker
-                selected={order.deliveryDate ? new Date(order.deliveryDate) : null}
-                onChange={(date) => {
-                  const formattedDate = date ? date.toISOString().split("T")[0] : "";
-                  setOrder({ ...order, deliveryDate: formattedDate });
-                }}
-                dateFormat="dd-MM-yyyy"
-                className="w-full border rounded-lg px-3 pr-8 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
-                wrapperClassName="w-full"
-                required
-              />
-              <Calendar
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                size={14}
-              />
-            </div>
-          </div>
+  {/* Requested Delivery Date */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">Requested Delivery Date</label>
+    <div className="relative w-full">
+      <DatePicker
+        selected={order.deliveryDate ? new Date(order.deliveryDate) : null}
+        onChange={(date) => {
+          const formattedDate = date ? date.toISOString().split("T")[0] : "";
+          setOrder({ ...order, deliveryDate: formattedDate });
+        }}
+        dateFormat="dd-MM-yyyy"
+        className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+        wrapperClassName="w-full"
+        required
+      />
+      <Calendar className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+    </div>
+  </div>
 
-          <div className="flex items-center gap-2 w-full">
-            <label className="w-24 text-xs">Ship To</label>
-            <select
-              name="shippingAddress"
-              value={order.shippingAddress}
-              onChange={(e) => {
-                const val = e.target.value;
-                setOrder((p) => ({ ...p, shippingAddress: val }));
-                const a = bpAddresses.shipTo.find((x) => x.AddressName === val);
-                setShipToFull(formatAddressForDisplay(a, "ship"));
-              }}
-              className={`flex-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 ${order.shippingAddress === "" ? "text-gray-500" : "text-gray-500"}`}
-              >
-              <option value="" disabled selected className="text-gray-500">Select Ship To</option>
-              {bpAddresses.shipTo.map((a) => (
-                <option className="text-gray-500" key={a.AddressName} value={a.AddressName}>
-                  {displayAddressName(a, "ship")}
-                </option>
-              ))}
-            </select>
-          </div>
+  
+  {/* PO Reference */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">PO Reference</label>
+    <span className="flex-1 px-1 py-1 text-xs border rounded-lg bg-gray-300 text-gray-700">
+      {order.poref || "-"}
+    </span>
+  </div>
 
-          <div className="flex items-center gap-2 w-full">
-            <label className="w-40 text-xs">PO Reference</label>
-            <span className="flex-1 px-3 py-2 text-xs border rounded-lg bg-gray-100 text-gray-700">
-              {order.poref || "-"}
-            </span>
-          </div>
+  {/* Ship To */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">Ship To</label>
+    <select
+      name="shippingAddress"
+      value={order.shippingAddress}
+      onChange={(e) => {
+        const val = e.target.value;
+        setOrder((p) => ({ ...p, shippingAddress: val }));
+        const a = bpAddresses.shipTo.find((x) => x.AddressName === val);
+        setShipToFull(formatAddressForDisplay(a, "ship"));
+      }}
+      className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+    >
+      <option value="" disabled>Select Ship To</option>
+      {bpAddresses.shipTo.map((a) => (
+        <option key={a.AddressName} value={a.AddressName}>
+          {displayAddressName(a, "ship")}
+        </option>
+      ))}
+    </select>
+  </div>
 
-          <div className="flex items-center gap-2 w-full">
-            <label className="w-24 text-xs">Bill To</label>
-            <select
-              name="billingAddress"
-              value={order.billingAddress}
-              onChange={(e) => {
-                const val = e.target.value;
-                setOrder((p) => ({ ...p, billingAddress: val }));
-                const a = bpAddresses.billTo.find((x) => x.AddressName === val);
-                setBillToFull(formatAddressForDisplay(a, "bill"));
-              }}
-              className={`flex-1 border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 ${order.billingAddress === "" ? "text-gray-500" : "text-gray-500"}`}
-              >
-              <option value="" disabled selected className="text-gray-400">Select Bill To</option>
-              {bpAddresses.billTo.map((a) => (
-                <option className="text-black" key={a.AddressName} value={a.AddressName}>
-                  {displayAddressName(a, "bill")}
-                </option>
-              ))}
-            </select>
-          </div>
-        </form>
+
+  {/* Bill To */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">Bill To</label>
+    <select
+      name="billingAddress"
+      value={order.billingAddress}
+      onChange={(e) => {
+        const val = e.target.value;
+        setOrder((p) => ({ ...p, billingAddress: val }));
+        const a = bpAddresses.billTo.find((x) => x.AddressName === val);
+        setBillToFull(formatAddressForDisplay(a, "bill"));
+      }}
+      className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+    >
+      <option value="" disabled>Select Bill To</option>
+      {bpAddresses.billTo.map((a) => (
+        <option key={a.AddressName} value={a.AddressName}>
+          {displayAddressName(a, "bill")}
+        </option>
+      ))}
+    </select>
+  </div>
+
+</form>
+
 
         {/* Preview */}
-        <div className="flex-1 max-w-md">
-          <div className="grid grid-cols-2 gap-4 mr-8">
+        <div className="flex-1 justify-self-end sm:max-w-sm lg:max-w-lg">
+          <div className="grid lg:grid-cols-2 gap-7 lg:gap-16">
             <div>
               <p className="text-xs font-semibold mb-2">Shipping Address</p>
               <p className="text-xs">
@@ -431,19 +436,19 @@ function PlaceOrderPage() {
       </div>
 
       {/* Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-21rem)] overflow-y-auto">
+      <div className="grid grid-cols-1">
+        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-20rem)] overflow-y-auto">
           <div className="min-w-[1200px]">
-            <table className="table-auto w-full border-collapse">
-              <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-300">
-                <tr className="text-xs font-semibold border-b border-gray-300 text-center align-middle">
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item No.</th>
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold ">Item Description</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Quantity</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Unit Price</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Weight</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Weight</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Total Amount</th>
+            <table className="table-auto w-full border-separate px-2 rounded-xl border border-gray-300 order-form-table">
+              <thead className="sticky top-0 z-20 border-gray-300 font-semibold">
+                <tr className="text-xs font-semibold align-middle border">
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item No.</th>
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item Description</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Quantity</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Unit Price</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Amount</th>
                   <th className="px-2 py-2 w-1/12 font-semibold ">Delete</th>
                 </tr>
               </thead>
@@ -455,10 +460,10 @@ function PlaceOrderPage() {
                   const isLoading = loadingRow === index;
 
                   const inputBase =
-                    "w-full box-border border rounded px-2 py-1 text-xs";
+                    "w-full border-b px-2 py-1 text-xs bg-transparent";
                   const inputActive =
-                    "placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400";
-                  const inputInactive = "placeholder-gray-300";
+                    "placeholder-gray-500 focus:outline-none";
+                  const inputInactive = "placeholder-gray-400";
                   const inputClass = `${inputBase} ${
                     isActive ? inputActive : inputInactive
                   }`;
@@ -501,7 +506,7 @@ function PlaceOrderPage() {
                                 <li
                                   key={item.ItemCode}
                                   onClick={() => handleSelectItem(index, item)}
-                                  className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
+                                  className="px-2 py-1 cursor-pointer"
                                 >
                                   {item.ItemCode} —{" "}
                                   {item.ItemName || item.Description}
@@ -513,7 +518,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Description */}
-                      <td className="px-2 py-2 text-left">
+                      <td className="p-2 text-left">
                         <input
                           type="text"
                           value={row.description}
@@ -627,7 +632,7 @@ function PlaceOrderPage() {
         <button
           type="submit"
           onClick={handleSubmit}
-          className="bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition w-full"
+          className="bg-blue-600 text-white text-xs font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition w-full"
         >
           Submit Order
         </button>

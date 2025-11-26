@@ -2,7 +2,9 @@ import React, {useEffect, useState, useRef } from "react";
 import Sidebar from "./Sidebar";
 import { Outlet, useLocation, useParams, useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../services/api";
-import { isTokenValid, clearToken } from "../helpers/auth";
+import { isTokenValid} from "../helpers/auth";
+import { performLogout } from "../helpers/logout";
+import { useLoading } from "../context/LoadingContext";
 
 
 function DashboardLayout() {
@@ -18,10 +20,10 @@ function DashboardLayout() {
   // const user = { name: "Guest User", role: "Visitor" };
 
   // Logout
-    const handleLogout = () => {
-      clearToken();
-      // navigate("/login");
-  };
+    
+    const handleLogout = async () => {
+      await performLogout(setLoading, navigate);
+    };
 
   useEffect(() => {
       if (!isTokenValid()) {
@@ -34,6 +36,7 @@ function DashboardLayout() {
         parseInt(localStorage.getItem("token_expiry")) ||
         parseInt(sessionStorage.getItem("token_expiry"));
       const now = new Date().getTime();
+
       const timeout = setTimeout(() => {
         handleLogout();
       }, expiry - now);
@@ -132,25 +135,33 @@ function DashboardLayout() {
   const showImage = !!avatarUrl && !imgError;
 
   const title = getPageTitle(location.pathname, id);
+  const { setLoading } = useLoading(); // 👈 get loading context
 
   return (
     <div className="min-h-screen flex w-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar className="fixed top-0 left-0 h-full w-20 z-10"/>
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto relative z-20">
-        <header className="flex justify-between items-center px-4 sm:px-6 py-2 bg-white border-b flex-shrink-0">
+      <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto">
+        <header className="flex items-center py-2 bg-white border-b flex-shrink-0 z-50">
+          
+        {/* Replace src with your logo path */}
+        <img
+          src="/logo-giib-cat-2.png"
+          alt="Logo"
+          className="h-10 w-16 sm:w-20 object-contain"
+        />
+        <div className="flex flex-row flex-1 justify-between items-center">
           <h1
-            className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate"
-            style={{ marginLeft: 80}}
+            className="text-2xl sm:text-3xl md:text-4xl font-semibold truncate sm:ml-8 ml-0"
           >
             {title}
           </h1>
 
           {/* User dropdown (optional) */}
           {user && (
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative sm:mr-8 mr-4" ref={dropdownRef}>
               <div className="flex items-center space-x-3">
                 {/* Avatar (image if available, otherwise initials) */}
                 <button
@@ -212,11 +223,11 @@ function DashboardLayout() {
               )}
             </div>
           )}
+          </div>
         </header>
 
         <main
-          className="flex-1 px-2 sm:px-4 md:px-6 pt-3"
-          style={{ marginLeft: 80}}
+          className="flex-1 px-2 pt-3 bg-gray-100 ml-0 sm:ml-20"
         >
           <Outlet />
         </main>

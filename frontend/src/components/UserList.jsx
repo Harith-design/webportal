@@ -250,8 +250,8 @@ function UserList() {
   return (
     <div className="px-6 pt-2 flex flex-col h-[calc(100vh-6rem)] w-full overflow-hidden">
       {/* Top Controls */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
-        <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+      <div className="flex flex-row items-end justify-between gap-4 mb-4">
+        <div className="flex flex-wrap gap-3 items-center">
           {/* Search */}
           <div className="relative w-full md:w-64">
             <Search
