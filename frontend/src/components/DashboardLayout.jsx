@@ -5,6 +5,7 @@ import { getCurrentUser } from "../services/api";
 import { isTokenValid} from "../helpers/auth";
 import { performLogout } from "../helpers/logout";
 import { useLoading } from "../context/LoadingContext";
+import { Menu } from "lucide-react";
 
 
 function DashboardLayout() {
@@ -136,15 +137,23 @@ function DashboardLayout() {
 
   const title = getPageTitle(location.pathname, id);
   const { setLoading } = useLoading(); // 👈 get loading context
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
 
   return (
     <div className="min-h-screen flex w-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar className="fixed top-0 left-0 h-full w-20 z-10"/>
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} className="fixed top-0 left-0 h-full w-20 z-10"/>
 
       {/* Main content */}
       <div className="flex flex-col flex-1 transition-all duration-300 overflow-y-auto">
-        <header className="flex items-center py-2 bg-white border-b flex-shrink-0 z-50">
+        <header className="sticky top-0 flex items-center py-2 bg-white border-b flex-shrink-0 z-50 ">
+        <button
+          className="sm:hidden ml-4 rounded-md border border-black bg-black p-1"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <Menu className="text-white" size={20} strokeWidth={2}/>
+        </button>
           
         {/* Replace src with your logo path */}
         <img
@@ -225,6 +234,12 @@ function DashboardLayout() {
           )}
           </div>
         </header>
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+        )}
 
         <main
           className="flex-1 px-2 pt-3 bg-gray-100 ml-0 sm:ml-20"

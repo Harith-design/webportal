@@ -293,7 +293,7 @@ function UserList() {
       {/* Users Table */}
       <div
         ref={tableContainerRef}
-        className="rounded-xl overflow-hidden border flex-1"
+        className="rounded-xl overflow-hidden border  border-gray-300 flex-1"
       >
         <table className="table-auto w-full">
           <thead>

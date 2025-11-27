@@ -271,7 +271,7 @@ function DashboardPage() {
         {/* Right side - Chart (from orders) */}
 <div className="bg-white p-4 rounded-md border overflow-hidden h-full flex flex-col">
   <h3 className="text-sm mb-4">Your Purchases in the Last 12 Months</h3>
-  <div className="flex-1">
+  <div className="flex-1 min-h-52">
   <ResponsiveContainer width="100%" height="100%">
     <LineChart
       data={purchasesData}

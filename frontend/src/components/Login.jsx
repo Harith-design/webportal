@@ -55,9 +55,9 @@ function Login() {
   };
 
   return (
-    <div className="page-wrapper">
-      <div className="login-container">
-        <div className="login-left">
+    <div className="min-h-screen w-screen flex justify-center items-center p-11">
+      <div className="w-full h-96 max-w-3xl bg-white rounded-2xl shadow-lg flex md:flex-row overflow-hidden">
+        <div className="hidden flex-1 text-white sm:flex flex-row p-8 justify-center items-center" style={{background: "radial-gradient(circle at 10% 60%, #f90000, #0750e4)"}}>
           <h1>
             <span className="block text-5xl font-bold">Welcome to</span>
             <span className="block text-2xl font-light">
@@ -66,10 +66,10 @@ function Login() {
           </h1>
         </div>
 
-        <div className="login-right">
-          <img src="/giib-logo.png" alt="GIIB Logo" className="h-11 w-10" />
-          <form className="max-w-[300px]" onSubmit={handleSubmit}>
-            <h2>User Login</h2>
+        <div className="flex-1 flex flex-col justify-center items-center relative">
+          <img src="/giib-logo.png" alt="GIIB Logo" className="h-11 w-10 absolute top-4 right-4" />
+          <form className="space-y-4 p-8" onSubmit={handleSubmit}>
+            <h2 className="mb-3">User Login</h2>
 
             <input
               type="email"
@@ -77,25 +77,25 @@ function Login() {
               placeholder="Email"
               value={formData.email}
               onChange={handleChange}
-              className="glass-input"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-200 focus:outline-none"
               required
             />
 
             {/* 👇 Password input with lucide Eye toggle */}
-            <div className=" relative">
+            <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                className="glass-input pr-10"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-200 focus:outline-none"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 bottom-4 flex items-center text-gray-400"
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -107,7 +107,7 @@ function Login() {
 
             {message && <p className="error-text">{message}</p>}
 
-            <div className="login-options">
+            <div className="text-right mt-2">
               {/* <label className="remember-me">
                 <input
                   type="checkbox"

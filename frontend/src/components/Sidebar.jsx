@@ -11,7 +11,7 @@ import {
 import { useLoading } from "../context/LoadingContext";
 import { performLogout } from "../helpers/logout";
 
-function Sidebar() {
+function Sidebar({ sidebarOpen }) {
   const navigate = useNavigate();
   const { setLoading } = useLoading();
 
@@ -19,18 +19,13 @@ function Sidebar() {
 
   return (
     <aside
-      className="
-        fixed top-0 left-0 h-screen w-16 sm:w-20 bg-white border-r
-        flex flex-col justify-between p-4 z-50
-      "
+      className={`fixed top-0 left-0 h-screen bg-white border-r
+        flex flex-col justify-between py-4 px-10 sm:p-4 z-50 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} sm:translate-x-0 sm:w-20`}   
     >
-
-      
-      
 
       <nav className="space-y-6">
         {/* Logo */}
-        <div className="flex justify-center mt-10">
+        <div className="flex sm:justify-center mt-12 sm:mt-12">
       </div>
         <SidebarLink to="/dashboardpage" icon={<Blocks size={32} />} label="Dashboard"/>
         <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>
@@ -39,10 +34,10 @@ function Sidebar() {
         <SidebarLink to="/users" icon={<UserRoundCog size={32} />} label="Manage Users"/>
       </nav>
 
-      <div className="relative group flex justify-center">
+      <div className="relative group flex sm:justify-center ">
   <button
     onClick={handleLogout}
-    className="flex items-center justify-center p-3 h-12 w-12 rounded-lg hover:bg-gray-100 text-gray-700"
+    className="flex items-center justify-center p-3 sm:h-12 sm:w-12 rounded-lg hover:bg-gray-100 text-gray-700"
   >
     <LogOut size={26} />
   </button>
@@ -50,6 +45,7 @@ function Sidebar() {
   {/* Tooltip */}
   <div
     className="
+      hidden sm:block
       absolute left-14 top-1/2 -translate-y-1/2
       px-2 py-2 rounded-md text-xs text-white bg-gray-900 shadow-lg
       opacity-0 group-hover:opacity-100 pointer-events-none
@@ -65,11 +61,11 @@ function Sidebar() {
 
 function SidebarLink({ to, icon, label }) {
   return (
-    <div className="relative group flex justify-center">
+    <div className="relative group flex sm:justify-center">
       <NavLink
         to={to}
         className={({ isActive }) =>
-          `flex items-center justify-center p-3 h-12 w-12 rounded-lg transition-all duration-300 ${
+          `flex items-center gap-3 sm:gap-0 p-3 rounded-lg sm:h-12 sm:w-12 w-full rounded-lg transition-all duration-300 ${
             isActive
               ? "bg-black text-gray-100"
               : "text-gray-700 hover:bg-gray-100"
@@ -77,11 +73,14 @@ function SidebarLink({ to, icon, label }) {
         }
       >
         {icon}
+        {/* Mobile label */}
+        <span className="sm:hidden text-lg ml-4">{label}</span>
       </NavLink>
 
       {/* Tooltip */}
       <div
         className="
+          hidden sm:block
           absolute left-14 top-1/2 -translate-y-1/2
           px-2 py-2 rounded-md text-xs text-white bg-gray-900 shadow-lg
           opacity-0 group-hover:opacity-100 pointer-events-none
