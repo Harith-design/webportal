@@ -12,8 +12,42 @@
   min-width: 100%;
   table-layout: fixed;
   overflow-y: visible;
-  position: re;
   border: #e60000;
 }
+
+/*
+Source - https://stackoverflow.com/a
+Posted by juliomalves, modified by community. See post 'Timeline' for change history
+Retrieved 2025-11-26, License - CC BY-SA 4.0
+*/
+
+ .scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar::-webkit-scrollbar-track {
+    border-radius: 3px;
+    margin: 10px;
+  }
+
+  .scrollbar::-webkit-scrollbar-thumb {
+    background: #0033ff;
+    border-radius: 3px;
+    background-clip: padding-box;
+  }
+
+  .scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #0033ff;
+  }
+
+  .scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #0033ff;
+  }
+
+
+
+
 
 

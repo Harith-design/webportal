@@ -26,30 +26,28 @@ function PlaceOrderPage() {
     const [shipToFull, setShipToFull] = useState(""); // preview
     const [billToFull, setBillToFull] = useState(""); // preview
 
-  const [rows, setRows] = useState([
-    {
-      product: "",
-      description: "",
-      quantity: "",
-      unitPrice: "",
-      weight: "",
-      totalWeight: "",
-      lineTotal: "",
-      taxCode: "",
-      active: true,
-    },
-    {
-      product: "",
-      description: "",
-      quantity: "",
-      unitPrice: "",
-      weight: "",
-      totalWeight: "",
-      lineTotal: "",
-      taxCode: "",
-      active: false,
-    },
-  ]);
+    // Approximate row height in px (adjust to match your CSS)
+  const ROW_HEIGHT = 40;
+
+  // Maximum table height (match your Tailwind max-h or calc value)
+  const TABLE_MAX_HEIGHT = 600; // px, adjust to your design
+
+  // Number of rows to fill the table
+  const visibleRowsCount = Math.floor(TABLE_MAX_HEIGHT / ROW_HEIGHT);
+
+  const [rows, setRows] = useState(
+  Array.from({ length: visibleRowsCount }, (_, i) => ({
+    product: "",
+    description: "",
+    quantity: "",
+    unitPrice: "",
+    weight: "",
+    totalWeight: "",
+    lineTotal: "",
+    taxCode: "",
+    active: i !== visibleRowsCount - 1, // only first row active initially
+  }))
+);
 
   const [itemOptions, setItemOptions] = useState({});
   const [loadingRow, setLoadingRow] = useState(null);
@@ -207,6 +205,48 @@ function PlaceOrderPage() {
     });
   };
 
+  const dropdownRefs = useRef({});
+  const searchInputRefs = useRef({});
+  const [dropdownDir, setDropdownDir] = useState({});
+  const inputRefs = useRef({});
+
+  const decideDropdownDirection = (index) => {
+  const inputEl = inputRefs.current[index];
+  if (!inputEl) return;
+
+  const rect = inputEl.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const dropdownHeight = 200; // px, match your CSS max-height
+
+  if (spaceBelow < dropdownHeight) {
+    setDropdownDir((p) => ({ ...p, [index]: "up" }));
+  } else {
+    setDropdownDir((p) => ({ ...p, [index]: "down" }));
+  }
+};
+
+
+useEffect(() => {
+  function handleClickOutside(e) {
+    Object.keys(dropdownRefs.current).forEach((idx) => {
+      const drop = dropdownRefs.current[idx];
+      const input = searchInputRefs.current[idx];
+
+      if (
+        drop &&
+        !drop.contains(e.target) &&
+        input &&
+        !input.contains(e.target)
+      ) {
+        setItemOptions((prev) => ({ ...prev, [idx]: [] }));
+      }
+    });
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
+
   const handleDelete = (index) => {
     setRows((prevRows) => {
       if (!prevRows[index].active) return prevRows;
@@ -333,9 +373,9 @@ function PlaceOrderPage() {
   };
 
   return (
-    <div className="max-w-full mx-auto order-form-page w-full">
+    <div className="max-w-full mx-auto order-form-page w-full py-2 px-6">
       {/* Header */}
-      <div className="grid grid-cols-1 grid-cols-2 w-full py-2 rounded-lg px-6 gap-5 lg:gap-26">
+      <div className="grid grid-cols-1 grid-cols-2 w-full gap-5 lg:gap-26 py-3">
         <form onSubmit={handleSubmit} className="grid lg:grid-cols-2 grid-cols-1 gap-y-3 gap-x-6">
 
   {/* Requested Delivery Date */}
@@ -349,7 +389,7 @@ function PlaceOrderPage() {
           setOrder({ ...order, deliveryDate: formattedDate });
         }}
         dateFormat="dd-MM-yyyy"
-        className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+        className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
         wrapperClassName="w-full"
         required
       />
@@ -436,20 +476,20 @@ function PlaceOrderPage() {
       </div>
 
       {/* Table */}
-      <div className="grid grid-cols-1">
-        <div className="px-6 mt-8 overflow-x-auto max-h-[calc(100vh-20rem)] overflow-y-auto">
+      <div className="scrollbar grid grid-cols-1 mt-8 overflow-y-auto overflow-x-auto max-h-[calc(100vh-20rem)] border border-[#0033ff] rounded-xl">
+        <div>
           <div className="min-w-[1200px]">
-            <table className="table-auto w-full border-separate px-2 rounded-xl border border-gray-300 order-form-table">
-              <thead className="sticky top-0 z-20 border-gray-300 font-semibold">
+            <table className="table-auto w-full border-collapse px-2 rounded-xl">
+              <thead className="sticky top-0 z-20 bg-white/50 backdrop-blur-sm shadow-[0_4px_6px_rgba(0,51,255,0.2)] font-semibold">
                 <tr className="text-xs font-semibold align-middle border">
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item No.</th>
-                  <th className="px-2 py-2 text-left w-2/12 font-semibold">Item Description</th>
-                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Quantity</th>
-                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Unit Price</th>
-                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Weight</th>
-                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Weight</th>
-                  <th className="px-2 py-2 text-left w-1/12 font-semibold ">Total Amount</th>
-                  <th className="px-2 py-2 w-1/12 font-semibold ">Delete</th>
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold border-r border-[#0033ff]">Item No.</th>
+                  <th className="px-2 py-2 text-left w-2/12 font-semibold border-r border-[#0033ff]">Item Description</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold border-r border-[#0033ff]">Quantity</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold border-r border-[#0033ff]">Unit Price</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold border-r border-[#0033ff]">Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold border-r border-[#0033ff]">Total Weight</th>
+                  <th className="px-2 py-2 text-left w-1/12 font-semibold border-r border-[#0033ff]">Total Amount</th>
+                  <th className="px-2 py-2 w-1/12 font-semibold border-[#0033ff]">Delete</th>
                 </tr>
               </thead>
 
@@ -460,7 +500,7 @@ function PlaceOrderPage() {
                   const isLoading = loadingRow === index;
 
                   const inputBase =
-                    "w-full border-b px-2 py-1 text-xs bg-transparent";
+                    "w-full border-b border-[#0033ff] px-2 py-1 text-xs bg-transparent";
                   const inputActive =
                     "placeholder-gray-500 focus:outline-none";
                   const inputInactive = "placeholder-gray-400";
@@ -476,16 +516,20 @@ function PlaceOrderPage() {
                       }`}
                     >
                       {/* Item Code Search */}
-                      <td className="px-2 py-2 text-left">
+                      <td className="p-2 text-left border-r border-[#0033ff]">
                         <div className="relative">
                           <input
+                            ref={(el) => (searchInputRefs.current[index] = el)}
                             type="text"
                             placeholder={
-                              isActive ? "Search item" : "Click to add an item"
+                              isActive ? "Type to search item" : "Click to add an item"
                             }
                             value={row.product}
                             onChange={(e) => handleSearch(index, e.target.value)}
-                            onFocus={() => activateRow(index)}
+                            onFocus={() => {
+                              activateRow(index);
+                              decideDropdownDirection(index);
+                            }}
                             className={`${inputClass} pl-2 pr-8`}
                           />
                           <span
@@ -501,12 +545,14 @@ function PlaceOrderPage() {
                           </span>
 
                           {items.length > 0 && (
-                            <ul className="bg-white absolute z-50 border rounded shadow-md w-full text-xs mt-1 max-h-40 overflow-y-auto">
+                            <ul 
+                            ref={(el) => (dropdownRefs.current[index] = el)}
+                            className={`bg-white absolute z-10 left-full ml-2 w-56 border rounded shadow-md w-full text-xs mt-1 max-h-40 overflow-y-auto ${dropdownDir[index] === "up" ? "bottom-0 mb-1" : "top-0 mt-1"}`}>
                               {items.map((item) => (
                                 <li
                                   key={item.ItemCode}
                                   onClick={() => handleSelectItem(index, item)}
-                                  className="px-2 py-1 cursor-pointer"
+                                  className="px-2 py-1 hover:bg-gray-100 cursor-pointer"
                                 >
                                   {item.ItemCode} —{" "}
                                   {item.ItemName || item.Description}
@@ -518,7 +564,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Description */}
-                      <td className="p-2 text-left">
+                      <td className="p-2 text-left border-r border-[#0033ff]">
                         <input
                           type="text"
                           value={row.description}
@@ -532,7 +578,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Quantity */}
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border-r border-[#0033ff]">
                         <input
                           type="number"
                           placeholder="No."
@@ -547,7 +593,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Unit Price */}
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border-r border-[#0033ff]">
                         <input
                           type="number"
                           placeholder="0.00"
@@ -561,7 +607,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Weight */}
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border-r border-[#0033ff]">
                         <input
                           type="number"
                           placeholder="0.00"
@@ -575,7 +621,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Total Weight */}
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border-r border-[#0033ff]">
                         <input
                           type="number"
                           placeholder="0.00"
@@ -587,7 +633,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Line Total */}
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-2 border-r border-[#0033ff]">
                         <input
                           type="number"
                           placeholder="0.00"
@@ -623,7 +669,7 @@ function PlaceOrderPage() {
       </div>
 
       {/* ✅ Live Order Total */}
-      <div className="flex justify-end mt-6 px-6">
+      <div className="flex justify-end mt-6">
       <div className="inline-flex flex-col">
         <p className="text-xs mb-2">
           Total Order: <span className="ml-2">RM {orderTotal}</span>

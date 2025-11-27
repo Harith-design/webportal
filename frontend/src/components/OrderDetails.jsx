@@ -268,7 +268,9 @@ function OrderDetails() {
     <div className="px-2 lg:px-16 py-2 space-y-8">
       {/* Order Info */}
       
-      <div className="grid grid-cols-2 text-xs">
+      <div className="grid grid-cols-2 text-xs p-6 rounded-2xl shadow-2xl" style={{
+    background: "radial-gradient(circle at 10% 60%, #ffffecff, #f2d1ebff)", // adjust colors & direction
+  }}>
   {/* Left: Order Details */}
   <div className="grid grid-cols-2 gap-y-1">
     <h2 className="font-semibold text-sm col-span-2">Order Details</h2>
