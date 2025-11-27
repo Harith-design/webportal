@@ -26,36 +26,53 @@ export const getUsers = () => API.get("/users");
 
 /**
  * Create user.
- * If you add avatars to create flow later, you can switch this to FormData as we do in updateUser.
  */
 export const createUser = (data) => API.post("/users", data);
 
 /**
- * Update user using multipart/form-data explicitly.
- * - Automatically maps a plain object into FormData
- * - Only attaches `profile_picture` when it's a real File/Blob
+ * Update user.
+ *
+ * Backend allows only POST on /users/{id}, so we *always* use POST.
+ * - If a File/Blob (profile_picture) is present -> multipart/form-data.
+ * - Otherwise -> JSON POST.
  */
 export const updateUser = async (id, data) => {
-  const formData = new FormData();
+  if (!id) {
+    console.error("updateUser called without id", { data });
+    throw new Error("Missing user id in updateUser");
+  }
 
-  Object.entries(data || {}).forEach(([key, value]) => {
-    if (value === null || value === undefined || value === "") return;
+  const hasFile =
+    data &&
+    Object.entries(data).some(
+      ([key, value]) =>
+        key === "profile_picture" &&
+        (value instanceof File || value instanceof Blob)
+    );
 
-    if (key === "profile_picture") {
-      // Append only if it's a File/Blob
-      if (value instanceof File || value instanceof Blob) {
-        formData.append("profile_picture", value);
+  if (hasFile) {
+    const formData = new FormData();
+
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") return;
+
+      if (key === "profile_picture") {
+        if (value instanceof File || value instanceof Blob) {
+          formData.append("profile_picture", value);
+        }
+        return;
       }
-      return;
-    }
 
-    formData.append(key, value);
-  });
+      formData.append(key, value);
+    });
 
-  // Force multipart so the browser doesn't default to JSON
-  return await API.post(`/users/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+    return await API.post(`/users/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+
+  // No file → simple JSON
+  return await API.post(`/users/${id}`, data);
 };
 
 export const deleteUser = (id) => API.delete(`/users/${id}`);

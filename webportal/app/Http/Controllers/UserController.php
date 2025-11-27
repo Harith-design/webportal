@@ -7,33 +7,35 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    // GET /api/users
     public function index()
     {
         return response()->json(User::all());
     }
 
+    // POST /api/users
     public function store(Request $request)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|unique:users,email',
-            'password'  => 'required|string|min:6',
-            'cardcode'  => 'nullable|string',
-            'cardname'  => 'nullable|string',
-            'contact'   => 'nullable|string|max:50',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|unique:users,email',
+            'password'        => 'required|string|min:6',
+            'cardcode'        => 'nullable|string',
+            'cardname'        => 'nullable|string',
+            'contact'         => 'nullable|string|max:50',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $data = [
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'password'  => bcrypt($request->password),
-            'cardcode'  => $request->cardcode ?? null,
-            'cardname'  => $request->cardname ?? null,
-            'contact_no' => $request->contact ?? null,
+            'name'       => $request->name,
+            'email'      => $request->email,
+            'password'   => bcrypt($request->password),
+            'cardcode'   => $request->cardcode ?? null,
+            'cardname'   => $request->cardname ?? null,
+            'contact_no' => $request->contact ?? null, // contact → contact_no
         ];
 
-        // ✅ Handle profile picture upload (optional)
+        // Handle profile picture upload (optional)
         if ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
@@ -47,36 +49,61 @@ class UserController extends Controller
         return response()->json($user, 201);
     }
 
+    // POST /api/users/{id}
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
-        // ✅ Validation (all optional fields)
-        $rules = [
-            'name'       => 'nullable|string|max:255',
-            'email'      => 'nullable|email|unique:users,email,' . $user->id,
-            'contact'    => 'nullable|string|max:50',
-            'cardcode'   => 'nullable|string',
-            'cardname'   => 'nullable|string',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ];
+        // ---- NAME ----
+        $name  = $request->input('name');
+        $first = $request->input('first_name') ?? $request->input('firstName');
+        $last  = $request->input('last_name')  ?? $request->input('lastName');
 
-        if ($request->filled('password')) {
-            $rules['password'] = 'required|string|min:6|confirmed';
+        if ($first || $last) {
+            $user->name = trim(($first ?? '') . ' ' . ($last ?? ''));
+        } elseif (!is_null($name)) {
+            $user->name = $name;
         }
 
-        $request->validate($rules);
-
-        // ✅ Collect only provided fields
-        $data = $request->only(['name', 'email', 'contact', 'cardcode', 'cardname']);
-        $data = array_filter($data, fn($value) => $value !== null && $value !== '');
-
-        // ✅ Handle password if filled
-        if ($request->filled('password')) {
-            $data['password'] = bcrypt($request->password);
+        // ---- EMAIL ----
+        if ($request->has('email')) {
+            $user->email = $request->input('email');
         }
 
-        // ✅ Handle profile picture upload (if any)
+        // ---- PHONE -> contact_no ----
+        $phone = $request->input('phone')
+            ?? $request->input('contact')
+            ?? $request->input('contact_no');
+
+        if (!is_null($phone)) {
+            $user->contact_no = $phone;
+        }
+
+        // ---- COMPANY -> cardname ----
+        $company = $request->input('cardname')      // correct already
+            ?? $request->input('CardName')         // capitalised
+            ?? $request->input('company')          // generic
+            ?? $request->input('company_name')
+            ?? $request->input('companyName');
+
+        if (!is_null($company)) {
+            $user->cardname = $company;            // DB column
+        }
+
+        // ---- CARDCODE (if you send it) ----
+        if ($request->has('cardcode')) {
+            $user->cardcode = $request->input('cardcode');
+        }
+
+        // ---- PASSWORD (optional) ----
+        if ($request->filled('password')) {
+            $request->validate([
+                'password' => 'string|min:6|confirmed',
+            ]);
+            $user->password = bcrypt($request->password);
+        }
+
+        // ---- PROFILE PICTURE (optional) ----
         if ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
             $filename = time() . '_' . $file->getClientOriginalName();
@@ -88,18 +115,18 @@ class UserController extends Controller
                 @unlink(public_path($user->profile_picture));
             }
 
-            $data['profile_picture'] = $path;
+            $user->profile_picture = $path;
         }
 
-        // ✅ Update only the provided fields
-        $user->update($data);
+        $user->save();
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user,
+            'user'    => $user,
         ], 200);
     }
 
+    // DELETE /api/users/{id}
     public function destroy($id)
     {
         $user = User::findOrFail($id);
@@ -113,12 +140,14 @@ class UserController extends Controller
         return response()->json(null, 204);
     }
 
+    // GET /api/users/{id}
     public function show($id)
     {
         $user = User::findOrFail($id);
         return response()->json($user);
     }
 
+    // GET /api/user/me
     public function me(Request $request)
     {
         return response()->json($request->user());

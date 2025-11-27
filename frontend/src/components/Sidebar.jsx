@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Blocks,
@@ -15,7 +15,20 @@ function Sidebar() {
   const navigate = useNavigate();
   const { setLoading } = useLoading();
 
-  const handleLogout = () => performLogout(setLoading, navigate);
+  // 🔥 Read role directly from storage (instant, no waiting)
+  const [role] = useState(() => {
+    const stored =
+      localStorage.getItem("user_role") ||
+      sessionStorage.getItem("user_role");
+    return stored ? stored.toLowerCase() : null;
+  });
+
+  // clear saved role on logout
+  const handleLogout = () => {
+    localStorage.removeItem("user_role");
+    sessionStorage.removeItem("user_role");
+    performLogout(setLoading, navigate);
+  };
 
   return (
     <aside
@@ -24,41 +37,61 @@ function Sidebar() {
         flex flex-col justify-between p-4 z-50
       "
     >
-
-      
-      
-
       <nav className="space-y-6">
         {/* Logo */}
-        <div className="flex justify-center mt-10">
-      </div>
-        <SidebarLink to="/dashboardpage" icon={<Blocks size={32} />} label="Dashboard"/>
-        <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>
-        <SidebarLink to="/invoices" icon={<FileText size={32} />} label="Invoices"/>
-        <SidebarLink to="/orderform" icon={<ShoppingCart size={32} />} label="Place an Order"/>
-        <SidebarLink to="/users" icon={<UserRoundCog size={32} />} label="Manage Users"/>
+        <div className="flex justify-center mt-10"></div>
+
+        <SidebarLink
+          to="/dashboardpage"
+          icon={<Blocks size={32} />}
+          label="Dashboard"
+        />
+        <SidebarLink
+          to="/orders"
+          icon={<Package size={32} />}
+          label="Orders"
+        />
+        <SidebarLink
+          to="/invoices"
+          icon={<FileText size={32} />}
+          label="Invoices"
+        />
+        <SidebarLink
+          to="/orderform"
+          icon={<ShoppingCart size={32} />}
+          label="Place an Order"
+        />
+
+        {/* 🔒 Admin-only link */}
+        {role === "admin" && (
+          <SidebarLink
+            to="/users"
+            icon={<UserRoundCog size={32} />}
+            label="Manage Users"
+          />
+        )}
       </nav>
 
       <div className="relative group flex justify-center">
-  <button
-    onClick={handleLogout}
-    className="flex items-center justify-center p-3 h-12 w-12 rounded-lg hover:bg-gray-100 text-gray-700"
-  >
-    <LogOut size={26} />
-  </button>
+        <button
+          onClick={handleLogout}
+          className="flex items-center justify-center p-3 h-12 w-12 rounded-lg hover:bg-gray-100 text-gray-700"
+        >
+          <LogOut size={26} />
+        </button>
 
-  {/* Tooltip */}
-  <div
-    className="
-      absolute left-14 top-1/2 -translate-y-1/2
-      px-2 py-2 rounded-md text-xs text-white bg-gray-900 shadow-lg
-      opacity-0 group-hover:opacity-100 pointer-events-none
-      whitespace-nowrap transition-opacity duration-200 z-50
-    "
-  >
-    Sign Out
-  </div>
-</div>
+        {/* Tooltip */}
+        <div
+          className="
+            absolute left-14 top-1/2 -translate-y-1/2
+            px-2 py-2 rounded-md text-xs text-white bg-gray-900 shadow-lg
+            opacity-0 group-hover:opacity-100 pointer-events-none
+            whitespace-nowrap transition-opacity duration-200 z-50
+          "
+        >
+          Sign Out
+        </div>
+      </div>
     </aside>
   );
 }
@@ -93,7 +126,5 @@ function SidebarLink({ to, icon, label }) {
     </div>
   );
 }
-
-
 
 export default Sidebar;

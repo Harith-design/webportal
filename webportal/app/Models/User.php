@@ -16,11 +16,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'contact_no', 
+        'contact_no',
         'cardcode',
         'cardname',
         'profile_picture',
-        'role',   // ✅ added role field
+        'role',
+
+        // extra frontend-style names we may receive, but we map them
+        'phone',
+        'company',
+        'contact',
     ];
 
     protected $hidden = [
@@ -32,7 +37,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    // 👇 Map frontend 'contact' to backend 'contact_no'
+    // ========== CONTACT / PHONE MAPPINGS ==========
+
+    // map `contact` <-> `contact_no`
     public function setContactAttribute($value)
     {
         $this->attributes['contact_no'] = $value;
@@ -40,7 +47,31 @@ class User extends Authenticatable
 
     public function getContactAttribute()
     {
-        return $this->attributes['contact_no'];
+        return $this->attributes['contact_no'] ?? null;
+    }
+
+    // map `phone` <-> `contact_no`
+    public function setPhoneAttribute($value)
+    {
+        $this->attributes['contact_no'] = $value;
+    }
+
+    public function getPhoneAttribute()
+    {
+        return $this->attributes['contact_no'] ?? null;
+    }
+
+    // ========== COMPANY / CARDNAME MAPPINGS ==========
+
+    // map `company` <-> `cardname`
+    public function setCompanyAttribute($value)
+    {
+        $this->attributes['cardname'] = $value;
+    }
+
+    public function getCompanyAttribute()
+    {
+        return $this->attributes['cardname'] ?? null;
     }
 
     /**
