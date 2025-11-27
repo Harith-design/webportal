@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Blocks,
@@ -15,7 +15,20 @@ function Sidebar({ sidebarOpen }) {
   const navigate = useNavigate();
   const { setLoading } = useLoading();
 
-  const handleLogout = () => performLogout(setLoading, navigate);
+  // 🔥 Read role directly from storage (instant, no waiting)
+  const [role] = useState(() => {
+    const stored =
+      localStorage.getItem("user_role") ||
+      sessionStorage.getItem("user_role");
+    return stored ? stored.toLowerCase() : null;
+  });
+
+  // clear saved role on logout
+  const handleLogout = () => {
+    localStorage.removeItem("user_role");
+    sessionStorage.removeItem("user_role");
+    performLogout(setLoading, navigate);
+  };
 
   return (
     <aside
@@ -92,7 +105,5 @@ function SidebarLink({ to, icon, label }) {
     </div>
   );
 }
-
-
 
 export default Sidebar;

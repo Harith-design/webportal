@@ -60,28 +60,50 @@ function UserList() {
           u.CardName ??
           "N/A";
 
-        // resolve status from multiple possible keys
-        const status =
+        // resolve raw role from different API shapes, normalize to lowercase
+        const rawRole =
+          u.role ?? u.Role ?? u.user_role ?? u.userRole ?? "user";
+        const role = String(rawRole).toLowerCase();
+
+        // resolve status from multiple possible keys (e.g. Active/Inactive)
+        const rawStatus =
           u.status ??
           u.Status ??
           u.user_status ??
           u.userStatus ??
           u.status_name ??
           u.StatusName ??
-          "N/A";
+          "";
+
+        // prefer showing role in the "Status" column as requested.
+        // But if you also want to show active/inactive, we include both.
+        const statusParts = [];
+        // include role label (Admin | User)
+        statusParts.push(role === "admin" ? "Admin" : "User");
+
+        // include Active/Inactive if present in API
+        const s = String(rawStatus).trim();
+        if (s) {
+          const lower = s.toLowerCase();
+          if (lower.includes("active")) statusParts.push("Active");
+          else if (lower.includes("inactive")) statusParts.push("Inactive");
+          else statusParts.push(s); // any other raw status
+        }
+
+        const status = statusParts.join(" • ");
 
         return {
           id: u.id,
-          name: u.name || "N/A",
-          email: u.email || "N/A",
+          name:
+            u.name ||
+            `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+            "N/A",
+          email: u.email || u.username || "N/A",
           company,
           company_code:
-            u.company_code ??
-            u.cardCode ??
-            u.CardCode ??
-            "N/A",
+            u.company_code ?? u.cardCode ?? u.CardCode ?? "N/A",
           contact_no: u.contact_no ?? u.phone ?? "N/A",
-          role: u.role || "N/A",
+          role: role === "admin" ? "admin" : "user",
           status,
         };
       });
@@ -89,19 +111,43 @@ function UserList() {
       setUsers(mapped);
     } catch (e) {
       console.error("Failed to load users:", e);
+      // only show error text inside the page now; no redirects
       setError("Failed to load users");
     } finally {
       setLoading(false);
     }
   };
 
+  // 🔒 Quick client-side guard using stored role (no API, no waiting)
   useEffect(() => {
+    const storedRole =
+      localStorage.getItem("user_role") ||
+      sessionStorage.getItem("user_role");
+
+    if (!storedRole) {
+      // not logged in or missing role -> go login
+      navigate("/login");
+      return;
+    }
+
+    if (storedRole.toLowerCase() !== "admin") {
+      alert("You are not allowed to access this page.");
+      navigate(-1); // back to previous page
+      return;
+    }
+
+    // Admin -> load data
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navigate]);
 
   const filteredUsers = users.filter((u) => {
-    if (statusFilter !== "all" && u.status !== statusFilter) return false;
+    if (statusFilter !== "all") {
+      const sf = String(statusFilter).toLowerCase();
+      const us = String(u.status || u.role || "").toLowerCase();
+      // allow matching if the selected filter appears in the status string
+      if (!us.includes(sf)) return false;
+    }
 
     if (search) {
       const q = search.toLowerCase();
@@ -159,37 +205,68 @@ function UserList() {
     Math.ceil(filteredUsers.length / rowsPerPage)
   );
 
-  const renderStatus = (status) => {
-    switch (status) {
-      case "Active":
-        return (
-          <span
-            className="inline-flex items-center rounded-xl  text-[#007edf] px-2 font-medium"
-            style={{
+  const renderStatus = (statusText) => {
+    // statusText might be "Admin • Active" or "User" etc.
+    if (!statusText) return "N/A";
+    const parts = String(statusText).split("•").map((p) => p.trim());
+
+    // first part is role (Admin / User)
+    const rolePart = parts[0] || "";
+    const secondPart = parts[1] || null; // Active/Inactive or extra
+
+    const roleBadge =
+      rolePart.toLowerCase() === "admin" ? (
+        <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-semibold bg-gradient-to-br from-purple-100 to-purple-200 text-purple-800 mr-2">
+          Admin
+        </span>
+      ) : (
+        <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-semibold bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800 mr-2">
+          User
+        </span>
+      );
+
+    let statusBadge = null;
+    if (secondPart) {
+      const s = secondPart.toLowerCase();
+      if (s.includes("active")) {
+        statusBadge = (
+          <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#007edf]"
+          style={{
               background:
                 "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)",
             }}
           >
-            <Smile size={16} className="mr-1" />
-            {status}
+            <Smile size={14} className="mr-1" />
+            Active
           </span>
         );
-      case "Inactive":
-        return (
-          <span
-            className="inline-flex items-center rounded-xl  text-[#16aa3dff] px-2 font-medium"
-            style={{
+      } else if (s.includes("inactive")) {
+        statusBadge = (
+          <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#16aa3dff]"
+          style={{
               background:
                 "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
             }}
           >
-            <Frown size={16} className="mr-1" />
-            {status}
+            <Frown size={14} className="mr-1" />
+            Inactive
           </span>
         );
-      default:
-        return status;
+      } else {
+        statusBadge = (
+          <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium">
+            {secondPart}
+          </span>
+        );
+      }
     }
+
+    return (
+      <div className="flex items-center">
+        {roleBadge}
+        {statusBadge}
+      </div>
+    );
   };
 
   const handleMenuToggle = (id) =>
@@ -276,6 +353,8 @@ function UserList() {
             <option value="all">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
+            <option value="Admin">Admin</option>
+            <option value="User">User</option>
           </select>
         </div>
 
@@ -319,9 +398,7 @@ function UserList() {
                   <td className="px-4 py-2">{user.email}</td>
                   <td className="px-4 py-2">{user.contact_no}</td>
                   <td className="px-4 py-2">{user.company}</td>
-                  <td className="px-4 py-2">
-                    {renderStatus(user.status)}
-                  </td>
+                  <td className="px-4 py-2">{renderStatus(user.status)}</td>
                   <td className="px-4 py-2 text-center relative">
                     <button
                       className="hover:bg-gray-200 rounded-full"
@@ -354,9 +431,7 @@ function UserList() {
                   colSpan="6"
                   className="text-center py-4 text-gray-500"
                 >
-                  {loading
-                    ? "Loading users..."
-                    : error || "No users found"}
+                  {loading ? "Loading users..." : error || "No users found"}
                 </td>
               </tr>
             )}

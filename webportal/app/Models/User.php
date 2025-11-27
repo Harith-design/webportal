@@ -16,10 +16,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'contact_no', // backend column
+        'contact_no',
         'cardcode',
         'cardname',
-        'profile_picture', // ✅ allow mass assignment for profile picture
+        'profile_picture',
+        'role',
+
+        // extra frontend-style names we may receive, but we map them
+        'phone',
+        'company',
+        'contact',
     ];
 
     protected $hidden = [
@@ -31,7 +37,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    // 👇 Map frontend 'contact' to backend 'contact_no'
+    // ========== CONTACT / PHONE MAPPINGS ==========
+
+    // map `contact` <-> `contact_no`
     public function setContactAttribute($value)
     {
         $this->attributes['contact_no'] = $value;
@@ -39,14 +47,35 @@ class User extends Authenticatable
 
     public function getContactAttribute()
     {
-        return $this->attributes['contact_no'];
+        return $this->attributes['contact_no'] ?? null;
+    }
+
+    // map `phone` <-> `contact_no`
+    public function setPhoneAttribute($value)
+    {
+        $this->attributes['contact_no'] = $value;
+    }
+
+    public function getPhoneAttribute()
+    {
+        return $this->attributes['contact_no'] ?? null;
+    }
+
+    // ========== COMPANY / CARDNAME MAPPINGS ==========
+
+    // map `company` <-> `cardname`
+    public function setCompanyAttribute($value)
+    {
+        $this->attributes['cardname'] = $value;
+    }
+
+    public function getCompanyAttribute()
+    {
+        return $this->attributes['cardname'] ?? null;
     }
 
     /**
      * Send the password reset notification.
-     *
-     * @param  string  $token
-     * @return void
      */
     public function sendPasswordResetNotification($token)
     {
@@ -54,22 +83,21 @@ class User extends Authenticatable
     }
 
     /**
-     * ✅ Accessor to return full URL for profile picture
-     * Example: https://yourdomain.com/uploads/profile_pictures/avatar.jpg
+     * Get full URL for profile picture.
      */
     public function getProfilePictureAttribute($value)
     {
         if ($value) {
-            // If already has full URL (like from CDN), return as is
+            // If already full URL, return directly
             if (str_starts_with($value, 'http')) {
                 return $value;
             }
 
-            // Otherwise, build full path
+            // Build full path
             return asset($value);
         }
 
-        // Return default avatar if not uploaded
+        // Default avatar
         return asset('uploads/profile_pictures/default.png');
     }
 }

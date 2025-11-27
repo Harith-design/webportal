@@ -36,12 +36,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🔹 Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // ------------------- Users -------------------
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::post('/users', [UserController::class, 'store']);
-    Route::post('/users/{id}', [UserController::class, 'update']); // ✅ changed from PUT
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    // ------------------- Users (Admin Only) -------------------
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/{id}', [UserController::class, 'show']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::post('/users/{id}', [UserController::class, 'update']); // ✅ changed from PUT
+        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+    });
 });
 
 // ------------------- Sales Order Routes (internal app logic) -------------------
