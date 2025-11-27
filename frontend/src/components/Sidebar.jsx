@@ -44,7 +44,16 @@ function Sidebar({ sidebarOpen }) {
         <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>
         <SidebarLink to="/invoices" icon={<FileText size={32} />} label="Invoices"/>
         <SidebarLink to="/orderform" icon={<ShoppingCart size={32} />} label="Place an Order"/>
-        <SidebarLink to="/users" icon={<UserRoundCog size={32} />} label="Manage Users"/>
+        
+        {/* 🔒 Admin-only link */}
+        {role === "admin" && (
+          <SidebarLink
+            to="/users"
+            icon={<UserRoundCog size={32} />}
+            label="Manage Users"
+          />
+        )}
+        
       </nav>
 
       <div className="relative group flex sm:justify-center ">
