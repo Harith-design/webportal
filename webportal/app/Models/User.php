@@ -16,10 +16,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'contact_no', // backend column
+        'contact_no', 
         'cardcode',
         'cardname',
-        'profile_picture', // ✅ allow mass assignment for profile picture
+        'profile_picture',
+        'role',   // ✅ added role field
     ];
 
     protected $hidden = [
@@ -44,9 +45,6 @@ class User extends Authenticatable
 
     /**
      * Send the password reset notification.
-     *
-     * @param  string  $token
-     * @return void
      */
     public function sendPasswordResetNotification($token)
     {
@@ -54,22 +52,21 @@ class User extends Authenticatable
     }
 
     /**
-     * ✅ Accessor to return full URL for profile picture
-     * Example: https://yourdomain.com/uploads/profile_pictures/avatar.jpg
+     * Get full URL for profile picture.
      */
     public function getProfilePictureAttribute($value)
     {
         if ($value) {
-            // If already has full URL (like from CDN), return as is
+            // If already full URL, return directly
             if (str_starts_with($value, 'http')) {
                 return $value;
             }
 
-            // Otherwise, build full path
+            // Build full path
             return asset($value);
         }
 
-        // Return default avatar if not uploaded
+        // Default avatar
         return asset('uploads/profile_pictures/default.png');
     }
 }
