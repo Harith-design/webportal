@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Trash2, Search, Loader2, Calendar, ArrowRightLeft} from "lucide-react";
+import { Trash2, Search, Loader2, Calendar } from "lucide-react";
 import { getItems } from "../services/api";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -54,11 +54,6 @@ function PlaceOrderPage() {
   const [orderTotal, setOrderTotal] = useState("0.00");
   const [userCompany, setUserCompany] = useState({ cardcode: "", cardname: "" });
   const searchTimers = useRef({});
-  
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [modalType, setModalType] = useState("ship"); // 'ship' or 'bill'
-
-
 
   // 🔁 Auto-calc order total
   useEffect(() => {
@@ -69,6 +64,18 @@ function PlaceOrderPage() {
     setOrderTotal(total.toFixed(2));
   }, [rows]);
 
+  // 👉 friendly label for dropdowns (don’t show “Bill to” in Ship-To list)
+  const displayAddressName = (a, kind /* 'ship' | 'bill' */) => {
+    const raw = (a?.AddressName || "").trim();
+    if (!raw) return "";
+    if (raw.toLowerCase() === "bill to") {
+      return kind === "ship" ? "Ship To" : "Bill To";
+    }
+    if (raw.toLowerCase() === "ship to") {
+      return kind === "ship" ? "Ship To" : "Bill To";
+    }
+    return raw;
+  };
 
   // 👉 format full address for preview with a forced first line label
   const formatAddressForDisplay = (a, kind /* 'ship' | 'bill' */) => {
@@ -372,10 +379,8 @@ useEffect(() => {
         <form onSubmit={handleSubmit} className="grid lg:grid-cols-2 grid-cols-1 gap-y-3 gap-x-6">
 
   {/* Requested Delivery Date */}
-  <div className="grid grid-cols-[max-content_1fr] items-end gap-2 w-full">
-    <div className="flex items-center gap-5">
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
     <label className="text-xs whitespace-nowrap">Requested Delivery Date</label>
-  
     <div className="relative w-full">
       <DatePicker
         selected={order.deliveryDate ? new Date(order.deliveryDate) : null}
@@ -390,9 +395,63 @@ useEffect(() => {
       />
       <Calendar className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
     </div>
-    </div>
   </div>
 
+  
+  {/* PO Reference */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">PO Reference</label>
+    <span className="flex-1 px-1 py-1 text-xs border rounded-lg bg-gray-300 text-gray-700">
+      {order.poref || "-"}
+    </span>
+  </div>
+
+  {/* Ship To */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">Ship To</label>
+    <select
+      name="shippingAddress"
+      value={order.shippingAddress}
+      onChange={(e) => {
+        const val = e.target.value;
+        setOrder((p) => ({ ...p, shippingAddress: val }));
+        const a = bpAddresses.shipTo.find((x) => x.AddressName === val);
+        setShipToFull(formatAddressForDisplay(a, "ship"));
+      }}
+      className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+    >
+      <option value="" disabled>Select Ship To</option>
+      {bpAddresses.shipTo.map((a) => (
+        <option key={a.AddressName} value={a.AddressName}>
+          {displayAddressName(a, "ship")}
+        </option>
+      ))}
+    </select>
+  </div>
+
+
+  {/* Bill To */}
+  <div className="grid grid-cols-[max-content_1fr] items-center gap-2 w-full">
+    <label className="text-xs whitespace-nowrap">Bill To</label>
+    <select
+      name="billingAddress"
+      value={order.billingAddress}
+      onChange={(e) => {
+        const val = e.target.value;
+        setOrder((p) => ({ ...p, billingAddress: val }));
+        const a = bpAddresses.billTo.find((x) => x.AddressName === val);
+        setBillToFull(formatAddressForDisplay(a, "bill"));
+      }}
+      className="w-full border rounded-lg px-1 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-500"
+    >
+      <option value="" disabled>Select Bill To</option>
+      {bpAddresses.billTo.map((a) => (
+        <option key={a.AddressName} value={a.AddressName}>
+          {displayAddressName(a, "bill")}
+        </option>
+      ))}
+    </select>
+  </div>
 
 </form>
 
@@ -400,49 +459,14 @@ useEffect(() => {
         {/* Preview */}
         <div className="flex-1 justify-self-end sm:max-w-sm lg:max-w-lg">
           <div className="grid lg:grid-cols-2 gap-7 lg:gap-16">
-            <div className="relative">
-              <p className="text-xs font-semibold mb-2 flex items-center justify-between">
-                Shipping Address
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModalType("ship"); // or "bill" if for billing
-                    setShowAddressModal(true);
-                  }}
-                  className="ml-2 p-1 rounded hover:bg-gray-200"
-                >
-                  <ArrowRightLeft size={16} />
-                  {/* Tooltip */}
-                  <span className="
-                    absolute left-1/2 -translate-x-1/2 top-full mt-1
-                    hidden group-hover:block
-                    px-2 py-1 text-[10px] text-white
-                    bg-black rounded shadow
-                    whitespace-nowrap z-50
-                  ">
-                    Change Address
-                  </span>
-                </button>
-              </p>
+            <div>
+              <p className="text-xs font-semibold mb-2">Shipping Address</p>
               <p className="text-xs">
                 {shipToFull || "Select from dropdown"}
               </p>
-              
             </div>
-            <div className="relative">
-              <p className="text-xs font-semibold mb-2 flex items-center justify-between">
-                Billing Address
-                <button
-                type="button"
-                onClick={() => {
-                  setModalType("bill"); // or "bill" if for billing
-                  setShowAddressModal(true);
-                }}
-                className="ml-2 p-1 rounded hover:bg-gray-200"
-              >
-                <ArrowRightLeft size={16} />
-              </button>
-              </p>
+            <div>
+              <p className="text-xs font-semibold mb-2">Billing Address</p>
               <p className="text-xs">
                 {billToFull || "Select from dropdown"}
               </p>
@@ -452,197 +476,152 @@ useEffect(() => {
       </div>
 
       {/* Table */}
-      <div className="scrollbar grid grid-cols-1 mt-4 overflow-y-auto overflow-x-auto max-h-[calc(100vh-19rem)] border border-gray-300 rounded-md">
-        <div>
-          <div className="min-w-[1200px]">
-            <table className="table-auto w-full border-collapse text-xs font-sans">
-              <thead className="sticky top-0 z-20 bg-gray-200 text-gray-700 font-semibold sticky-shadow">
-                <tr>
-                  <th className="px-2 py-1 w-2/12 border-l border-r border-b border-gray-300">Item No.</th>
-                  <th className="px-2 py-1 w-2/12 border-l border-r border-b border-gray-300">Item Description</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Quantity</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Unit Price</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Weight</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Total Weight</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Total Amount</th>
-                  <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Delete</th>
-                </tr>
-              </thead>
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-20rem)] border border-gray-300 rounded-md">
+  <table className="table-fixed w-full border-collapse text-xs font-sans">
+    <thead className="sticky top-0 bg-gray-200 text-gray-700 font-semibold z-20">
+      <tr>
+        <th className="border border-gray-300 px-2 py-1 w-2/12">Item No.</th>
+        <th className="border border-gray-300 px-2 py-1 w-2/12">Description</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Quantity</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Unit Price</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Weight</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Total Weight</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Total Amount</th>
+        <th className="border border-gray-300 px-2 py-1 w-1/12">Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row, index) => {
+        const isActive = row.active;
+        const items = itemOptions[index] || [];
+        const isLoading = loadingRow === index;
 
-              <tbody>
-                {rows.map((row, index) => {
-                  const isActive = row.active;
-                  const items = itemOptions[index] || [];
-                  const isLoading = loadingRow === index;
-
-                  const inputBase =
-                    "w-full px-1 py-0.5 text-xs bg-white focus:ring-blue-400";
-                  const inputActive =
-                    "placeholder-gray-500 focus:ring-2 focus:ring-blue-400 focus:outline-none";
-                  const inputInactive = "placeholder-gray-400 ";
-                  const inputClass = `${inputBase} ${
-                    isActive ? inputActive : inputInactive
-                  }`;
-
-                  return (
-                    <tr
-                      key={index}
-                      className={`border border-gray-300 ${
-                        isActive ? "bg-white" : "bg-gray-50 text-gray-400"
-                      }`}
+        return (
+          <tr
+            key={index}
+            className={`border border-gray-300 ${
+              isActive ? "bg-white" : "bg-gray-50 text-gray-400"
+            }`}
+          >
+            {/* Item Code */}
+            <td className="border border-gray-300 p-1 relative">
+              <input
+                type="text"
+                value={row.product}
+                onChange={(e) => handleSearch(index, e.target.value)}
+                onFocus={() => activateRow(index)}
+                className={`w-full h-full px-1 py-0.5 text-xs border-none focus:ring-2 focus:ring-blue-400 outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+              {isLoading && <Loader2 size={14} className="absolute right-1 top-1/2 -translate-y-1/2 animate-spin" />}
+              {/* Dropdown */}
+              {items.length > 0 && (
+                <ul className="absolute z-30 w-full bg-white border border-gray-300 shadow-md max-h-40 overflow-y-auto text-xs">
+                  {items.map((item) => (
+                    <li
+                      key={item.ItemCode}
+                      onClick={() => handleSelectItem(index, item)}
+                      className="px-2 py-1 hover:bg-blue-100 cursor-pointer"
                     >
-                      {/* Item Code Search */}
-                      <td className="p-1 border border-gray-300 relative">
-                          <input
-                            ref={(el) => (searchInputRefs.current[index] = el)}
-                            type="text"
-                            placeholder={
-                              isActive ? "Type to search item" : "Click to add an item"
-                            }
-                            value={row.product}
-                            onChange={(e) => handleSearch(index, e.target.value)}
-                            onFocus={() => {
-                              activateRow(index);
-                              decideDropdownDirection(index);
-                            }}
-                            className={`${inputClass} pl-2 pr-8`}
-                          />
-                          <span
-                            className={`absolute right-2 top-1/2 -translate-y-1/2 ${
-                              isActive ? "text-gray-400" : "text-gray-300"
-                            }`}
-                          >
-                            {isLoading ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Search size={14} />
-                            )}
-                          </span>
+                      {item.ItemCode} — {item.ItemName || item.Description}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </td>
 
-                          {items.length > 0 && (
-                            <ul 
-                            ref={(el) => (dropdownRefs.current[index] = el)}
-                            className={`bg-white absolute z-10 left-full ml-2 w-56 border rounded shadow-md w-full text-xs mt-1 max-h-40 overflow-y-auto ${dropdownDir[index] === "up" ? "bottom-0 mb-1" : "top-0 mt-1"}`}>
-                              {items.map((item) => (
-                                <li
-                                  key={item.ItemCode}
-                                  onClick={() => handleSelectItem(index, item)}
-                                  className="px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                >
-                                  {item.ItemCode} —{" "}
-                                  {item.ItemName || item.Description}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                      </td>
+            {/* Description */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="text"
+                value={row.description}
+                readOnly
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Description */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="text"
-                          value={row.description}
-                          readOnly
-                          onChange={(e) =>
-                            handleChange(index, "description", e.target.value)
-                          }
-                          disabled={isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Quantity */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="number"
+                value={row.quantity}
+                onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Quantity */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="number"
-                          placeholder="No."
-                          value={row.quantity}
-                          onChange={(e) =>
-                            handleChange(index, "quantity", e.target.value)
-                          }
-                          onFocus={() => activateRow(index)}
-                          disabled={!isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Unit Price */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="number"
+                value={row.unitPrice}
+                readOnly
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Unit Price */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={row.unitPrice}
-                          readOnly
-                          onChange={(e) =>
-                            handleChange(index, "unitPrice", e.target.value)
-                          }
-                          disabled={isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Weight */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="number"
+                value={row.weight}
+                readOnly
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Weight */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={row.weight}
-                          readOnly
-                          onChange={(e) =>
-                            handleChange(index, "weight", e.target.value)
-                          }
-                          disabled={isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Total Weight */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="number"
+                value={row.totalWeight}
+                readOnly
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Total Weight */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={row.totalWeight}
-                          readOnly
-                          disabled={isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Total Amount */}
+            <td className="border border-gray-300 p-1">
+              <input
+                type="number"
+                value={row.lineTotal}
+                readOnly
+                className={`w-full px-1 py-0.5 text-xs border-none outline-none ${
+                  isActive ? "bg-white" : "bg-gray-50"
+                }`}
+              />
+            </td>
 
-                      {/* Line Total */}
-                      <td className="border border-gray-300 p-1">
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={row.lineTotal}
-                          readOnly
-                          disabled={isActive}
-                          className={inputClass}
-                        />
-                      </td>
+            {/* Delete */}
+            <td className="border border-gray-300 p-1 flex justify-center items-center">
+              <button
+                type="button"
+                onClick={() => handleDelete(index)}
+                className={`p-1 rounded ${
+                  isActive ? "bg-red-100 hover:bg-red-200 text-red-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                <Trash2 size={16} />
+              </button>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
 
-                      {/* Delete */}
-                      <td className="p-1 flex justify-center items-center">
-                        <button
-                          type="button"
-                          onClick={() => isActive && handleDelete(index)}
-                          disabled={!isActive}
-                          className={`p-1 ${
-                            isActive
-                              ? "text-red-500 hover:text-red-700"
-                              : "text-gray-300 cursor-not-allowed"
-                          }`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
 
       {/* ✅ Live Order Total */}
       <div className="flex justify-end mt-6">
@@ -660,54 +639,7 @@ useEffect(() => {
         </button>
       </div>
       </div>
-
-      {showAddressModal && (
-  <div
-    className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
-    onClick={() => setShowAddressModal(false)}
-  >
-    <div
-      className="bg-white rounded-lg p-4 w-80 max-h-[70vh] overflow-y-auto"
-      onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
-    >
-      <h3 className="text-sm font-semibold mb-2">
-        Change {modalType === "ship" ? "Shipping" : "Billing"} Address
-      </h3>
-      <ul>
-        {(modalType === "ship" ? bpAddresses.shipTo : bpAddresses.billTo).map(
-          (addr) => (
-            <li
-              key={addr.AddressName}
-              onClick={() => {
-                if (modalType === "ship") {
-                  setOrder((prev) => ({ ...prev, shippingAddress: addr.AddressName }));
-                  setShipToFull(formatAddressForDisplay(addr, "ship"));
-                } else {
-                  setOrder((prev) => ({ ...prev, billingAddress: addr.AddressName }));
-                  setBillToFull(formatAddressForDisplay(addr, "bill"));
-                }
-                setShowAddressModal(false);
-              }}
-              className="px-2 py-1 mb-1 cursor-pointer hover:bg-gray-100 rounded"
-            >
-              {formatAddressForDisplay(addr, modalType)}
-            </li>
-          )
-        )}
-      </ul>
-      <button
-        className="mt-2 w-full py-1 text-xs text-white bg-gray-500 rounded hover:bg-gray-600"
-        onClick={() => setShowAddressModal(false)}
-      >
-        Cancel
-      </button>
     </div>
-  </div>
-)}
-
-    </div>
-
-    
   );
 }
 
