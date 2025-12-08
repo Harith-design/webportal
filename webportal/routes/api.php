@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\Http;
 |--------------------------------------------------------------------------
 */
 
+/**
+ * Simple health-check / connectivity test
+ * GET https://giibportal.cloud/api/ping  →  {"pong": true}
+ */
+Route::get('/ping', function () {
+    return response()->json(['pong' => true]);
+});
+
 // ------------------- Authentication Routes -------------------
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -73,7 +81,8 @@ Route::get('/sap-debug-login', function () {
 Route::prefix('sap')->group(function () {
 
     // ---------------- Items ----------------
-    Route::get('/items', [SapController::class, 'getItems']); // 🔹 With pagination
+    Route::get('/items', [SapController::class, 'getItems']);              // 🔹 With pagination / search
+    Route::get('/items/{itemCode}', [SapController::class, 'getItemByCode']); // 🔹 Single item (weight + min price)
 
     // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);

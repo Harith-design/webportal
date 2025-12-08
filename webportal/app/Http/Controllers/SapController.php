@@ -289,6 +289,94 @@ class SapController extends Controller
         ]);
     }
 
+    /**
+     * SINGLE ITEM DETAILS (Item Master)
+     * - InventoryWeight (g) → Weight in KG for web portal
+     * - Minimum price from ItemPrices
+     * Route: GET /api/sap/items/{itemCode}
+     */
+        // =====================================================
+// ------------------- SINGLE ITEM DETAILS -------------
+// =====================================================
+public function getItemByCode($itemCode)
+{
+    try {
+        // escape quotes for OData
+        $safe = str_replace("'", "''", $itemCode);
+
+        // 1) Get base item info (for weight, description)
+        $itemEndpoint = "Items('{$safe}')?\$select=ItemCode,ItemName,InventoryWeight";
+        $itemRes      = $this->callServiceLayer('get', $itemEndpoint);
+
+        if (isset($itemRes['error'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to fetch item details',
+                'details' => $itemRes['details'] ?? $itemRes,
+            ], $itemRes['status'] ?? 500);
+        }
+
+        // ---------- Weight (InventoryWeight is in grams in SAP B1) ----------
+        $rawWeightGrams = isset($itemRes['InventoryWeight'])
+            ? (float) $itemRes['InventoryWeight']
+            : 0.0;
+
+        // convert g → kg for the portal
+        $weightKg = $rawWeightGrams / 1000.0;
+
+        // 2) Get minimum price from ItemPrices entity set
+        //    We ask SAP: all ItemPrices for this item, Price > 0, sorted ascending.
+        //    Then we take the first Price as the minimum.
+        $minPrice = null;
+
+        $priceEndpoint =
+            "ItemPrices?"
+            . "\$select=ItemCode,Price,ListNum"
+            . "&\$filter=ItemCode eq '{$safe}' and Price gt 0"
+            . "&\$orderby=Price asc";
+
+        $priceRes = $this->callServiceLayer('get', $priceEndpoint);
+
+        if (!isset($priceRes['error']) && isset($priceRes['value']) && is_array($priceRes['value'])) {
+            if (count($priceRes['value']) > 0) {
+                $firstRow = $priceRes['value'][0];
+                if (isset($firstRow['Price'])) {
+                    $minPrice = (float) $firstRow['Price'];
+                }
+            }
+        } else {
+            // not fatal – we still return weight even if price fetch fails
+            \Log::warning('ItemPrices query failed or empty', [
+                'itemCode' => $itemCode,
+                'priceRes' => $priceRes,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => [
+                'ItemCode'    => $itemRes['ItemCode'] ?? $itemCode,
+                'Description' => $itemRes['ItemName'] ?? '',
+                'Weight'      => $weightKg,   // in KG
+                'MinPrice'    => $minPrice,   // may be null if no valid prices
+            ],
+        ], 200);
+
+    } catch (\Throwable $e) {
+        \Log::error('getItemByCode exception', [
+            'itemCode' => $itemCode,
+            'ex'       => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Unexpected error fetching item details',
+            'details' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
     // =====================================================
     // -------------- SALES ORDERS (UDF helper) ------------
     // =====================================================
@@ -381,123 +469,122 @@ class SapController extends Controller
     // ---------------- SALES ORDER DETAILS ----------------
     // =====================================================
     public function getSalesOrderDetails($docEntry)
-{
-    try {
-        $endpoint = "Orders({$docEntry})";
-        $result   = $this->callServiceLayer('get', $endpoint);
+    {
+        try {
+            $endpoint = "Orders({$docEntry})";
+            $result   = $this->callServiceLayer('get', $endpoint);
 
-        if (isset($result['error'])) {
-            return response()->json([
-                'error'   => 'Failed to fetch Sales Order details',
-                'details' => $result['details'] ?? $result,
-            ], $result['status'] ?? 500);
-        }
-
-        $rawLines = $result['DocumentLines'] ?? [];
-
-        $lines = collect($rawLines)->map(function ($l, $i) {
-            $sapQty      = (float) ($l['Quantity'] ?? 0);          // what SAP stores
-            $udfTotalPcs = isset($l['U_TotalWeight']) ? (float) $l['U_TotalWeight'] : null; // PCS (new style)
-            $udfWeight   = isset($l['U_Weight'])      ? (float) $l['U_Weight']      : null; // KG per PCS (new)
-
-            $sapLineTotal = isset($l['LineTotal']) ? (float) $l['LineTotal'] : null;
-            $sapPrice     = (float) ($l['UnitPrice'] ?? ($l['Price'] ?? 0)); // usually RM per KG in new style
-
-            // ------------------------------------------------------------------
-            // Detect NEW vs OLD mapping
-            // NEW: Quantity = KG, U_TotalWeight = PCS
-            // OLD: Quantity = PCS, U_TotalWeight = total KG (or empty)
-            // ------------------------------------------------------------------
-            $isNewMapping = $udfTotalPcs !== null && $udfTotalPcs > 0 && $sapQty > $udfTotalPcs;
-
-            if ($isNewMapping) {
-                // ---------- NEW ORDERS (what we create now) ----------
-                $displayQty   = $udfTotalPcs;   // PCS for UI
-                $totalWeight  = $sapQty;        // KG
-                $weightPerPcs = $udfWeight;     // KG / PCS
-
-                $pricePerKg   = $sapPrice;      // RM / KG
-                // what UI really wants to show as "Price" is RM per PCS
-                if ($weightPerPcs && $pricePerKg) {
-                    $pricePerPcs = $pricePerKg * $weightPerPcs;  // RM / PCS
-                } else {
-                    // fallback: derive from line total if possible
-                    $pricePerPcs = ($sapLineTotal !== null && $displayQty > 0)
-                        ? $sapLineTotal / $displayQty
-                        : $pricePerKg;
-                }
-
-                $lineTotal = $sapLineTotal !== null
-                    ? $sapLineTotal
-                    : $pricePerPcs * $displayQty;
-            } else {
-                // ---------- OLD ORDERS (before we changed mapping) ----------
-                // Quantity in SAP is already PCS.
-                $displayQty   = $sapQty;                         // PCS
-                $totalWeight  = $udfTotalPcs ?: $sapQty;         // try UDF first
-                $weightPerPcs = $displayQty > 0
-                    ? $totalWeight / $displayQty
-                    : null;
-
-                // pricePerPcs – try to read from SAP total if possible
-                if ($sapLineTotal !== null && $displayQty > 0) {
-                    $pricePerPcs = $sapLineTotal / $displayQty;
-                } else {
-                    // absolute fallback – whatever SAP stored as UnitPrice
-                    $pricePerPcs = $sapPrice;
-                }
-
-                $lineTotal = $sapLineTotal !== null
-                    ? $sapLineTotal
-                    : $pricePerPcs * $displayQty;
+            if (isset($result['error'])) {
+                return response()->json([
+                    'error'   => 'Failed to fetch Sales Order details',
+                    'details' => $result['details'] ?? $result,
+                ], $result['status'] ?? 500);
             }
 
-            return [
-                'no'           => $i + 1,
-                'ItemCode'     => $l['ItemCode'] ?? '',
-                'ItemName'     => $l['ItemDescription'] ?? ($l['Text'] ?? ''),
-                'Quantity'     => $displayQty,     // PCS for your frontend
-                'WeightPerPcs' => $weightPerPcs,   // KG per PCS (may be null for old docs)
-                'TotalWeight'  => $totalWeight,    // KG (matches SAP "Total Weight")
-                'UnitPrice'    => $pricePerPcs,    // RM / PCS  <-- what your UI multiplies
-                'LineTotal'    => $lineTotal,      // should match SAP LineTotal/TotalGross
-                'TaxCode'      => $l['TaxCode'] ?? '',
-            ];
-        })->toArray();
+            $rawLines = $result['DocumentLines'] ?? [];
 
-        return response()->json([
-            'status' => 'success',
-            'data'   => [
-                'DocEntry'       => $result['DocEntry']       ?? '',
-                'DocNum'         => $result['DocNum']         ?? '',
-                'CardCode'       => $result['CardCode']       ?? '',
-                'Customer'       => $result['CardName']       ?? '',
-                'DocDate'        => substr($result['DocDate']    ?? '', 0, 10),
-                'DocDueDate'     => substr($result['DocDueDate'] ?? '', 0, 10),
-                'DocTotal'       => (float)($result['DocTotal'] ?? 0),
-                'DocCurrency'    => $result['DocCurrency']    ?? 'MYR',
-                'NumAtCard'      => $result['NumAtCard']      ?? '-',
-                'DocumentStatus' => $result['DocumentStatus'] ?? '',
-                'ShipToCode'     => $result['ShipToCode']     ?? '',
-                'PayToCode'      => $result['PayToCode']      ?? '',
-                'Lines'          => $lines,
-                'DocumentLines'  => $rawLines,
-            ],
-        ], 200);
+            $lines = collect($rawLines)->map(function ($l, $i) {
+                $sapQty      = (float) ($l['Quantity'] ?? 0);          // what SAP stores
+                $udfTotalPcs = isset($l['U_TotalWeight']) ? (float) $l['U_TotalWeight'] : null; // PCS (new style)
+                $udfWeight   = isset($l['U_Weight'])      ? (float) $l['U_Weight']      : null; // KG per PCS (new)
 
-    } catch (\Throwable $e) {
-        \Log::error('getSalesOrderDetails exception', [
-            'docEntry' => $docEntry,
-            'ex'       => $e->getMessage(),
-        ]);
+                $sapLineTotal = isset($l['LineTotal']) ? (float) $l['LineTotal'] : null;
+                $sapPrice     = (float) ($l['UnitPrice'] ?? ($l['Price'] ?? 0)); // usually RM per KG in new style
 
-        return response()->json([
-            'error'   => 'Unexpected error fetching Sales Order details',
-            'details' => $e->getMessage(),
-        ], 500);
+                // ------------------------------------------------------------------
+                // Detect NEW vs OLD mapping
+                // NEW: Quantity = KG, U_TotalWeight = PCS
+                // OLD: Quantity = PCS, U_TotalWeight = total KG (or empty)
+                // ------------------------------------------------------------------
+                $isNewMapping = $udfTotalPcs !== null && $udfTotalPcs > 0 && $sapQty > $udfTotalPcs;
+
+                if ($isNewMapping) {
+                    // ---------- NEW ORDERS (what we create now) ----------
+                    $displayQty   = $udfTotalPcs;   // PCS for UI
+                    $totalWeight  = $sapQty;        // KG
+                    $weightPerPcs = $udfWeight;     // KG / PCS
+
+                    $pricePerKg   = $sapPrice;      // RM / KG
+                    // what UI really wants to show as "Price" is RM per PCS
+                    if ($weightPerPcs && $pricePerKg) {
+                        $pricePerPcs = $pricePerKg * $weightPerPcs;  // RM / PCS
+                    } else {
+                        // fallback: derive from line total if possible
+                        $pricePerPcs = ($sapLineTotal !== null && $displayQty > 0)
+                            ? $sapLineTotal / $displayQty
+                            : $pricePerKg;
+                    }
+
+                    $lineTotal = $sapLineTotal !== null
+                        ? $sapLineTotal
+                        : $pricePerPcs * $displayQty;
+                } else {
+                    // ---------- OLD ORDERS (before we changed mapping) ----------
+                    // Quantity in SAP is already PCS.
+                    $displayQty   = $sapQty;                         // PCS
+                    $totalWeight  = $udfTotalPcs ?: $sapQty;         // try UDF first
+                    $weightPerPcs = $displayQty > 0
+                        ? $totalWeight / $displayQty
+                        : null;
+
+                    // pricePerPcs – try to read from SAP total if possible
+                    if ($sapLineTotal !== null && $displayQty > 0) {
+                        $pricePerPcs = $sapLineTotal / $displayQty;
+                    } else {
+                        // absolute fallback – whatever SAP stored as UnitPrice
+                        $pricePerPcs = $sapPrice;
+                    }
+
+                    $lineTotal = $sapLineTotal !== null
+                        ? $sapLineTotal
+                        : $pricePerPcs * $displayQty;
+                }
+
+                return [
+                    'no'           => $i + 1,
+                    'ItemCode'     => $l['ItemCode'] ?? '',
+                    'ItemName'     => $l['ItemDescription'] ?? ($l['Text'] ?? ''),
+                    'Quantity'     => $displayQty,     // PCS for your frontend
+                    'WeightPerPcs' => $weightPerPcs,   // KG per PCS (may be null for old docs)
+                    'TotalWeight'  => $totalWeight,    // KG (matches SAP "Total Weight")
+                    'UnitPrice'    => $pricePerPcs,    // RM / PCS  <-- what your UI multiplies
+                    'LineTotal'    => $lineTotal,      // should match SAP LineTotal/TotalGross
+                    'TaxCode'      => $l['TaxCode'] ?? '',
+                ];
+            })->toArray();
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => [
+                    'DocEntry'       => $result['DocEntry']       ?? '',
+                    'DocNum'         => $result['DocNum']         ?? '',
+                    'CardCode'       => $result['CardCode']       ?? '',
+                    'Customer'       => $result['CardName']       ?? '',
+                    'DocDate'        => substr($result['DocDate']    ?? '', 0, 10),
+                    'DocDueDate'     => substr($result['DocDueDate'] ?? '', 0, 10),
+                    'DocTotal'       => (float)($result['DocTotal'] ?? 0),
+                    'DocCurrency'    => $result['DocCurrency']    ?? 'MYR',
+                    'NumAtCard'      => $result['NumAtCard']      ?? '-',
+                    'DocumentStatus' => $result['DocumentStatus'] ?? '',
+                    'ShipToCode'     => $result['ShipToCode']     ?? '',
+                    'PayToCode'      => $result['PayToCode']      ?? '',
+                    'Lines'          => $lines,
+                    'DocumentLines'  => $rawLines,
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('getSalesOrderDetails exception', [
+                'docEntry' => $docEntry,
+                'ex'       => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error'   => 'Unexpected error fetching Sales Order details',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
-
 
     // =====================================================
     // ------------------- INVOICE LIST --------------------
@@ -563,107 +650,107 @@ class SapController extends Controller
     // =====================================================
     // ------------------- CREATE SALES ORDER --------------
     // =====================================================
-public function createSalesOrder(Request $request)
-{
-    // 1) Validate input from the web form
-    $validated = $request->validate([
-        'CardCode'      => 'required|string',
-        'DocDate'       => 'nullable|date',
-        'DocDueDate'    => 'required|date',
-        'Comments'      => 'nullable|string',
+    public function createSalesOrder(Request $request)
+    {
+        // 1) Validate input from the web form
+        $validated = $request->validate([
+            'CardCode'      => 'required|string',
+            'DocDate'       => 'nullable|date',
+            'DocDueDate'    => 'required|date',
+            'Comments'      => 'nullable|string',
 
-        'ShipToCode'    => 'nullable|string',
-        'PayToCode'     => 'nullable|string',
+            'ShipToCode'    => 'nullable|string',
+            'PayToCode'     => 'nullable|string',
 
-        'DocumentLines'                 => 'required|array|min:1',
-        'DocumentLines.*.ItemCode'      => 'required|string',
-        'DocumentLines.*.Quantity'      => 'required|numeric|min:1',   // PCS
-        'DocumentLines.*.UnitPrice'     => 'required|numeric|min:0',   // price per PCS
-        'DocumentLines.*.U_Weight'      => 'nullable|numeric',         // weight per PCS (KG)
-        'DocumentLines.*.TaxCode'       => 'nullable|string',
-    ]);
+            'DocumentLines'                 => 'required|array|min:1',
+            'DocumentLines.*.ItemCode'      => 'required|string',
+            'DocumentLines.*.Quantity'      => 'required|numeric|min:1',   // PCS
+            'DocumentLines.*.UnitPrice'     => 'required|numeric|min:0',   // price per PCS
+            'DocumentLines.*.U_Weight'      => 'nullable|numeric',         // weight per PCS (KG)
+            'DocumentLines.*.TaxCode'       => 'nullable|string',
+        ]);
 
-    // 2) Header payload
-    $payload = [
-        'CardCode'   => $validated['CardCode'],
-        'DocDate'    => $validated['DocDate']    ?? date('Y-m-d'),
-        'DocDueDate' => $validated['DocDueDate'],
-        'Comments'   => $validated['Comments']   ?? null,
-        'ShipToCode' => $validated['ShipToCode'] ?? null,
-        'PayToCode'  => $validated['PayToCode']  ?? null,
-    ];
+        // 2) Header payload
+        $payload = [
+            'CardCode'   => $validated['CardCode'],
+            'DocDate'    => $validated['DocDate']    ?? date('Y-m-d'),
+            'DocDueDate' => $validated['DocDueDate'],
+            'Comments'   => $validated['Comments']   ?? null,
+            'ShipToCode' => $validated['ShipToCode'] ?? null,
+            'PayToCode'  => $validated['PayToCode']  ?? null,
+        ];
 
-    // 3) Lines – do PCS → KG conversion here
-    $payload['DocumentLines'] = collect($validated['DocumentLines'])
-        ->map(function ($line) {
+        // 3) Lines – do PCS → KG conversion here
+        $payload['DocumentLines'] = collect($validated['DocumentLines'])
+            ->map(function ($line) {
 
-            $qtyPcs       = (float) $line['Quantity'];     // what user types in "Quantity"
-            $piecePrice   = (float) $line['UnitPrice'];    // what user types in "Unit Price"
-            $weightPerPcs = isset($line['U_Weight'])
-                ? (float) $line['U_Weight']
-                : 0.0;
+                $qtyPcs       = (float) $line['Quantity'];     // what user types in "Quantity"
+                $piecePrice   = (float) $line['UnitPrice'];    // what user types in "Unit Price"
+                $weightPerPcs = isset($line['U_Weight'])
+                    ? (float) $line['U_Weight']
+                    : 0.0;
 
-            if ($weightPerPcs > 0) {
-                // convert to SAP's weight-based logic
-                $totalWeight = $qtyPcs * $weightPerPcs;        // used as SAP Quantity
-                $pricePerKg  = $piecePrice / $weightPerPcs;    // tiny number, MYR per KG
-            } else {
-                // fallback: treat 1 PCS = 1 KG
-                $totalWeight = $qtyPcs;
-                $pricePerKg  = $piecePrice;
-            }
+                if ($weightPerPcs > 0) {
+                    // convert to SAP's weight-based logic
+                    $totalWeight = $qtyPcs * $weightPerPcs;        // used as SAP Quantity
+                    $pricePerKg  = $piecePrice / $weightPerPcs;    // tiny number, MYR per KG
+                } else {
+                    // fallback: treat 1 PCS = 1 KG
+                    $totalWeight = $qtyPcs;
+                    $pricePerKg  = $piecePrice;
+                }
 
-            // IMPORTANT: in your layout:
-            //  - "Quantity (PCS)"  column is U_TotalWeight
-            //  - "Total Weight"    column is Quantity
-            $linePayload = [
-                'ItemCode'      => $line['ItemCode'],
-                'Quantity'      => $totalWeight,   // shows under "Total Weight", used by SAP to calculate totals
-                'U_TotalWeight' => $qtyPcs,        // shows under "Quantity (PCS)" in SAP
-                'UnitPrice'     => $pricePerKg,    // SAP price per KG => gives correct line total
-            ];
+                // IMPORTANT: in your layout:
+                //  - "Quantity (PCS)"  column is U_TotalWeight
+                //  - "Total Weight"    column is Quantity
+                $linePayload = [
+                    'ItemCode'      => $line['ItemCode'],
+                    'Quantity'      => $totalWeight,   // shows under "Total Weight", used by SAP to calculate totals
+                    'U_TotalWeight' => $qtyPcs,        // shows under "Quantity (PCS)" in SAP
+                    'UnitPrice'     => $pricePerKg,    // SAP price per KG => gives correct line total
+                ];
 
-            if ($weightPerPcs > 0) {
-                $linePayload['U_Weight'] = $weightPerPcs;     // keep weight per PCS
-            }
+                if ($weightPerPcs > 0) {
+                    $linePayload['U_Weight'] = $weightPerPcs;     // keep weight per PCS
+                }
 
-            if (!empty($line['TaxCode'])) {
-                $linePayload['TaxCode'] = $line['TaxCode'];
-            }
+                if (!empty($line['TaxCode'])) {
+                    $linePayload['TaxCode'] = $line['TaxCode'];
+                }
 
-            return $linePayload;
-        })
-        ->values()
-        ->toArray();
+                return $linePayload;
+            })
+            ->values()
+            ->toArray();
 
-    // remove null header fields
-    $payload = array_filter($payload, fn($v) => $v !== null);
+        // remove null header fields
+        $payload = array_filter($payload, fn($v) => $v !== null);
 
-    // Debug logs
-    \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
-    \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
+        // Debug logs
+        \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
+        \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
 
-    // 4) Call SAP Service Layer
-    $result = $this->callServiceLayer('post', 'Orders', $payload);
+        // 4) Call SAP Service Layer
+        $result = $this->callServiceLayer('post', 'Orders', $payload);
 
-    if (isset($result['error'])) {
-        \Log::error('❌ Failed to create sales order', ['error' => $result]);
+        if (isset($result['error'])) {
+            \Log::error('❌ Failed to create sales order', ['error' => $result]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to create Sales Order',
+                'details' => $result['details'] ?? $result,
+            ], $result['status'] ?? 500);
+        }
+
+        \Log::info('✅ Sales Order created successfully', ['result' => $result]);
 
         return response()->json([
-            'status'  => 'error',
-            'message' => 'Failed to create Sales Order',
-            'details' => $result['details'] ?? $result,
-        ], $result['status'] ?? 500);
+            'status'  => 'success',
+            'message' => 'Sales Order created successfully',
+            'data'    => $result,
+        ], 201);
     }
-
-    \Log::info('✅ Sales Order created successfully', ['result' => $result]);
-
-    return response()->json([
-        'status'  => 'success',
-        'message' => 'Sales Order created successfully',
-        'data'    => $result,
-    ], 201);
-}
 
     // =====================================================
     // ------------------- GET SINGLE INVOICE DETAILS ------
