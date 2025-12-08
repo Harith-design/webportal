@@ -65,6 +65,30 @@ function UserList() {
           u.role ?? u.Role ?? u.user_role ?? u.userRole ?? "user";
         const role = String(rawRole).toLowerCase();
 
+        // 🔹 derive Active/Inactive from various boolean/flag fields
+        const isActiveValue =
+          u.is_active ??
+          u.active ??
+          u.Active ??
+          u.IsActive ??
+          u.Is_Active ??
+          null;
+
+        let derivedStatus = "";
+        if (isActiveValue !== null && isActiveValue !== undefined) {
+          const v = String(isActiveValue).toLowerCase();
+          if (v === "1" || v === "true" || v === "active" || v === "yes") {
+            derivedStatus = "Active";
+          } else if (
+            v === "0" ||
+            v === "false" ||
+            v === "inactive" ||
+            v === "no"
+          ) {
+            derivedStatus = "Inactive";
+          }
+        }
+
         // resolve status from multiple possible keys (e.g. Active/Inactive)
         const rawStatus =
           u.status ??
@@ -73,15 +97,15 @@ function UserList() {
           u.userStatus ??
           u.status_name ??
           u.StatusName ??
+          derivedStatus ??
           "";
 
-        // prefer showing role in the "Status" column as requested.
-        // But if you also want to show active/inactive, we include both.
+        // keep existing behaviour: role in Status column + Active/Inactive if present
         const statusParts = [];
         // include role label (Admin | User)
         statusParts.push(role === "admin" ? "Admin" : "User");
 
-        // include Active/Inactive if present in API
+        // include Active/Inactive if present in API / derived
         const s = String(rawStatus).trim();
         if (s) {
           const lower = s.toLowerCase();
@@ -100,11 +124,10 @@ function UserList() {
             "N/A",
           email: u.email || u.username || "N/A",
           company,
-          company_code:
-            u.company_code ?? u.cardCode ?? u.CardCode ?? "N/A",
+          company_code: u.company_code ?? u.cardCode ?? u.CardCode ?? "N/A",
           contact_no: u.contact_no ?? u.phone ?? "N/A",
           role: role === "admin" ? "admin" : "user",
-          status,
+          status, // e.g. "Admin • Active"
         };
       });
 
@@ -230,8 +253,9 @@ function UserList() {
       const s = secondPart.toLowerCase();
       if (s.includes("active")) {
         statusBadge = (
-          <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#007edf]"
-          style={{
+          <span
+            className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#007edf]"
+            style={{
               background:
                 "radial-gradient(circle at 20% 80%, #f9b8ffff, #bc92ffff)",
             }}
@@ -242,8 +266,9 @@ function UserList() {
         );
       } else if (s.includes("inactive")) {
         statusBadge = (
-          <span className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#16aa3dff]"
-          style={{
+          <span
+            className="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium text-[#16aa3dff]"
+            style={{
               background:
                 "radial-gradient(circle at 20% 80%, #ffbcbcff, #ff50a4ff)",
             }}
