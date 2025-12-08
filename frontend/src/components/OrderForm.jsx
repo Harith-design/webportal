@@ -70,6 +70,7 @@ function PlaceOrderPage() {
   }, [rows]);
 
 
+
   // 👉 format full address for preview with a forced first line label
   const formatAddressForDisplay = (a, kind /* 'ship' | 'bill' */) => {
     if (!a) return "";
