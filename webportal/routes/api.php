@@ -45,7 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ------------------- Users (Admin Only) -------------------
-    Route::middleware('role:admin')->group(function () {
+    // There was a change here role:admin -> role:user
+    Route::middleware('role:user,admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/{id}', [UserController::class, 'show']);
         Route::post('/users', [UserController::class, 'store']);

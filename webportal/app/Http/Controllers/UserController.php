@@ -17,7 +17,9 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'            => 'required|string|max:255',
+            // 'name'            => 'required|string|max:255',
+            'first_name' => 'required|string|max:100',
+            'last_name'  => 'required|string|max:100',
             'email'           => 'required|email|unique:users,email',
             'password'        => 'required|string|min:6',
             'cardcode'        => 'nullable|string',
@@ -26,8 +28,13 @@ class UserController extends Controller
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
+         $first = $request->input('first_name');
+         $last  = $request->input('last_name');
+
         $data = [
-            'name'       => $request->name,
+            'first_name' => $first,
+            'last_name'  => $last,
+            'name'       => trim("$first $last"), // combine first + last name
             'email'      => $request->email,
             'password'   => bcrypt($request->password),
             'cardcode'   => $request->cardcode ?? null,

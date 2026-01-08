@@ -87,6 +87,8 @@ useEffect(() => {
         await axios.post(
           "http://127.0.0.1:8000/api/users",
           {
+            first_name: newUser.firstName,
+            last_name: newUser.lastName,
             name: fullName,
             email: newUser.email,            // ✅ use user-entered email
             password: newUser.password,

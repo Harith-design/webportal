@@ -132,14 +132,24 @@ function EditProfile() {
 
   // Load current user info
   useEffect(() => {
+
+    // Check the token
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+  console.log("Current auth token:", token);
+
     (async () => {
       try {
         const res = await getCurrentUser();
         const u = res.data;
+
+        // --- Debug logs ---
+        console.log("Logged-in user from backend:", u);
+        console.log("User ID we are setting in formData:", u.id);
+
         setFormData({
           id: u.id,
-          firstName: u.firstName || "",
-          lastName: u.lastName || "",
+          firstName: u.first_name || "",
+          lastName: u.last_name || "",
           name: u.name || "",
           email: u.email || "",
           contact: u.contact_no || "",
@@ -239,8 +249,8 @@ function EditProfile() {
 
   try {
     const payload = {
-      firstName: formData.firstName || "",
-      lastName: formData.lastName || "",
+      first_name: formData.firstName || "",
+      last_name: formData.lastName || "",
       name: formData.name || "",
       email: formData.email || "",
       contact_no: formData.contact || "",
@@ -261,6 +271,8 @@ function EditProfile() {
 
     setFormData((p) => ({
         ...p,
+        first_name: u.first_name ?? p.firstName,
+        last_name: u.last_name ?? p.lastName,
         name: u.name ?? p.name,
         email: u.email ?? p.email,
         contact: u.contact_no ?? p.contact,
@@ -388,38 +400,10 @@ function EditProfile() {
             Company Information
           </h3>
           <div className="grid grid-cols-1 gap-2">
-            <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">
-                Search Company (from SAP)
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={handleCompanySearch}
-                placeholder="Enter company name"
-                className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
-              />
-              {loadingSearch && (
-                <p className="text-sm text-gray-500 mt-1">Searching...</p>
-              )}
-              {companyResults.length > 0 && (
-                <ul className="border rounded mt-1 max-h-40 overflow-y-auto bg-white shadow text-sm w-3/4">
-                  {companyResults.map((c) => (
-                    <li
-                      key={c.CardCode}
-                      onClick={() => handleSelectCompany(c)}
-                      className="px-2 py-1 cursor-pointer hover:bg-blue-100"
-                    >
-                      {c.CardCode} - {c.CardName}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
 
             <div className="flex flex-col">
               <label className="text-[80%] font-medium mb-1">
-                Selected Company
+                Company Name
               </label>
               <input
                 type="text"
