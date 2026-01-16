@@ -257,14 +257,22 @@ class SapController extends Controller
         $search = strtoupper(trim($request->query('search', '')));
         $top = 50;
 
-        $endpoint = "Items?\$top={$top}&\$select=ItemCode,ItemName";
+        $endpoint = "Items?\$top={$top}";
+        $filters = ["Valid eq 'tYES' and Valid ne null"];
 
         if (!empty($search)) {
             $escapedSearch = str_replace("'", "''", $search);
-            $endpoint .= "&\$filter=startswith(ItemCode,'{$escapedSearch}') or startswith(ItemName,'{$escapedSearch}')";
+            $filters[] = "startswith(ItemCode,'{$escapedSearch}') or startswith(ItemName,'{$escapedSearch}')";
+        }
+
+        if (!empty($filters)) {
+            $endpoint .= "&\$filter=" . implode(' and ', $filters);
         }
 
         $result = $this->callServiceLayer('get', $endpoint);
+
+         // 🔹 DEBUG: check the full response from SAP
+        \Log::info('SAP Items debug', ['result' => $result]);
 
         if (isset($result['error'])) {
             return response()->json([
@@ -275,10 +283,30 @@ class SapController extends Controller
 
         $items = $result['value'] ?? [];
 
-        $itemsMapped = collect($items)->map(function ($item) {
+        $itemsMapped = collect($items)
+        ->filter(fn($i) => ($i['Valid'] ?? '') === 'tYES')
+        ->map(function ($item) {
+
+            $itemCode = $item['ItemCode'] ?? '';
+            $itemName = $item['ItemName'] ?? '';
+
+            // Attempt to parse item code
+            $pattern = '/^([A-Z0-9]+)-(\d+)-([\d.]+)N$/';
+            if (preg_match($pattern, $itemCode, $matches)) {
+                $compoundCode = $matches[1];
+                $width = $matches[2];
+                $length = $matches[3];
+
+                $displayName = "{$compoundCode} (Width {$width}mm, Length {$length}mm)";
+            } else {
+                // fallback if pattern doesn't match
+                $displayName = $itemCode;
+            }
+
+
             return [
-                'ItemCode'    => $item['ItemCode'] ?? '',
-                'Description' => $item['ItemName'] ?? '',
+                'ItemCode'    => $itemCode,
+                'Description' => $displayName,
             ];
         })->toArray();
 

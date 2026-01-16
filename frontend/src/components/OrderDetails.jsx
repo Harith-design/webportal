@@ -3,31 +3,31 @@ import { useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 import { PackageOpen, Truck} from "lucide-react";
 
-const StatusBadge = ({ status }) => {
-  const statusConfig = {
-    Open: {
-      label: "Open",
-      icon: <PackageOpen size={14} className="mr-1" />,
-      style: {
-        background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
-        color: "#007edf",
-      },
+const statusConfig = {
+  Open: {
+    label: "Open",
+    icon: <PackageOpen size={14} className="mr-1" />,
+    style: {
+      background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
+      color: "#007edf",
     },
-    Closed: {
-      label: "Delivered",
-      icon: <Truck size={14} className="mr-1" />,
-      style: {
-        background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
-        color: "#16aa3dff",
-      },
+  },
+  Closed: {
+    label: "Delivered",
+    icon: <Truck size={14} className="mr-1" />,
+    style: {
+      background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
+      color: "#16aa3dff",
     },
-  };
+  },
+};
 
+const StatusBadge = ({ status }) => {
   const cfg = statusConfig[status] || statusConfig.Open;
 
   return (
     <span
-      className="inline-flex items-center rounded-xl px-2 text-xs font-medium bg-red-200"
+      className="inline-flex items-center rounded-xl px-2 text-xs font-medium"
       style={cfg.style}
     >
       {cfg.icon}
@@ -204,6 +204,8 @@ function OrderDetails() {
       ? "Open"
       : order.status || "Closed";
 
+  const statusStyle = statusConfig[statusText] || statusConfig.Open;
+
   const orderDateDisplay =
     order.orderDate ||
     order.postingDate ||
@@ -265,53 +267,61 @@ function OrderDetails() {
   const finalTotal = subtotal - discount + vat;
 
   return (
-    <div className="px-2 lg:px-16 py-2 space-y-8">
-      {/* Order Info */}
-      
-      <div className="grid grid-cols-2 text-xs p-6 rounded-2xl shadow-2xl" style={{
-    background: "radial-gradient(circle at 10% 60%, #ffffecff, #f2d1ebff)", // adjust colors & direction
-  }}>
-  {/* Left: Order Details */}
-  <div className="grid grid-cols-2 gap-y-1">
-    <h2 className="font-semibold text-sm col-span-2">Order Details</h2>
-    
-      <span className="font-medium">{type === "invoice" ? "Invoice No:" : "Sales No"}</span>
-      {type === "invoice" ? invoiceNoDisplay : salesNoDisplay}
-   
-    
-      <span className="font-medium">PO No</span> {order.NumAtCard || order.poNo || "-"}
-    
-    
-      <span className="font-medium">{type === "invoice" ? "Invoice Date:" : "Order Date"}</span>
-      {orderDateDisplay}
-    
-    
-      <span className="font-medium">Due Date</span> {dueDateDisplay}
-    
-    
-      <span className="font-medium">Status</span>
-      <div className="w-fit">
-      <StatusBadge className="text-xs " status={statusText} />
-      </div>
-      
-  </div>
-
-        {/* Right: Bill To + Ship To */}
-        <div className="flex flex-col md:flex-row justify-self-end gap-4 md:gap-10">
-          <div className="w-60">
-            <h2 className="font-semibold text-sm mb-1">Bill To</h2>
-            <p className="text-xs">{billToFull || "-"}</p>
-          </div>
-          <div className="w-60">
-            <h2 className="font-semibold text-sm mb-1">Ship To</h2>
-            <p className="text-xs">{shipToFull || "-"}</p>
+  <div className="h-screen flex">
+    {/* ---------- LEFT SIDE: Order & Customer Details ---------- */}
+    <div className="flex-1 max-w-sm">
+      <div
+        className="text-xs p-10 border-r border-gray-300 space-y-6 h-full overflow-auto"
+      >
+        {/* Order Details */}
+        <div>
+          <h2 className="font-semibold text-2xl mb-2">Order Details</h2>
+          <div className="space-y-1">
+            <div>
+              <span className="font-medium">{type === "invoice" ? "Invoice No:" : "Sales No"} </span>
+              {type === "invoice" ? invoiceNoDisplay : salesNoDisplay}
+            </div>
+            <div>
+              <span className="font-medium">PO No: </span>
+              {order.NumAtCard || order.poNo || "-"}
+            </div>
+            <div>
+              <span className="font-medium">{type === "invoice" ? "Invoice Date:" : "Order Date"} </span>
+              {orderDateDisplay}
+            </div>
+            <div>
+              <span className="font-medium">Due Date: </span>
+              {dueDateDisplay}
+            </div>
+            <div className="flex items-center">
+              <span className="font-medium mr-2">Status:</span>
+              <StatusBadge className="text-xs" status={statusText} />
+            </div>
           </div>
         </div>
-      </div>
 
+        {/* Bill To */}
+        <div>
+          <h2 className="font-semibold text-2xl mb-1">Bill To</h2>
+          <p className="text-xs whitespace-pre-line">{billToFull || "-"}</p>
+        </div>
+
+        {/* Ship To */}
+        <div>
+          <h2 className="font-semibold text-2xl mb-1">Ship To</h2>
+          <p className="text-xs whitespace-pre-line">{shipToFull || "-"}</p>
+        </div>
+      </div>
+    </div>
+
+
+    {/* ---------- RIGHT SIDE: Items Table + Totals ---------- */}
+    <div className="flex-1 flex flex-col space-y-6 p-4 bg-white">
+      
       {/* Items Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse mt-4 text-xs border-b border-gray-300">
+        <h2 className="font-semibold text-4xl mb-6 text-center">Order Summary</h2>
+        <table className="min-w-full border-collapse text-xs border-b border-gray-300">
           <thead>
             <tr className="text-left border-b px-4 py-2 border-gray-300">
               <th>No.</th>
@@ -329,7 +339,7 @@ function OrderDetails() {
                 <td className="px-4 py-2">{item.itemCode}</td>
                 <td className="px-4 py-2">{item.itemName}</td>
                 <td className="px-4 py-2">{item.qty}</td>
-                <td className="px-4 py-2r">
+                <td className="px-4 py-2">
                   {currency} {item.price.toFixed(2)}
                 </td>
                 <td className="px-4 py-2">
@@ -342,34 +352,29 @@ function OrderDetails() {
       </div>
 
       {/* Totals */}
-      <div className="max-w-sm ml-auto text-xs">
+      <div className="max-w-sm w-full ml-auto text-xs space-y-1">
         <div className="flex justify-between">
           <span>Subtotal:</span>
-          <span>
-            {currency} {subtotal.toFixed(2)}
-          </span>
+          <span>{currency} {subtotal.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between mt-1">
+        <div className="flex justify-between">
           <span>Discount:</span>
-          <span>
-            - {currency} {discount.toFixed(2)}
-          </span>
+          <span>- {currency} {discount.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between mt-1">
+        <div className="flex justify-between">
           <span>VAT:</span>
-          <span>
-            + {currency} {vat.toFixed(2)}
-          </span>
+          <span>+ {currency} {vat.toFixed(2)}</span>
         </div>
         <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-300 pt-2 mt-2">
           <span>Final Amount:</span>
-          <span>
-            {currency} {finalTotal.toFixed(2)}
-          </span>
+          <span>{currency} {finalTotal.toFixed(2)}</span>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
+
 }
 
 export default OrderDetails;

@@ -242,7 +242,7 @@ function DashboardLayout() {
         )}
 
         <main
-          className="flex-1 px-2 pt-3 bg-gray-100 ml-0 sm:ml-20"
+          className="flex-1 px-0 pt-0 bg-gray-100 ml-0 sm:ml-20"
         >
           <Outlet />
         </main>
