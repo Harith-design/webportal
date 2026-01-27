@@ -81,6 +81,8 @@ function DashboardLayout() {
     "/editprofile": "Edit Profile",
     "/users": "Users",
     "/edituser/:id": "Edit User",
+    "/products": "Products",
+    "/products/:id": "Product Details"
   };
 
   const getPageTitle = (pathname, idParam) => {

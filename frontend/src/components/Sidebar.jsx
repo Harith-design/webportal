@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   LogOut,
   UserRoundCog,
+  Store
 } from "lucide-react";
 import { useLoading } from "../context/LoadingContext";
 import { performLogout } from "../helpers/logout";
@@ -43,7 +44,9 @@ function Sidebar({ sidebarOpen }) {
         <SidebarLink to="/dashboardpage" icon={<Blocks size={32} />} label="Dashboard"/>
         <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>
         <SidebarLink to="/invoices" icon={<FileText size={32} />} label="Invoices"/>
+        <SidebarLink to="/products" icon={<Store size={32} />} label="Products"/>
         <SidebarLink to="/orderform" icon={<ShoppingCart size={32} />} label="Place an Order"/>
+        
         
         {/* 🔒 Admin-only link */}
         {role === "admin" && (

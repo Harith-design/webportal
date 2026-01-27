@@ -20,6 +20,8 @@ import InvoiceDetails from "./components/InvoiceDetails";
 import EditProfile from "./components/EditProfile";
 import UserList from "./components/UserList";
 import EditUser from "./components/EditUser";
+import ProductList from "./components/ProductList"
+import ProductDetails from "./components/ProductDetails"
 
 // Layout & helpers
 import DashboardLayout from "./components/DashboardLayout";
@@ -50,6 +52,7 @@ function App() {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboardpage" element={<DashboardPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/products" element={<ProductList />} />
           <Route path="/orderform" element={<PlaceOrderPage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
           <Route path="/orders/:id" element={<OrderDetails />} />
@@ -58,21 +61,9 @@ function App() {
           <Route path="/editprofile" element={<EditProfile />} />
           <Route path="/users" element={<UserList />} />
           <Route path="/edituser/:id" element={<EditUser />} />
+          <Route path="/products/:id" element={<ProductDetails />} /> 
         </Route>
 
-        {/* Dashboard pages – now public */}
-        {/* <Route element={<DashboardLayout />}>
-          <Route path="/dashboardpage" element={<DashboardPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/orderform" element={<PlaceOrderPage />} />
-          <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/orders/:id" element={<OrderDetails />} />
-          <Route path="/invoices/:id" element={<InvoiceDetails />} />
-          <Route path="/customers" element={<CustomerList />} />
-          <Route path="/editprofile" element={<EditProfile />} />
-          <Route path="/users" element={<UserList />} />
-          <Route path="/edituser/:id" element={<EditUser />} />
-        </Route> */}
 
         {/* Catch-all fallback */}
         <Route path="*" element={<Login />} />

@@ -267,7 +267,7 @@ function OrderDetails() {
   const finalTotal = subtotal - discount + vat;
 
   return (
-  <div className="h-screen flex">
+  <div className="h-screen flex ">
     {/* ---------- LEFT SIDE: Order & Customer Details ---------- */}
     <div className="flex-1 max-w-sm">
       <div
@@ -316,7 +316,7 @@ function OrderDetails() {
 
 
     {/* ---------- RIGHT SIDE: Items Table + Totals ---------- */}
-    <div className="flex-1 flex flex-col space-y-6 p-4 bg-white">
+    <div className="flex-1 flex flex-col space-y-6 p-4 ">
       
       {/* Items Table */}
       <div className="overflow-x-auto">
