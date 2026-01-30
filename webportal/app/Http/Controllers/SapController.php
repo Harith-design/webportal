@@ -474,7 +474,7 @@ public function getItemByCode($itemCode)
             return [
                 'docEntry'     => $o['DocEntry'] ?? '',
                 'salesNo'      => $o['DocNum'] ?? '',
-                'poNo'         => $o['NumAtCard'] ?? '',
+                'poNo'         => $o['NumAtCard'] ?? 'Processing',
                 'customer'     => $o['CardName'] ?? '',
                 'customerCode' => $o['CardCode'] ?? ($o['CardName'] ?? ''),
                 'orderDate'    => substr($o['DocDate'] ?? '', 0, 10),

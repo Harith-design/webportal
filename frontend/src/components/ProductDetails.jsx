@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Plus, Minus } from "lucide-react";
+import { useCart } from "../context/CartContext"; // import context
 
 
 function ProductDetails() {
@@ -25,17 +26,25 @@ function ProductDetails() {
   const [weight, setWeight] = useState("");
   const totalWeight = numericQty * (Number(weight) || 0);
 
+  const { addToCart } = useCart(); // get addToCart from context
 
-  const handleSubmit = () => {
-    console.log({
-      code: id,
+
+   const handleSubmit = () => {
+    const item = {
+      compound: product.name,
+      sku,
       width,
       length,
       thickness,
-      qty,
-      weight,
-    });
+      quantity: Number(qty),
+      weight: Number(weight) || 0,
+      totalWeight: totalWeight,
+    };
+
+    addToCart(item); // add item to cart
+    console.log("Added to cart:", item);
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

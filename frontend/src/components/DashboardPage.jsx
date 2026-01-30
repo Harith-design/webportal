@@ -330,7 +330,14 @@ function DashboardPage() {
                 <tbody className="text-xs">
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
-                      <td className="px-4 py-2">{order.id}</td>
+                      <td className="px-4 py-2">
+                      <Link
+                        to={`/orders/${order.id}?de=${order.docEntry}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {order.id}
+                      </Link>
+                      </td>
                       <td className="px-4 py-2">{new Date(order.orderDate).toLocaleDateString("en-GB")}</td>
                       <td className="px-4 py-2 flex items-center gap-2">
                         {order.status.toLowerCase() === "delivered" ? (

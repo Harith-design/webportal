@@ -6,15 +6,17 @@ import { PackageOpen, Truck} from "lucide-react";
 const statusConfig = {
   Open: {
     label: "Open",
-    icon: <PackageOpen size={14} className="mr-1" />,
+    icon: <PackageOpen size={16} className="mr-1" />,
     style: {
-      background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)",
-      color: "#007edf",
+    background: "black",
+    color: "white",
+    padding: "0.5rem 1rem", // equivalent to px-4 py-2
+    borderRadius: "1rem", // equivalent to rounded-2xl
     },
   },
   Closed: {
     label: "Delivered",
-    icon: <Truck size={14} className="mr-1" />,
+    icon: <Truck size={16} className="mr-1" />,
     style: {
       background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)",
       color: "#16aa3dff",
@@ -267,51 +269,40 @@ function OrderDetails() {
   const finalTotal = subtotal - discount + vat;
 
   return (
-  <div className="h-screen flex ">
+  <div className="h-screen bg-white">
     {/* ---------- LEFT SIDE: Order & Customer Details ---------- */}
-    <div className="flex-1 max-w-sm">
-      <div
-        className="text-xs p-10 border-r border-gray-300 space-y-6 h-full overflow-auto"
-      >
+    <div className="bg-white">
         {/* Order Details */}
-        <div>
-          <h2 className="font-semibold text-2xl mb-2">Order Details</h2>
-          <div className="space-y-1">
-            <div>
-              <span className="font-medium">{type === "invoice" ? "Invoice No:" : "Sales No"} </span>
+        <div className="px-5 py-2" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+          {/* <h2 className="font-semibold text-2xl mb-2">Order Details</h2> */}
+          <div className="flex flex-row justify-between text-xs items-center tracking-[2px]" >
+            <div className="flex  gap-2">
+              <span className="font-semibold">{type === "invoice" ? "Invoice No:" : "SALES NO"}</span>
               {type === "invoice" ? invoiceNoDisplay : salesNoDisplay}
             </div>
-            <div>
-              <span className="font-medium">PO No: </span>
+            <div className="flex gap-2">
+              <span className="font-semibold">CUSTOMER</span>
+              <span>{order.CardName || order.Customer || "-"}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-semibold gap-2 ">PO NO</span>
               {order.NumAtCard || order.poNo || "-"}
             </div>
-            <div>
-              <span className="font-medium">{type === "invoice" ? "Invoice Date:" : "Order Date"} </span>
+            <div className="flex gap-2">
+              <span className="font-semibold">{type === "invoice" ? "Invoice Date:" : "ORDER DATE"}</span>
               {orderDateDisplay}
             </div>
-            <div>
-              <span className="font-medium">Due Date: </span>
+            <div className="flex gap-2">
+              <span className="font-semibold">DUE DATE</span>
               {dueDateDisplay}
             </div>
-            <div className="flex items-center">
-              <span className="font-medium mr-2">Status:</span>
-              <StatusBadge className="text-xs" status={statusText} />
+            <div className="flex gap-2 items-center">
+              <span className="font-semibold">STATUS</span>
+              <StatusBadge status={statusText} />
             </div>
+        
           </div>
         </div>
-
-        {/* Bill To */}
-        <div>
-          <h2 className="font-semibold text-2xl mb-1">Bill To</h2>
-          <p className="text-xs whitespace-pre-line">{billToFull || "-"}</p>
-        </div>
-
-        {/* Ship To */}
-        <div>
-          <h2 className="font-semibold text-2xl mb-1">Ship To</h2>
-          <p className="text-xs whitespace-pre-line">{shipToFull || "-"}</p>
-        </div>
-      </div>
     </div>
 
 
@@ -320,11 +311,10 @@ function OrderDetails() {
       
       {/* Items Table */}
       <div className="overflow-x-auto">
-        <h2 className="font-semibold text-4xl mb-6 text-center">Order Summary</h2>
-        <table className="min-w-full border-collapse text-xs border-b border-gray-300">
+        <table className="min-w-full border-collapse text-xs border-b-2 border-black">
           <thead>
-            <tr className="text-left border-b px-4 py-2 border-gray-300">
-              <th>No.</th>
+            <tr className="text-left px-4 py-2 border-b-2 border-black">
+              <th>#</th>
               <th>Item Code</th>
               <th>Description</th>
               <th>Qty</th>

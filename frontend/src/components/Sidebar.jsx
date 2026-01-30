@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect,useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Blocks,
@@ -11,10 +11,13 @@ import {
 } from "lucide-react";
 import { useLoading } from "../context/LoadingContext";
 import { performLogout } from "../helpers/logout";
+import { useCart } from "../context/CartContext";
 
 function Sidebar({ sidebarOpen }) {
   const navigate = useNavigate();
   const { setLoading } = useLoading();
+  const { cart } = useCart();
+  const totalQty = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
   // 🔥 Read role directly from storage (instant, no waiting)
   const [role] = useState(() => {
@@ -31,6 +34,17 @@ function Sidebar({ sidebarOpen }) {
     performLogout(setLoading, navigate);
   };
 
+  // State to trigger add to cart animation
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    if (totalQty > 0) {
+      setAnimate(true);
+      const timer = setTimeout(() => setAnimate(false), 300); // animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [totalQty]);
+
   return (
     <aside
       className={`fixed top-0 left-0 h-screen bg-white border-r
@@ -45,7 +59,25 @@ function Sidebar({ sidebarOpen }) {
         <SidebarLink to="/orders" icon={<Package size={32} />} label="Orders"/>
         <SidebarLink to="/invoices" icon={<FileText size={32} />} label="Invoices"/>
         <SidebarLink to="/products" icon={<Store size={32} />} label="Products"/>
-        <SidebarLink to="/orderform" icon={<ShoppingCart size={32} />} label="Place an Order"/>
+        <SidebarLink 
+          to="/orderform" 
+          label="Place an Order"
+          icon={
+          <div className="relative w-full flex justify-center">
+            <ShoppingCart size={32} />
+            {totalQty > 0 && (
+              <span
+                className={`
+                  absolute -top-0 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center
+                  transform transition-transform duration-300
+                  ${animate ? "scale-125" : "scale-100"}
+                `}
+              >
+                {totalQty}
+              </span>
+            )}
+          </div>} 
+        />
         
         
         {/* 🔒 Admin-only link */}
