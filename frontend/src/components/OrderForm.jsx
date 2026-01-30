@@ -356,13 +356,15 @@ function PlaceOrderPage() {
         ShipToCode: order.shippingAddress || undefined,
         PayToCode: order.billingAddress || undefined,
         DocumentLines: rows
-          .filter((row) => row.active && row.product)
+          .filter((row) => row.active && row.product && (parseFloat(row.quantity) || 0) > 0)
           .map((r) => ({
             ItemCode: r.product,
             Quantity: parseFloat(r.quantity) || 0,
-            UnitPrice: parseFloat(r.unitPrice) || 0,
-            U_Weight: parseFloat(r.weight) || 0,
-            TaxCode: "SR-0",
+            //UnitPrice: parseFloat(r.unitPrice) || 0,
+            //U_Weight: parseFloat(r.weight) || 0,
+            //TaxCode: "SR-0",          
+            // Optional (for email readability only)
+            description: r.description || "",
           })),
       };
 
@@ -380,18 +382,27 @@ function PlaceOrderPage() {
         }
       );
 
-      if (res.data.status === "success") {
-        toast.success(`Sales Order Created! DocNum: ${res.data.data.DocNum}`);
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-        });
-        console.log("SAP Response:", res.data);
-      } else {
-        console.error("SAP Error:", res.data);
-        toast.error(res.data.message || "Failed to create Sales Order.");
-      }
+  if (res.data.status === "success") {
+  const docNum = res?.data?.data?.DocNum; // only exists when SAP order is created (admin/sales flow)
+
+  toast.success(
+    docNum
+      ? `Sales Order Created! DocNum: ${docNum}`
+      : (res?.data?.message || "Order request submitted. Sales team has been notified.")
+  );
+
+  confetti({
+    particleCount: 150,
+    spread: 70,
+    origin: { y: 0.6 },
+  });
+
+  console.log("SAP Response:", res.data);
+} else {
+  console.error("SAP Error:", res.data);
+  toast.error(res.data.message || "Failed to submit order.");
+}
+
     } catch (err) {
       console.error("Failed to submit order:", err);
       toast.error(
@@ -495,10 +506,14 @@ function PlaceOrderPage() {
                   <th className="px-2 py-1 w-2/12 border-l border-r border-b border-gray-300">Item No.</th>
                   <th className="px-2 py-1 w-2/12 border-l border-r border-b border-gray-300">Item Description</th>
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Quantity</th>
+
+                  {/*
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Unit Price</th>
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Weight</th>
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Total Weight</th>
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Total Amount</th>
+                  */}
+
                   <th className="px-2 py-1 w-1/12 border-l border-r border-b border-gray-300">Delete</th>
                 </tr>
               </thead>
@@ -601,6 +616,7 @@ function PlaceOrderPage() {
                       </td>
 
                       {/* Unit Price */}
+                      {/*
                       <td className="border border-gray-300 p-1">
                         <input
                           type="number"
@@ -614,8 +630,10 @@ function PlaceOrderPage() {
                           className={inputClass}
                         />
                       </td>
+                      */}
 
                       {/* Weight */}
+                      {/*
                       <td className="border border-gray-300 p-1">
                         <input
                           type="number"
@@ -629,8 +647,10 @@ function PlaceOrderPage() {
                           className={inputClass}
                         />
                       </td>
+                      */}
 
                       {/* Total Weight */}
+                      {/*
                       <td className="border border-gray-300 p-1">
                         <input
                           type="number"
@@ -641,8 +661,10 @@ function PlaceOrderPage() {
                           className={inputClass}
                         />
                       </td>
+                      */}
 
                       {/* Line Total */}
+                      {/*
                       <td className="border border-gray-300 p-1">
                         <input
                           type="number"
@@ -653,6 +675,7 @@ function PlaceOrderPage() {
                           className={inputClass}
                         />
                       </td>
+                      */}
 
                       {/* Delete */}
                       <td className="p-1 flex justify-center items-center">
@@ -681,9 +704,12 @@ function PlaceOrderPage() {
       {/* ✅ Live Order Total */}
       <div className="flex justify-end mt-6">
         <div className="inline-flex flex-col">
+
+          {/*
           <p className="text-xs mb-2">
             Total Order: <span className="ml-2">RM {orderTotal}</span>
           </p>
+          */}
 
           <button
             type="submit"

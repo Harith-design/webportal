@@ -106,4 +106,58 @@ export const getItems = async (search = "") => {
   return res.data;
 };
 
+// ===================== CATALOG (NEW) =====================
+
+/**
+ * STEP 1
+ * Get general catalogue products (compound codes)
+ * GET /api/catalog/products
+ */
+export const getCatalogProducts = async () => {
+  const res = await API.get("/catalog/products");
+  return res.data;
+};
+
+/**
+ * STEP 2
+ * Get available specification options for a compound
+ * GET /api/catalog/products/{compoundCode}/options
+ */
+export const getCatalogOptions = async (compoundCode) => {
+  if (!compoundCode) {
+    throw new Error("compoundCode is required in getCatalogOptions");
+  }
+
+  const res = await API.get(
+    `/catalog/products/${encodeURIComponent(compoundCode)}/options`
+  );
+  return res.data;
+};
+
+/**
+ * STEP 3
+ * Resolve selected specs to exact ItemCode
+ * GET /api/catalog/resolve
+ */
+export const resolveCatalogItem = async (params) => {
+  const res = await API.get("/catalog/resolve", { params });
+  return res.data;
+};
+
+/**
+ * STEP 3B
+ * Fetch full item_specifications row by ItemCode (variant selection)
+ * GET /api/catalog/item/{itemCode}
+ */
+export const getCatalogItemByCode = async (itemCode) => {
+  if (!itemCode) {
+    throw new Error("itemCode is required in getCatalogItemByCode");
+  }
+
+  const res = await API.get(
+    `/catalog/item/${encodeURIComponent(itemCode)}`
+  );
+  return res.data;
+};
+
 export default API;

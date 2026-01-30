@@ -2,13 +2,19 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\CustomerOrderRequestMail;
+
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\SapController;
 use App\Http\Controllers\AuthController;
-use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+
+// ✅ Catalog Controller
+use App\Http\Controllers\CatalogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,10 +30,54 @@ Route::get('/ping', function () {
     return response()->json(['pong' => true]);
 });
 
+/**
+ * ✅ STEP 1.2 — Test Sales Notification Email
+ * TEMPORARY route (can delete after testing)
+ */
+Route::get('/test-sales-email', function () {
+
+    $emails = array_filter(
+        array_map('trim', explode(',', env('SALES_NOTIFY_EMAILS', '')))
+    );
+
+    if (empty($emails)) {
+        return response()->json([
+            'error' => 'SALES_NOTIFY_EMAILS is empty'
+        ], 400);
+    }
+
+    Mail::to($emails)->send(new CustomerOrderRequestMail([
+        'customer_name' => 'TEST CUSTOMER',
+        'requested_delivery_date' => now()->toDateString(),
+        'lines' => [
+            ['itemCode' => 'TEST-ITEM-001', 'quantity' => 5],
+            ['itemCode' => 'TEST-ITEM-002', 'quantity' => 2],
+        ],
+    ]));
+
+    return response()->json([
+        'ok' => true,
+        'sent_to' => $emails
+    ]);
+});
+
 // ------------------- Authentication Routes -------------------
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// ------------------- CATALOG (PUBLIC) -------------------
+// ✅ STEP 1 — list general products (compound codes)
+Route::get('/catalog/products', [CatalogController::class, 'products']);
+
+// ✅ STEP 2 — get dropdown options for a selected compound
+Route::get('/catalog/products/{compoundCode}/options', [CatalogController::class, 'options']);
+
+// ✅ STEP 3 — resolve selected specs to exact ItemCode
+Route::get('/catalog/resolve', [CatalogController::class, 'resolveItem']);
+
+Route::get('/catalog/item/{itemCode}', [CatalogController::class, 'itemByCode']);
+
 
 // ------------------- Protected Routes (requires auth) -------------------
 Route::middleware('auth:sanctum')->group(function () {
@@ -40,22 +90,27 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json($request->user());
     });
     // wan test end
-    
+
     // 🔹 Logout
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // ------------------- Users (Admin Only) -------------------
-    // There was a change here role:admin -> role:user
+    // ------------------- Users -------------------
     Route::middleware('role:user,admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/{id}', [UserController::class, 'show']);
         Route::post('/users', [UserController::class, 'store']);
-        Route::post('/users/{id}', [UserController::class, 'update']); // ✅ changed from PUT
+        Route::post('/users/{id}', [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
     });
+
+    // ✅ IMPORTANT: Only protect the CREATE sales order endpoint
+    Route::prefix('sap')->group(function () {
+        Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
+    });
+
 });
 
-// ------------------- Sales Order Routes (internal app logic) -------------------
+// ------------------- Sales Order Routes -------------------
 Route::prefix('sales-order')->group(function () {
     Route::get('/{docNum}', [SalesOrderController::class, 'show']);
 });
@@ -79,26 +134,24 @@ Route::get('/sap-debug-login', function () {
 });
 
 // ------------------- SAP B1 Routes -------------------
+// ✅ Public read routes so portal pages can load data
 Route::prefix('sap')->group(function () {
 
     // ---------------- Items ----------------
-    Route::get('/items', [SapController::class, 'getItems']);              // 🔹 With pagination / search
-    Route::get('/items/{itemCode}', [SapController::class, 'getItemByCode']); // 🔹 Single item (weight + min price)
+    Route::get('/items', [SapController::class, 'getItems']);
+    Route::get('/items/{itemCode}', [SapController::class, 'getItemByCode']);
 
     // ---------------- Business Partners ----------------
     Route::get('/business-partners', [SapController::class, 'getBusinessPartners']);
-    // 🔹 Single BP (Total Outstanding / OCRD.Balance)
     Route::get('/business-partners/{cardcode}', [SapController::class, 'getBusinessPartnerByCode']);
-    // 🔹 NEW: BP Addresses (Ship-To/Bill-To)
     Route::get('/business-partners/{cardcode}/addresses', [SapController::class, 'getBusinessPartnerAddresses']);
 
-    // (If you actually implement these CRUD endpoints, keep them. Otherwise you can remove.)
     Route::post('/business-partners', [SapController::class, 'createBusinessPartner']);
     Route::put('/business-partners/{CardCode}', [SapController::class, 'updateBusinessPartner']);
     Route::delete('/business-partners/{CardCode}', [SapController::class, 'deleteBusinessPartner']);
 
     // ---------------- Invoices ----------------
-    Route::get('/invoices', [SapController::class, 'getInvoices']);       // list of invoices
+    Route::get('/invoices', [SapController::class, 'getInvoices']);
     Route::get('/invoices/{docEntry}/details', [SapController::class, 'getInvoiceDetails']);
     Route::get('/invoices/{docEntry}/documentlines', [SapController::class, 'getInvoiceDocumentLines']);
     Route::get('/invoices/{docEntry}/pdf', [SapController::class, 'invoicePdf']);
@@ -106,10 +159,7 @@ Route::prefix('sap')->group(function () {
     // ---------------- Orders ----------------
     Route::get('/orders', [SapController::class, 'getSalesOrders']);
     Route::get('/orders/{docEntry}', [SapController::class, 'getSalesOrderDetails']);
-
-    // Orders PDF (separate safe route)
     Route::get('/sales-orders/{docEntry}/pdf', [SapController::class, 'salesOrderPdf']);
 
-    // ------- Create Sales Order (for Place Order Page) -------------------
-    Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
+    // ❌ DO NOT put Route::post('/sales-orders') here (already protected above)
 });
