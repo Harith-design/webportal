@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\CustomerOrderRequestMail;
 
 class SapController extends Controller
 {
@@ -679,108 +681,164 @@ public function getItemByCode($itemCode)
     // ------------------- CREATE SALES ORDER --------------
     // =====================================================
     public function createSalesOrder(Request $request)
-    {
-        // 1) Validate input from the web form
-        $validated = $request->validate([
-            'CardCode'      => 'required|string',
-            'DocDate'       => 'nullable|date',
-            'DocDueDate'    => 'required|date',
-            'Comments'      => 'nullable|string',
+{
+    $user = $request->user();
+    $role = $user?->role ?? null;
 
-            'ShipToCode'    => 'nullable|string',
-            'PayToCode'     => 'nullable|string',
+    // -------------------------------------------------
+    // ✅ VALIDATION (NO UNIT PRICE REQUIRED)
+    // -------------------------------------------------
+    $validated = $request->validate([
+        'CardCode'      => 'required|string',
+        'CardName'      => 'nullable|string',
+        'DocDate'       => 'nullable|date',
+        'DocDueDate'    => 'required|date',
+        'Comments'      => 'nullable|string',
+        'ShipToCode'    => 'nullable|string',
+        'PayToCode'     => 'nullable|string',
 
-            'DocumentLines'                 => 'required|array|min:1',
-            'DocumentLines.*.ItemCode'      => 'required|string',
-            'DocumentLines.*.Quantity'      => 'required|numeric|min:1',   // PCS
-            'DocumentLines.*.UnitPrice'     => 'required|numeric|min:0',   // price per PCS
-            'DocumentLines.*.U_Weight'      => 'nullable|numeric',         // weight per PCS (KG)
-            'DocumentLines.*.TaxCode'       => 'nullable|string',
-        ]);
+        'DocumentLines'                 => 'required|array|min:1',
+        'DocumentLines.*.ItemCode'      => 'required|string',
+        'DocumentLines.*.Quantity'      => 'required|numeric|min:1',
+        'DocumentLines.*.description'   => 'nullable|string',
+    ]);
 
-        // 2) Header payload
-        $payload = [
-            'CardCode'   => $validated['CardCode'],
-            'DocDate'    => $validated['DocDate']    ?? date('Y-m-d'),
-            'DocDueDate' => $validated['DocDueDate'],
-            'Comments'   => $validated['Comments']   ?? null,
-            'ShipToCode' => $validated['ShipToCode'] ?? null,
-            'PayToCode'  => $validated['PayToCode']  ?? null,
-        ];
+    // -------------------------------------------------
+    // ✅ HEADER PAYLOAD
+    // -------------------------------------------------
+    $payload = [
+        'CardCode'   => $validated['CardCode'],
+        'DocDate'    => $validated['DocDate'] ?? date('Y-m-d'),
+        'DocDueDate' => $validated['DocDueDate'],
+        'Comments'   => $validated['Comments'] ?? null,
+        'ShipToCode' => $validated['ShipToCode'] ?? null,
+        'PayToCode'  => $validated['PayToCode'] ?? null,
+    ];
 
-        // 3) Lines – do PCS → KG conversion here
-        $payload['DocumentLines'] = collect($validated['DocumentLines'])
-            ->map(function ($line) {
+    // -------------------------------------------------
+    // ✅ DOCUMENT LINES (SAFE DEFAULT PRICE)
+    // -------------------------------------------------
+    $payload['DocumentLines'] = collect($validated['DocumentLines'])
+        ->map(function ($line) {
+            $qty = (float) ($line['Quantity'] ?? 0);
 
-                $qtyPcs       = (float) $line['Quantity'];     // what user types in "Quantity"
-                $piecePrice   = (float) $line['UnitPrice'];    // what user types in "Unit Price"
-                $weightPerPcs = isset($line['U_Weight'])
-                    ? (float) $line['U_Weight']
-                    : 0.0;
+            return [
+                'ItemCode'      => $line['ItemCode'],
+                'Quantity'      => $qty,
+                'UnitPrice'     => 0,       // ✅ DEFAULT PRICE
+                'U_TotalWeight' => $qty,     // keep your custom logic
+            ];
+        })
+        ->values()
+        ->toArray();
 
-                if ($weightPerPcs > 0) {
-                    // convert to SAP's weight-based logic
-                    $totalWeight = $qtyPcs * $weightPerPcs;        // used as SAP Quantity
-                    $pricePerKg  = $piecePrice / $weightPerPcs;    // tiny number, MYR per KG
-                } else {
-                    // fallback: treat 1 PCS = 1 KG
-                    $totalWeight = $qtyPcs;
-                    $pricePerKg  = $piecePrice;
-                }
+    $payload = array_filter($payload, fn ($v) => $v !== null);
 
-                // IMPORTANT: in your layout:
-                //  - "Quantity (PCS)"  column is U_TotalWeight
-                //  - "Total Weight"    column is Quantity
-                $linePayload = [
-                    'ItemCode'      => $line['ItemCode'],
-                    'Quantity'      => $totalWeight,   // shows under "Total Weight", used by SAP to calculate totals
-                    'U_TotalWeight' => $qtyPcs,        // shows under "Quantity (PCS)" in SAP
-                    'UnitPrice'     => $pricePerKg,    // SAP price per KG => gives correct line total
-                ];
+    \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
+    \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
 
-                if ($weightPerPcs > 0) {
-                    $linePayload['U_Weight'] = $weightPerPcs;     // keep weight per PCS
-                }
+    // -------------------------------------------------
+    // ✅ CREATE SAP ORDER
+    // -------------------------------------------------
+    $result = $this->callServiceLayer('post', 'Orders', $payload);
 
-                if (!empty($line['TaxCode'])) {
-                    $linePayload['TaxCode'] = $line['TaxCode'];
-                }
-
-                return $linePayload;
-            })
-            ->values()
-            ->toArray();
-
-        // remove null header fields
-        $payload = array_filter($payload, fn($v) => $v !== null);
-
-        // Debug logs
-        \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
-        \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
-
-        // 4) Call SAP Service Layer
-        $result = $this->callServiceLayer('post', 'Orders', $payload);
-
-        if (isset($result['error'])) {
-            \Log::error('❌ Failed to create sales order', ['error' => $result]);
-
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to create Sales Order',
-                'details' => $result['details'] ?? $result,
-            ], $result['status'] ?? 500);
-        }
-
-        \Log::info('✅ Sales Order created successfully', ['result' => $result]);
+    if (isset($result['error'])) {
+        \Log::error('❌ Failed to create sales order', ['error' => $result]);
 
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Sales Order created successfully',
-            'data'    => $result,
-        ], 201);
+            'status'  => 'error',
+            'message' => 'Failed to create Sales Order',
+            'details' => $result['details'] ?? $result,
+        ], $result['status'] ?? 500);
     }
 
-    // =====================================================
+    \Log::info('✅ Sales Order created successfully', ['result' => $result]);
+
+    // -------------------------------------------------
+    // ✅ EMAIL DATA (used for BOTH sales + customer)
+    // -------------------------------------------------
+    $companyCode = $user?->cardcode ?? ($validated['CardCode'] ?? null);
+    $companyName = $user?->cardname ?? ($validated['CardName'] ?? null);
+
+    $docNum   = $result['DocNum'] ?? null;
+    $docEntry = $result['DocEntry'] ?? null;
+
+    $mailData = [
+        'customer_name' => $user?->name ?? $user?->email ?? ($companyName ?: ($companyCode ?: 'Customer')),
+        'customer_email' => $user?->email ?? null,
+        'customer_company_code' => $companyCode,
+        'customer_company_name' => $companyName,
+        'requested_delivery_date' => $validated['DocDueDate'] ?? null,
+        'sap_docnum' => $docNum,
+        'sap_docentry' => $docEntry,
+        'lines' => collect($validated['DocumentLines'])
+            ->map(fn ($l) => [
+                'itemCode' => $l['ItemCode'],
+                'quantity' => $l['Quantity'],
+                'description' => $l['description'] ?? null,
+            ])
+            ->toArray(),
+    ];
+
+    // -------------------------------------------------
+    // ✅ SEND EMAIL AFTER SAP SUCCESS (DIFFERENT SUBJECTS)
+    // -------------------------------------------------
+    try {
+        // Sales subject
+        $subjectCompany = $companyName ?: ($companyCode ?: 'Customer');
+        $salesSubject = 'New Order - ' . $subjectCompany . ($docNum ? (' - DocNum ' . $docNum) : '');
+
+        // Customer subject
+        $customerSubject = 'Your Order Confirmation' . ($docNum ? (' - DocNum ' . $docNum) : '');
+
+        // 1) Sales team emails
+        $salesEmails = array_filter(
+            array_map('trim', explode(',', env('SALES_NOTIFY_EMAILS', '')))
+        );
+
+        if (!empty($salesEmails)) {
+            Mail::to($salesEmails)->send(
+                (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($salesSubject)
+            );
+
+            \Log::info('📧 Sales notification email sent', [
+                'emails' => $salesEmails,
+                'subject' => $salesSubject
+            ]);
+        } else {
+            \Log::warning('⚠️ SALES_NOTIFY_EMAILS is empty, sales email not sent');
+        }
+
+        // 2) Customer email (logged-in user)
+        if (!empty($user?->email)) {
+            Mail::to($user->email)->send(
+                (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($customerSubject)
+            );
+
+            \Log::info('📧 Customer confirmation email sent', [
+                'email' => $user->email,
+                'subject' => $customerSubject
+            ]);
+        } else {
+            \Log::warning('⚠️ User email empty OR not logged in, customer email not sent');
+        }
+
+    } catch (\Throwable $e) {
+        \Log::error('❌ Email sending failed', ['error' => $e->getMessage()]);
+        // don't fail order just because email failed
+    }
+
+    // -------------------------------------------------
+    // ✅ FINAL RESPONSE
+    // -------------------------------------------------
+    return response()->json([
+        'status'  => 'success',
+        'message' => 'Sales Order created successfully',
+        'data'    => $result,
+    ], 201);
+}
+
+     // =====================================================
     // ------------------- GET SINGLE INVOICE DETAILS ------
     // =====================================================
     public function getInvoiceDetails($docEntry)
