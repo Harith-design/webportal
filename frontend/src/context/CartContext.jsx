@@ -1,9 +1,30 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 const CartContext = createContext();
 
+const CART_KEY = "giib_portal_cart_v1";
+
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState([]);
+  // ✅ Load cart from localStorage on first load
+  const [cart, setCart] = useState(() => {
+    try {
+      const raw = localStorage.getItem(CART_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to load cart from localStorage:", e);
+      return [];
+    }
+  });
+
+  // ✅ Save cart to localStorage whenever cart changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage:", e);
+    }
+  }, [cart]);
 
   const addToCart = (item) => {
     setCart((prev) => [...prev, item]);
@@ -27,7 +48,14 @@ export function CartProvider({ children }) {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    try {
+      localStorage.removeItem(CART_KEY);
+    } catch (e) {
+      console.error("Failed to clear cart localStorage:", e);
+    }
+  };
 
   return (
     <CartContext.Provider

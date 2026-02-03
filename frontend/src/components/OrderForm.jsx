@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {X, ArrowRightLeft, Minus, Plus, Sparkles, PackagePlus } from "lucide-react";
+import { X, ArrowRightLeft, Minus, Plus, Sparkles, PackagePlus } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -8,6 +8,9 @@ import emptyCartImage from "../assets/empty cart.png";
 
 function CartPage() {
   const { cart, removeFromCart, updateQty, clearCart } = useCart();
+
+  // ✅ NEW: store company info (CardCode is required by backend)
+  const [company, setCompany] = useState({ cardCode: "", cardName: "" });
 
   // Addresses
   const [bpAddresses, setBpAddresses] = useState({ shipTo: [], billTo: [], defaults: {} });
@@ -18,10 +21,9 @@ function CartPage() {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [modalType, setModalType] = useState("ship"); // 'ship' or 'bill'
   const [deliveryDate, setDeliveryDate] = useState("");
+
   const totalWeightAll = cart.reduce((sum, i) => sum + Number(i.totalWeight || 0), 0);
   const totalQtyAll = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-
-
 
   // Format multi-line address
   const formatAddressForDisplay = (a, kind) => {
@@ -46,6 +48,12 @@ function CartPage() {
         // Fetch user company first
         const companyRes = await axios.get(`${apiUrl}/api/user/company`, {
           headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // ✅ NEW: store company info
+        setCompany({
+          cardCode: companyRes.data?.cardcode || "",
+          cardName: companyRes.data?.cardname || "",
         });
 
         const cardCode = companyRes.data?.cardcode;
@@ -78,10 +86,20 @@ function CartPage() {
     fetchAddresses();
   }, []);
 
-
   const handleSubmit = async () => {
     if (!cart.length) {
       toast.error("Cart is empty!");
+      return;
+    }
+
+    // ✅ NEW guard: CardCode required by backend
+    if (!company.cardCode) {
+      toast.error("Customer CardCode missing. Please re-login.");
+      return;
+    }
+
+    if (!deliveryDate) {
+      toast.error("Please select Requested Delivery Date");
       return;
     }
 
@@ -89,14 +107,17 @@ function CartPage() {
       const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
 
+      // ✅ UPDATED: include CardCode + CardName (optional)
       const payload = {
+        CardCode: company.cardCode,
+        CardName: company.cardName,
         ShipToCode: shippingAddress,
         PayToCode: billingAddress,
         DocDueDate: deliveryDate, // ✅ SAP requested delivery date
         DocumentLines: cart.map((r) => ({
           ItemCode: r.sku,
           Quantity: Number(r.quantity),
-          U_Weight: Number(r.weight),
+          description: r.compound || "",
         })),
       };
 
@@ -106,8 +127,14 @@ function CartPage() {
 
       toast.success("Order submitted!");
       clearCart();
-    } catch {
-      toast.error("Submit failed");
+    } catch (err) {
+      console.error(err?.response?.data || err);
+
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Submit failed"
+      );
     }
   };
 
@@ -136,6 +163,7 @@ function CartPage() {
                 </div>
             </div>
           </div>
+
           {cart.length > 0 ? (
           <>
           <table className="w-full text-xs overflow-x-auto mb-2">
@@ -202,15 +230,12 @@ function CartPage() {
                     </button>
                   </td>
                 </tr>
-                
               ))}
-            
             </tbody>
           </table>
 
           {/* Top row */}
           <div className="text-xs font-semibold w-full">
-            
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
@@ -220,64 +245,58 @@ function CartPage() {
               Submit Order
             </button>
           </div>
+
           {/* Bottom Action Row (Pseudo Table Row) */}
-        <div className="mt-4 border rounded-lg p-4" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
-
-          
-
-          {/* BOTTOM ROW — New Order */}
+          <div className="mt-4 border rounded-lg p-4" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+            {/* BOTTOM ROW — New Order */}
             <div className="flex flex-col justify-center items-center gap-4 mx-auto ">
-            <h2 className="text-xl font-semibold">Add more items to your cart anytime.</h2>
-            <Link 
-            to="/products"
-            className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-black text-black text-xs hover:bg-black hover:text-white transition font-semibold">
-              <PackagePlus size={16}/> Add Order
-            </Link>
+              <h2 className="text-xl font-semibold">Add more items to your cart anytime.</h2>
+              <Link
+                to="/products"
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-black text-black text-xs hover:bg-black hover:text-white transition font-semibold"
+              >
+                <PackagePlus size={16}/> Add Order
+              </Link>
+            </div>
           </div>
-        
-
-        </div>
           </>
           ) : (
             <>
-            {/* Bottom Action Row (Pseudo Table Row) */}
-        <div className="mt-4 border rounded-lg p-4" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+              {/* Bottom Action Row (Pseudo Table Row) */}
+              <div className="mt-4 border rounded-lg p-4" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+                {/* BOTTOM ROW — New Order */}
+                <div className="flex flex-row gap-3">
+                  <div className="flex flex-col">
+                    <img src={emptyCartImage} className="w-48 h-48 object-contain"/>
+                  </div>
 
-          
+                  {/* LEFT: Empty Cart Message */}
+                  <div className="flex flex-col justify-center items-start flex-1">
+                    <h2 className="text-xl font-semibold">Your cart is empty.</h2>
+                    <p className="text-xs">Add more orders to get started.</p>
+                  </div>
 
-          {/* BOTTOM ROW — New Order */}
-            <div className="flex flex-row gap-3">
-              
-            <div className="flex flex-col">
-            <img src={emptyCartImage} className="w-48 h-48 object-contain"/>
-            </div>
-            {/* LEFT: Empty Cart Message */}
-          <div className="flex flex-col justify-center items-start flex-1">
-            <h2 className="text-xl font-semibold">Your cart is empty.</h2>
-            <p className="text-xs">Add more orders to get started.</p>
-          </div>
-            <div className="flex flex-col justify-end">
-            <Link 
-            to="/products"
-            className="flex items-center  mt-4 gap-2 px-4 py-2 rounded-2xl border border-black text-black text-xs hover:bg-black hover:text-white transition font-semibold">
-              <PackagePlus size={16}/> Add Order
-            </Link>
-            </div>
-          </div>
-        
-
-        </div>
+                  <div className="flex flex-col justify-end">
+                    <Link
+                      to="/products"
+                      className="flex items-center  mt-4 gap-2 px-4 py-2 rounded-2xl border border-black text-black text-xs hover:bg-black hover:text-white transition font-semibold"
+                    >
+                      <PackagePlus size={16}/> Add Order
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </>
           )}
-
-          
         </div>
 
         {/* RIGHT: Shipping & Billing Preview */}
         <div className="md:w-1/3 space-y-5 rounded-lg">
-            {/* Requested Delivery Date */}
+          {/* Requested Delivery Date */}
           <div className="p-5 bg-white rounded-lg border border-gray-300">
-            <h2 className="text-sm font-semibold mb-4">Requested Delivery Date <span className="text-red-500">*</span></h2>
+            <h2 className="text-sm font-semibold mb-4">
+              Requested Delivery Date <span className="text-red-500">*</span>
+            </h2>
             <input
               type="date"
               value={deliveryDate}
@@ -287,9 +306,8 @@ function CartPage() {
               required
             />
           </div>
-            
-            {/* <h2 className="text-2xl font-semibold mb-4">Customer Details</h2> */}
-            <div className="bg-white p-5 rounded-lg border border-gray-300">
+
+          <div className="bg-white p-5 rounded-lg border border-gray-300">
             <p className="text-sm font-semibold mb-1 flex items-center justify-between">
               Shipping Address
               <button
@@ -310,9 +328,9 @@ function CartPage() {
                 <span className="italic text-gray-400">Your shipping address will appear here</span>
               )}
             </p>
-            
-            </div>
-            <div className="bg-white p-5 rounded-lg border border-gray-300">
+          </div>
+
+          <div className="bg-white p-5 rounded-lg border border-gray-300">
             <p className="text-sm font-semibold mb-1 flex items-center justify-between">
               Billing Address
               <button
@@ -333,7 +351,7 @@ function CartPage() {
                 <span className="italic text-gray-400">Your billing address will appear here</span>
               )}
             </p>
-              </div>
+          </div>
         </div>
       </div>
 
