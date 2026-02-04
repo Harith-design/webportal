@@ -17,9 +17,9 @@ function Sidebar({ sidebarOpen }) {
   const navigate = useNavigate();
   const { setLoading } = useLoading();
   const { cart } = useCart();
-  const totalQty = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const totalItems = cart.length;
 
-  // 🔥 Read role directly from storage (instant, no waiting)
+  // Read role directly from storage (instant, no waiting)
   const [role] = useState(() => {
     const stored =
       localStorage.getItem("user_role") ||
@@ -38,12 +38,12 @@ function Sidebar({ sidebarOpen }) {
   const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
-    if (totalQty > 0) {
+    if (totalItems > 0) {
       setAnimate(true);
       const timer = setTimeout(() => setAnimate(false), 300); // animation duration
       return () => clearTimeout(timer);
     }
-  }, [totalQty]);
+  }, [totalItems]);
 
   return (
     <aside
@@ -65,7 +65,7 @@ function Sidebar({ sidebarOpen }) {
           icon={
           <div className="relative w-full flex justify-center">
             <ShoppingCart size={32} />
-            {totalQty > 0 && (
+            {totalItems > 0 && (
               <span
                 className={`
                   absolute -top-0 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center
@@ -73,7 +73,7 @@ function Sidebar({ sidebarOpen }) {
                   ${animate ? "scale-125" : "scale-100"}
                 `}
               >
-                {totalQty}
+                {totalItems}
               </span>
             )}
           </div>} 
