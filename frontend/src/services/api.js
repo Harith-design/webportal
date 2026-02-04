@@ -106,6 +106,17 @@ export const getItems = async (search = "") => {
   return res.data;
 };
 
+// ✅ W1 (NEW): Get single item details from SAP by ItemCode (includes Weight, MinPrice, etc.)
+// GET /api/sap/items/{itemCode}
+export const getSapItemByCode = async (itemCode) => {
+  if (!itemCode) {
+    throw new Error("itemCode is required in getSapItemByCode");
+  }
+
+  const res = await API.get(`/sap/items/${encodeURIComponent(itemCode)}`);
+  return res.data;
+};
+
 // ===================== CATALOG (NEW) =====================
 
 /**
@@ -154,9 +165,7 @@ export const getCatalogItemByCode = async (itemCode) => {
     throw new Error("itemCode is required in getCatalogItemByCode");
   }
 
-  const res = await API.get(
-    `/catalog/item/${encodeURIComponent(itemCode)}`
-  );
+  const res = await API.get(`/catalog/item/${encodeURIComponent(itemCode)}`);
   return res.data;
 };
 

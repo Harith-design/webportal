@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Plus, Minus } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { getCatalogOptions, resolveCatalogItem } from "../services/api"; // ✅ MSSQL-only (CatalogController)
+import {
+  getCatalogOptions,
+  resolveCatalogItem,
+  getSapItemByCode, // ✅ W2: fetch weight from SAP by itemCode
+} from "../services/api"; // ✅ MSSQL-only (CatalogController) + SAP single item
 
 function ProductDetails() {
   const { id } = useParams();
@@ -25,8 +29,8 @@ function ProductDetails() {
 
   // selected specs
   const [sku, setSKU] = useState(""); // will display selected variant sku/itemcode
-  const [width, setWidth] = useState("");      // ✅ Step 6: start empty
-  const [length, setLength] = useState("");    // ✅ Step 6: start empty
+  const [width, setWidth] = useState(""); // ✅ Step 6: start empty
+  const [length, setLength] = useState(""); // ✅ Step 6: start empty
   const [thickness, setThickness] = useState(""); // ✅ Step 6: start empty
 
   // resolved
@@ -37,6 +41,7 @@ function ProductDetails() {
   const numericQty = Number(qty) || 0;
 
   // ✅ Step 2: weight is required (manual only)
+  // ✅ W2: now we auto-fill this from SAP once itemCode is known (still editable, no UI change)
   const [weight, setWeight] = useState("");
   const numericWeight = Number(weight) || 0;
   const totalWeight = numericQty * numericWeight;
@@ -58,6 +63,9 @@ function ProductDetails() {
 
   // debounce to avoid API spam
   const resolveTimerRef = useRef(null);
+
+  // ✅ W2: prevent spamming SAP weight fetch if itemCode changes fast
+  const lastWeightItemCodeRef = useRef("");
 
   // ✅ Step 6: format numeric display nicely (prevents 10.1999999999)
   const formatNum = (v) => {
@@ -109,13 +117,16 @@ function ProductDetails() {
         // reset resolve + matches when compound changes
         setItemCode("");
         setSKU("");
-        setWeight("");
+        setWeight(""); // ✅ keep as is (weight resets when compound changes)
         setVariantMatches([]);
 
         // ✅ Step 6: do NOT preset defaults; reset selects to empty
         setWidth("");
         setLength("");
         setThickness("");
+
+        // ✅ W2: reset weight fetch guard
+        lastWeightItemCodeRef.current = "";
 
         const res = await getCatalogOptions(id);
         const opt = res?.options || {};
@@ -131,8 +142,6 @@ function ProductDetails() {
         if (!alive) return;
 
         setOptions(next);
-
-        // ✅ Step 6: remove auto select first option (no preset)
 
         optionsLoadedRef.current = true;
 
@@ -178,6 +187,7 @@ function ProductDetails() {
       setVariantMatches([]);
       setItemCode("");
       setSKU("");
+      // NOTE: do not touch weight here (let user keep if they typed)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, length, thickness]);
@@ -204,8 +214,10 @@ function ProductDetails() {
         if (!optionsLoadedRef.current) return;
 
         // ✅ Step 6: require selection before resolving
-        if (options.widths.length > 0 && (!width || String(width).trim() === "")) return;
-        if (options.lengths.length > 0 && (!length || String(length).trim() === "")) return;
+        if (options.widths.length > 0 && (!width || String(width).trim() === ""))
+          return;
+        if (options.lengths.length > 0 && (!length || String(length).trim() === ""))
+          return;
 
         setLoadingResolve(true);
         setError("");
@@ -254,7 +266,9 @@ function ProductDetails() {
           // ✅ store matches so SKU dropdown becomes picker
           setVariantMatches(Array.isArray(matches) ? matches : []);
 
-          setError("Multiple items matched. Please choose SKU No to confirm the exact variant.");
+          setError(
+            "Multiple items matched. Please choose SKU No to confirm the exact variant."
+          );
 
           // keep unresolved until user picks
           setItemCode("");
@@ -306,6 +320,74 @@ function ProductDetails() {
     options.lengths.length,
   ]);
 
+  // ---------------------------------------------------------
+  // ✅ W2 + A3: When itemCode is resolved, fetch weight from SAP and auto-fill Weight (kg)
+  // A3 rule: ONLY auto-fill if user hasn't typed weight (weight is empty)
+  // Uses your SapController getItemByCode() which returns: data.Weight (kg)
+  // ---------------------------------------------------------
+  useEffect(() => {
+    let alive = true;
+
+    const fetchWeightFromSap = async () => {
+      try {
+        const code = String(itemCode || "").trim();
+        if (!code) return;
+
+        // Avoid re-fetching for the same itemCode
+        if (lastWeightItemCodeRef.current === code) return;
+
+        lastWeightItemCodeRef.current = code;
+
+        console.log("[SAP] Fetching weight for itemCode:", code);
+
+        const res = await getSapItemByCode(code);
+
+        if (!alive) return;
+
+        const sapWeight = res?.data?.Weight;
+
+        // Only set if we got a valid positive number
+        const n = Number(sapWeight);
+        if (Number.isFinite(n) && n > 0) {
+          const next = String(formatNum(n));
+
+          // ✅ A3: do NOT overwrite manual input
+          setWeight((prev) => (String(prev).trim() ? prev : next));
+          setValidationError("");
+
+          console.log("[SAP] Weight resolved:", {
+            itemCode: code,
+            weightKg: n,
+          });
+        } else {
+          console.log("[SAP] Weight missing/invalid from SAP:", {
+            itemCode: code,
+            sapWeight,
+            res,
+          });
+          // Do not block user; they can still manually enter weight if needed
+        }
+      } catch (e) {
+        if (!alive) return;
+
+        console.log("[SAP] Weight fetch failed:", {
+          itemCode,
+          status: e?.response?.status,
+          data: e?.response?.data,
+          message: e?.message,
+        });
+        // no UI change: we do NOT show extra UI error; user can still type weight manually
+      }
+    };
+
+    fetchWeightFromSap();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemCode]);
+
   // ✅ SKU dropdown handler: if variantMatches exist, SKU selection picks exact variant
   const handleSkuChange = (value) => {
     setValidationError("");
@@ -317,9 +399,7 @@ function ProductDetails() {
     }
 
     // value is the selected itemCode
-    const row = variantMatches.find(
-      (m) => String(m?.U_ItemCode) === String(value)
-    );
+    const row = variantMatches.find((m) => String(m?.U_ItemCode) === String(value));
 
     if (!row) {
       setSKU(value);
@@ -396,11 +476,7 @@ function ProductDetails() {
               <div>
                 <label className="block text-gray-500 mb-1">SKU No</label>
                 <select
-                  value={
-                    variantMatches.length > 0
-                      ? (itemCode || "")
-                      : (sku || "")
-                  }
+                  value={variantMatches.length > 0 ? itemCode || "" : sku || ""}
                   onChange={(e) => handleSkuChange(e.target.value)}
                   className="w-full border rounded-xl px-3 py-2"
                 >
@@ -432,9 +508,7 @@ function ProductDetails() {
                     </>
                   ) : (
                     <>
-                      <option value="">
-                        {sku || itemCode || ""}
-                      </option>
+                      <option value="">{sku || itemCode || ""}</option>
                     </>
                   )}
                 </select>
@@ -450,9 +524,7 @@ function ProductDetails() {
                   }}
                   className="w-full border rounded-xl px-3 py-2"
                 >
-                  <option value="">
-                    {loadingOptions ? "Loading..." : "-- Select Width --"}
-                  </option>
+                  <option value="">{loadingOptions ? "Loading..." : "-- Select Width --"}</option>
 
                   {options.widths.map((w, i) => (
                     <option key={i} value={String(w)}>
@@ -472,9 +544,7 @@ function ProductDetails() {
                   }}
                   className="w-full border rounded-xl px-3 py-2"
                 >
-                  <option value="">
-                    {loadingOptions ? "Loading..." : "-- Select Length --"}
-                  </option>
+                  <option value="">{loadingOptions ? "Loading..." : "-- Select Length --"}</option>
 
                   {options.lengths.map((l, i) => (
                     <option key={i} value={String(l)}>
@@ -497,7 +567,9 @@ function ProductDetails() {
                   <option value="">
                     {loadingOptions
                       ? "Loading..."
-                      : (options.thicknesses.length ? "-- Select Thickness --" : "No options")}
+                      : options.thicknesses.length
+                      ? "-- Select Thickness --"
+                      : "No options"}
                   </option>
 
                   {options.thicknesses.map((t, i) => (
@@ -572,12 +644,8 @@ function ProductDetails() {
               </div>
 
               {error && <div className="text-red-600 text-xs">{error}</div>}
-              {validationError && (
-                <div className="text-red-600 text-xs">{validationError}</div>
-              )}
-              {loadingResolve && (
-                <div className="text-gray-500 text-xs">Resolving item...</div>
-              )}
+              {validationError && <div className="text-red-600 text-xs">{validationError}</div>}
+              {loadingResolve && <div className="text-gray-500 text-xs">Resolving item...</div>}
 
               <button
                 onClick={handleSubmit}
