@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, PackagePlus } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import {
   getCatalogOptions,
@@ -590,7 +590,7 @@ function ProductDetails() {
                         setQty((q) => Math.max(1, q - 1));
                         setValidationError("");
                       }}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-400 transition"
+                      className="px-3 py-2 bg-black"
                     >
                       <Minus size={16} className="text-white" />
                     </button>
@@ -612,7 +612,7 @@ function ProductDetails() {
                         setQty((q) => q + 1);
                         setValidationError("");
                       }}
-                      className="px-3 py-2 bg-blue-600 hover:bg-gray-200 transition"
+                      className="px-3 py-2 bg-black"
                     >
                       <Plus size={16} className="text-white" />
                     </button>
@@ -649,9 +649,10 @@ function ProductDetails() {
 
               <button
                 onClick={handleSubmit}
-                className="w-full bg-blue-600 text-white text-sm rounded-xl py-3 font-semibold hover:bg-blue-700 transition"
+                className="flex justify-center items-center gap-2 w-full bg-black text-white text-sm rounded-xl py-3 font-semibold hover:bg-gray-200 hover:text-black transition"
                 disabled={isAddDisabled}
               >
+                <i class="fi fi-rs-shopping-cart-add"></i>
                 Add to Cart
               </button>
             </div>

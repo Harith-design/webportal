@@ -13,6 +13,7 @@ import ResetPassword from "./components/ResetPassword";
 // Protected pages
 import DashboardPage from "./components/DashboardPage";
 import OrdersPage from "./components/Orders";
+import OrdersAdminPage from "./components/OrdersAdmin";
 import CartPage from "./components/OrderForm";
 import CustomerList from "./components/CustomerList";
 import InvoicesPage from "./components/Invoices"; 
@@ -55,6 +56,7 @@ function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/dashboardpage" element={<DashboardPage />} />
             <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders_admin" element={<OrdersAdminPage />} />
             <Route path="/products" element={<ProductList />} />
             <Route path="/orderform" element={<CartPage />} />
             <Route path="/invoices" element={<InvoicesPage />} />
