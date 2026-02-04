@@ -585,9 +585,9 @@ useEffect(() => {
         </button>
       </div>
       {isModalOpen && selectedOrder && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
     
-    <div className="bg-white rounded-xl shadow-xl w-[35vw] h-[80vh] max-h-[85vh] overflow-y-auto relative scrollbar-thin scrollbar-thumb-black-400 scrollbar-track-transparent rounded-lg">
+        <div className="bg-white rounded-xl shadow-xl w-full sm:w-[80vw] md:w-[60vw] lg:w-[50vw] overflow-y-auto relative scrollbar-thin scrollbar-thumb-black-400 scrollbar-track-transparent rounded-lg">
 
      
 

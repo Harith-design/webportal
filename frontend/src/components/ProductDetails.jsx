@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Minus, PackagePlus } from "lucide-react";
+import { Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { getCatalogOptions, resolveCatalogItem } from "../services/api"; // ✅ MSSQL-only (CatalogController)
 
@@ -9,9 +9,17 @@ function ProductDetails() {
   const { addToCart } = useCart();
 
   const product = useMemo(() => {
+    const baseUrl = "http://localhost:8000/uploads/products";
+    const galleryImages = [
+    `${baseUrl}/${id}.jpg`,
+    `${baseUrl}/${id}-1.jpg`,
+    `${baseUrl}/${id}-2.jpg`,
+    `${baseUrl}/${id}-3.jpg`,
+  ];
     return {
       name: id,
-      image: "https://via.placeholder.com/500x500?text=Product+Image",
+      image: `${baseUrl}/${id}.jpg`, // main image
+      gallery: galleryImages,
     };
   }, [id]);
 
@@ -22,6 +30,36 @@ function ProductDetails() {
     thicknesses: [],
     lengths: [],
   });
+
+  // image
+  const [mainImage, setMainImage] = useState(product.image);
+
+  // track current image index
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+  // whenever product changes, reset index
+  setCurrentIndex(0);
+  setMainImage(product.image);
+}, [product]);
+
+  // navigation handlers (image)
+  const handlePrevImage = () => {
+    setCurrentIndex((prev) => {
+      const newIndex = prev - 1 < 0 ? product.gallery.length - 1 : prev - 1;
+      setMainImage(product.gallery[newIndex]);
+      return newIndex;
+    });
+  };
+
+  const handleNextImage = () => {
+    setCurrentIndex((prev) => {
+      const newIndex = prev + 1 >= product.gallery.length ? 0 : prev + 1;
+      setMainImage(product.gallery[newIndex]);
+      return newIndex;
+    });
+  };
+
 
   // selected specs
   const [sku, setSKU] = useState(""); // will display selected variant sku/itemcode
@@ -380,12 +418,67 @@ function ProductDetails() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          {/* Image */}
           <div className="flex items-center justify-center">
-            <img
+            <div className="flex flex-col items-center">
+              {/* Main Image */}
+              <div className="w-full flex justify-center mb-4">
+                <img
+                  src={mainImage}
+                  alt={product.name}
+                  className="rounded-sm shadow-md object-contain max-h-[500px] w-full"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "http://localhost:8000/uploads/products/placeholder.png";
+                  }}
+                />
+              </div>
+
+              {/* Thumbnail Gallery */}
+              <div className="relative flex justify-center overflow-x-auto space-x-2 w-full px-2">
+                {product.gallery.map((img, i) => (
+                  <div
+                    key={i}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 ${
+                      mainImage === img ? "border-black" : "border-transparent"
+                    }`}
+                    onClick={() => setMainImage(img)}
+                  >
+                    <img
+                      src={img}
+                      alt={`Thumbnail ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "http://localhost:8000/uploads/products/placeholder.png";
+                      }}
+                    />
+                    {/* Left Arrow */}
+                    <button
+                      onClick={handlePrevImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+
+                    {/* Right Arrow */}
+                    <button
+                      onClick={handleNextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* <img
               src={product.image}
               alt={product.name}
               className="rounded-xl shadow-md object-contain max-h-[500px]"
-            />
+            /> */}
+            
           </div>
 
           <div className="space-y-6">

@@ -35,6 +35,7 @@ function ProductCards() {
               .map((r) => ({
                 id: r?.compoundCode ?? "",
                 name: r?.compoundCode ?? "",
+                image: `http://localhost:8000/uploads/products/${r?.compoundCode}.jpg`, // or .png if your images are PNG
               }))
               .filter((p) => p.id)
           : [];
@@ -90,10 +91,23 @@ function ProductCards() {
           {filteredProducts.map((p, i) => (
             <div
               key={i}
-              className="bg-white rounded-sm p-4 h-60 hover:shadow-xl transition flex items-center text-center justify-center"
+              className="bg-transparent rounded-sm h-60 shadow-md transition flex items-center text-center justify-center cursor-pointer hover:shadow-xl transform transition-all duration-300 ease-out hover:-translate-y-1"
               onClick={() => navigate(`/products/${p.id}`)}
             >
-              <h2 className="font-semibold text-4xl break-words">{p.name}</h2>
+              <img
+                src={p.image}
+                alt={p.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "http://localhost:8000/uploads/products/placeholder.png"; // fallback image
+                  e.target.className = "w-full h-full object-cover"; // ensures fallback fills card
+                }}
+              />
+              {/* Overlay for product name */}
+              <div className="absolute bottom-0 left-0 w-full text-black text-left p-2 font-semibold text-xs" style={{background: "radial-gradient(circle at 10% 60%, rgba(255,238,238,0.5), rgba(168,197,254,0.5))",}}>
+                {p.name}
+              </div>
             </div>
           ))}
         </div>
