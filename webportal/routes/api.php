@@ -106,6 +106,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // ✅ IMPORTANT: Only protect the CREATE sales order endpoint
     Route::prefix('sap')->group(function () {
         Route::post('/sales-orders', [SapController::class, 'createSalesOrder']);
+
+        // ✅ NEW: Approve Pricing (update U_PriceperKG on RDR1 lines)
+        // Frontend calls: POST /api/sap/orders/{docEntry}/price-per-kg  with { lines: [{lineNum, pricePerKg}] }
+        Route::post('/orders/{docEntry}/price-per-kg', [SapController::class, 'updateSalesOrderPricePerKg']);
     });
 
 });

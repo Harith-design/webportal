@@ -85,6 +85,9 @@ class SapController extends Controller
             case 'put':
                 $response = $http->put($url, $data);
                 break;
+            case 'patch': // ✅ NEW (needed for partial update)
+                $response = $http->patch($url, $data);
+                break;
             case 'delete':
                 $response = $http->delete($url, $data);
                 break;
@@ -273,7 +276,7 @@ class SapController extends Controller
 
         $result = $this->callServiceLayer('get', $endpoint);
 
-         // 🔹 DEBUG: check the full response from SAP
+        // 🔹 DEBUG: check the full response from SAP
         \Log::info('SAP Items debug', ['result' => $result]);
 
         if (isset($result['error'])) {
@@ -305,7 +308,6 @@ class SapController extends Controller
                 $displayName = $itemCode;
             }
 
-
             return [
                 'ItemCode'    => $itemCode,
                 'Description' => $displayName,
@@ -325,87 +327,81 @@ class SapController extends Controller
      * - Minimum price from ItemPrices
      * Route: GET /api/sap/items/{itemCode}
      */
-        // =====================================================
-// ------------------- SINGLE ITEM DETAILS -------------
-// =====================================================
-public function getItemByCode($itemCode)
-{
-    try {
-        // escape quotes for OData
-        $safe = str_replace("'", "''", $itemCode);
+    public function getItemByCode($itemCode)
+    {
+        try {
+            // escape quotes for OData
+            $safe = str_replace("'", "''", $itemCode);
 
-        // 1) Get base item info (for weight, description)
-        $itemEndpoint = "Items('{$safe}')?\$select=ItemCode,ItemName,InventoryWeight";
-        $itemRes      = $this->callServiceLayer('get', $itemEndpoint);
+            // 1) Get base item info (for weight, description)
+            $itemEndpoint = "Items('{$safe}')?\$select=ItemCode,ItemName,InventoryWeight";
+            $itemRes      = $this->callServiceLayer('get', $itemEndpoint);
 
-        if (isset($itemRes['error'])) {
+            if (isset($itemRes['error'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to fetch item details',
+                    'details' => $itemRes['details'] ?? $itemRes,
+                ], $itemRes['status'] ?? 500);
+            }
+
+            // ---------- Weight (InventoryWeight is in grams in SAP B1) ----------
+            $rawWeightGrams = isset($itemRes['InventoryWeight'])
+                ? (float) $itemRes['InventoryWeight']
+                : 0.0;
+
+            // convert g → kg for the portal
+            $weightKg = $rawWeightGrams / 1000.0;
+
+            // 2) Get minimum price from ItemPrices entity set
+            $minPrice = null;
+
+            $priceEndpoint =
+                "ItemPrices?"
+                . "\$select=ItemCode,Price,ListNum"
+                . "&\$filter=ItemCode eq '{$safe}' and Price gt 0"
+                . "&\$orderby=Price asc";
+
+            $priceRes = $this->callServiceLayer('get', $priceEndpoint);
+
+            if (!isset($priceRes['error']) && isset($priceRes['value']) && is_array($priceRes['value'])) {
+                if (count($priceRes['value']) > 0) {
+                    $firstRow = $priceRes['value'][0];
+                    if (isset($firstRow['Price'])) {
+                        $minPrice = (float) $firstRow['Price'];
+                    }
+                }
+            } else {
+                // not fatal – we still return weight even if price fetch fails
+                \Log::warning('ItemPrices query failed or empty', [
+                    'itemCode' => $itemCode,
+                    'priceRes' => $priceRes,
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => [
+                    'ItemCode'    => $itemRes['ItemCode'] ?? $itemCode,
+                    'Description' => $itemRes['ItemName'] ?? '',
+                    'Weight'      => $weightKg,   // in KG
+                    'MinPrice'    => $minPrice,   // may be null if no valid prices
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('getItemByCode exception', [
+                'itemCode' => $itemCode,
+                'ex'       => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Failed to fetch item details',
-                'details' => $itemRes['details'] ?? $itemRes,
-            ], $itemRes['status'] ?? 500);
+                'message' => 'Unexpected error fetching item details',
+                'details' => $e->getMessage(),
+            ], 500);
         }
-
-        // ---------- Weight (InventoryWeight is in grams in SAP B1) ----------
-        $rawWeightGrams = isset($itemRes['InventoryWeight'])
-            ? (float) $itemRes['InventoryWeight']
-            : 0.0;
-
-        // convert g → kg for the portal
-        $weightKg = $rawWeightGrams / 1000.0;
-
-        // 2) Get minimum price from ItemPrices entity set
-        //    We ask SAP: all ItemPrices for this item, Price > 0, sorted ascending.
-        //    Then we take the first Price as the minimum.
-        $minPrice = null;
-
-        $priceEndpoint =
-            "ItemPrices?"
-            . "\$select=ItemCode,Price,ListNum"
-            . "&\$filter=ItemCode eq '{$safe}' and Price gt 0"
-            . "&\$orderby=Price asc";
-
-        $priceRes = $this->callServiceLayer('get', $priceEndpoint);
-
-        if (!isset($priceRes['error']) && isset($priceRes['value']) && is_array($priceRes['value'])) {
-            if (count($priceRes['value']) > 0) {
-                $firstRow = $priceRes['value'][0];
-                if (isset($firstRow['Price'])) {
-                    $minPrice = (float) $firstRow['Price'];
-                }
-            }
-        } else {
-            // not fatal – we still return weight even if price fetch fails
-            \Log::warning('ItemPrices query failed or empty', [
-                'itemCode' => $itemCode,
-                'priceRes' => $priceRes,
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'data'   => [
-                'ItemCode'    => $itemRes['ItemCode'] ?? $itemCode,
-                'Description' => $itemRes['ItemName'] ?? '',
-                'Weight'      => $weightKg,   // in KG
-                'MinPrice'    => $minPrice,   // may be null if no valid prices
-            ],
-        ], 200);
-
-    } catch (\Throwable $e) {
-        \Log::error('getItemByCode exception', [
-            'itemCode' => $itemCode,
-            'ex'       => $e->getMessage(),
-        ]);
-
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Unexpected error fetching item details',
-            'details' => $e->getMessage(),
-        ], 500);
     }
-}
-
 
     // =====================================================
     // -------------- SALES ORDERS (UDF helper) ------------
@@ -617,6 +613,185 @@ public function getItemByCode($itemCode)
     }
 
     // =====================================================
+    // ✅ NEW: UPDATE SALES ORDER LINE "UNIT PRICE PER KG"
+    // RDR1.U_PriceperKG (and set UnitPrice = same)
+    //
+    // Route (from api.php):
+    // POST /api/sap/orders/{docEntry}/price-per-kg   (auth:sanctum)
+    //
+    // Payload (flexible):
+    // {
+    //   "lines": [
+    //     { "lineNum": 0, "pricePerKg": 4.79 },
+    //     { "itemCode": "ABC", "pricePerKg": 3.93 }
+    //   ]
+    // }
+    // =====================================================
+    public function updateSalesOrderPricePerKg(Request $request, $docEntry)
+    {
+        try {
+            $validated = $request->validate([
+                'lines' => 'required|array|min:1',
+
+                // allow either lineNum or itemCode
+                'lines.*.lineNum'    => 'nullable|integer|min:0',
+                'lines.*.itemCode'   => 'nullable|string',
+
+                // accept different keys from frontend
+                'lines.*.pricePerKg'       => 'nullable|numeric|min:0',
+                'lines.*.unitPricePerKg'   => 'nullable|numeric|min:0',
+                'lines.*.UnitPricePerKG'   => 'nullable|numeric|min:0',
+                'lines.*.UnitPricePerKg'   => 'nullable|numeric|min:0',
+                'lines.*.UnitPrice'        => 'nullable|numeric|min:0',
+            ]);
+
+            // 1) Read current order to resolve line numbers if frontend sends itemCode
+            $order = $this->callServiceLayer('get', "Orders({$docEntry})?\$select=DocEntry,DocNum,DocumentStatus,DocumentLines");
+            if (isset($order['error'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to fetch Sales Order before update',
+                    'details' => $order['details'] ?? $order,
+                ], $order['status'] ?? 500);
+            }
+
+            // Prevent update if closed (optional but safer)
+            if (($order['DocumentStatus'] ?? '') !== 'bost_Open') {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Sales Order is not Open. Cannot update pricing.',
+                    'details' => ['DocumentStatus' => $order['DocumentStatus'] ?? null],
+                ], 409);
+            }
+
+            $docLines = $order['DocumentLines'] ?? [];
+            if (!is_array($docLines) || count($docLines) === 0) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Sales Order has no DocumentLines.',
+                ], 400);
+            }
+
+            // Build map ItemCode => LineNum (0-based)
+            $itemToLineNum = [];
+            foreach ($docLines as $idx => $dl) {
+                $code = $dl['ItemCode'] ?? null;
+                if ($code !== null && $code !== '') {
+                    // if duplicates, first match wins (consistent)
+                    $itemToLineNum[$code] = $idx;
+                }
+            }
+
+            // 2) Prepare PATCH payload
+            $patchLines = [];
+            foreach (($validated['lines'] ?? []) as $row) {
+
+                $pricePerKg =
+                    $row['pricePerKg']
+                    ?? $row['unitPricePerKg']
+                    ?? $row['UnitPricePerKG']
+                    ?? $row['UnitPricePerKg']
+                    ?? $row['UnitPrice']
+                    ?? null;
+
+                if ($pricePerKg === null) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'Missing pricePerKg for one of the lines.',
+                        'details' => $row,
+                    ], 422);
+                }
+
+                $pricePerKg = (float) $pricePerKg;
+
+                $lineNum = $row['lineNum'] ?? null;
+
+                if ($lineNum === null && !empty($row['itemCode'])) {
+                    $lineNum = $itemToLineNum[$row['itemCode']] ?? null;
+                }
+
+                if ($lineNum === null || !is_numeric($lineNum)) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'Each line must include lineNum OR a valid itemCode that exists in the order.',
+                        'details' => $row,
+                    ], 422);
+                }
+
+                $lineNum = (int) $lineNum;
+
+                if ($lineNum < 0 || $lineNum >= count($docLines)) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => "Invalid lineNum {$lineNum} for this Sales Order.",
+                        'details' => ['maxLineNum' => count($docLines) - 1],
+                    ], 422);
+                }
+
+                // ✅ Update both:
+                // - UnitPrice: so SAP computes LineTotal correctly (RM/KG for your new mapping)
+                // - U_PriceperKG: so your UDF column shows the value in SAP UI
+                $patchLines[] = [
+                    'LineNum'       => $lineNum,
+                    'UnitPrice'     => $pricePerKg,
+                    'U_PriceperKG'  => $pricePerKg,
+                ];
+            }
+
+            $payload = [
+                'DocumentLines' => $patchLines,
+            ];
+
+            \Log::info('🧾 Updating Sales Order price-per-kg', [
+                'docEntry' => $docEntry,
+                'payload'  => $payload,
+            ]);
+
+            // 3) PATCH update
+            $update = $this->callServiceLayer('patch', "Orders({$docEntry})", $payload);
+
+            if (isset($update['error'])) {
+                \Log::error('❌ Failed to update price-per-kg', [
+                    'docEntry' => $docEntry,
+                    'error'    => $update,
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Failed to update Sales Order pricing',
+                    'details' => $update['details'] ?? $update,
+                ], $update['status'] ?? 500);
+            }
+
+            // 4) Return latest order snapshot (optional but helpful)
+            $after = $this->callServiceLayer('get', "Orders({$docEntry})?\$select=DocEntry,DocNum,DocTotal,DocCurrency,DocumentLines");
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Sales Order pricing updated (UnitPrice + U_PriceperKG).',
+                'data'    => [
+                    'DocEntry'  => $docEntry,
+                    'DocNum'    => $order['DocNum'] ?? null,
+                    'updated'   => $patchLines,
+                    'after'     => isset($after['error']) ? null : $after,
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('updateSalesOrderPricePerKg exception', [
+                'docEntry' => $docEntry,
+                'ex'       => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unexpected error updating Sales Order pricing',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // =====================================================
     // ------------------- INVOICE LIST --------------------
     // =====================================================
     public function getInvoices(Request $request)
@@ -681,164 +856,181 @@ public function getItemByCode($itemCode)
     // ------------------- CREATE SALES ORDER --------------
     // =====================================================
     public function createSalesOrder(Request $request)
-{
-    $user = $request->user();
-    $role = $user?->role ?? null;
+    {
+        $user = $request->user();
+        $role = $user?->role ?? null;
 
-    // -------------------------------------------------
-    // ✅ VALIDATION (NO UNIT PRICE REQUIRED)
-    // -------------------------------------------------
-    $validated = $request->validate([
-        'CardCode'      => 'required|string',
-        'CardName'      => 'nullable|string',
-        'DocDate'       => 'nullable|date',
-        'DocDueDate'    => 'required|date',
-        'Comments'      => 'nullable|string',
-        'ShipToCode'    => 'nullable|string',
-        'PayToCode'     => 'nullable|string',
+        // -------------------------------------------------
+        // ✅ VALIDATION (NO UNIT PRICE REQUIRED)
+        // ✅ Plan A: accept WeightPerPcs + TotalWeight from frontend
+        // -------------------------------------------------
+        $validated = $request->validate([
+            'CardCode'      => 'required|string',
+            'CardName'      => 'nullable|string',
+            'DocDate'       => 'nullable|date',
+            'DocDueDate'    => 'required|date',
+            'Comments'      => 'nullable|string',
+            'ShipToCode'    => 'nullable|string',
+            'PayToCode'     => 'nullable|string',
 
-        'DocumentLines'                 => 'required|array|min:1',
-        'DocumentLines.*.ItemCode'      => 'required|string',
-        'DocumentLines.*.Quantity'      => 'required|numeric|min:1',
-        'DocumentLines.*.description'   => 'nullable|string',
-    ]);
+            'DocumentLines'                         => 'required|array|min:1',
+            'DocumentLines.*.ItemCode'              => 'required|string',
+            'DocumentLines.*.Quantity'              => 'required|numeric|min:1',      // PCS from UI
+            'DocumentLines.*.WeightPerPcs'          => 'required|numeric|min:0.0001', // KG/PCS
+            'DocumentLines.*.TotalWeight'           => 'required|numeric|min:0.0001', // Total KG
+            'DocumentLines.*.description'           => 'nullable|string',
+        ]);
 
-    // -------------------------------------------------
-    // ✅ HEADER PAYLOAD
-    // -------------------------------------------------
-    $payload = [
-        'CardCode'   => $validated['CardCode'],
-        'DocDate'    => $validated['DocDate'] ?? date('Y-m-d'),
-        'DocDueDate' => $validated['DocDueDate'],
-        'Comments'   => $validated['Comments'] ?? null,
-        'ShipToCode' => $validated['ShipToCode'] ?? null,
-        'PayToCode'  => $validated['PayToCode'] ?? null,
-    ];
+        // -------------------------------------------------
+        // ✅ HEADER PAYLOAD
+        // -------------------------------------------------
+        $payload = [
+            'CardCode'   => $validated['CardCode'],
+            'DocDate'    => $validated['DocDate'] ?? date('Y-m-d'),
+            'DocDueDate' => $validated['DocDueDate'],
+            'Comments'   => $validated['Comments'] ?? null,
+            'ShipToCode' => $validated['ShipToCode'] ?? null,
+            'PayToCode'  => $validated['PayToCode'] ?? null,
+        ];
 
-    // -------------------------------------------------
-    // ✅ DOCUMENT LINES (SAFE DEFAULT PRICE)
-    // -------------------------------------------------
-    $payload['DocumentLines'] = collect($validated['DocumentLines'])
-        ->map(function ($line) {
-            $qty = (float) ($line['Quantity'] ?? 0);
+        // -------------------------------------------------
+        // ✅ DOCUMENT LINES
+        // ✅ Plan A (NEW mapping):
+        //    SAP Quantity      = Total KG
+        //    U_TotalWeight     = PCS
+        //    U_Weight          = KG / PCS
+        // -------------------------------------------------
+        $payload['DocumentLines'] = collect($validated['DocumentLines'])
+            ->map(function ($line) {
 
-            return [
-                'ItemCode'      => $line['ItemCode'],
-                'Quantity'      => $qty,
-                'UnitPrice'     => 0,       // ✅ DEFAULT PRICE
-                'U_TotalWeight' => $qty,     // keep your custom logic
-            ];
-        })
-        ->values()
-        ->toArray();
+                $pcs = (float) ($line['Quantity'] ?? 0);
+                $weightPerPcs = (float) ($line['WeightPerPcs'] ?? 0);
+                $totalKg = (float) ($line['TotalWeight'] ?? 0);
 
-    $payload = array_filter($payload, fn ($v) => $v !== null);
+                return [
+                    'ItemCode'      => $line['ItemCode'],
 
-    \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
-    \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
+                    // SAP stores total KG in Quantity (new mapping)
+                    'Quantity'      => $totalKg,
 
-    // -------------------------------------------------
-    // ✅ CREATE SAP ORDER
-    // -------------------------------------------------
-    $result = $this->callServiceLayer('post', 'Orders', $payload);
+                    // keep your current default price behavior
+                    'UnitPrice'     => 0,
 
-    if (isset($result['error'])) {
-        \Log::error('❌ Failed to create sales order', ['error' => $result]);
+                    // UDFs on RDR1
+                    'U_TotalWeight' => $pcs,         // PCS
+                    'U_Weight'      => $weightPerPcs // KG/PCS  (RDR1.U_Weight)
+                ];
+            })
+            ->values()
+            ->toArray();
 
+        $payload = array_filter($payload, fn ($v) => $v !== null);
+
+        \Log::info('📥 Incoming sales order request', ['request' => $request->all()]);
+        \Log::info('📦 Payload to SAP Orders', ['payload' => $payload]);
+
+        // -------------------------------------------------
+        // ✅ CREATE SAP ORDER
+        // -------------------------------------------------
+        $result = $this->callServiceLayer('post', 'Orders', $payload);
+
+        if (isset($result['error'])) {
+            \Log::error('❌ Failed to create sales order', ['error' => $result]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to create Sales Order',
+                'details' => $result['details'] ?? $result,
+            ], $result['status'] ?? 500);
+        }
+
+        \Log::info('✅ Sales Order created successfully', ['result' => $result]);
+
+        // -------------------------------------------------
+        // ✅ EMAIL DATA (used for BOTH sales + customer)
+        // -------------------------------------------------
+        $companyCode = $user?->cardcode ?? ($validated['CardCode'] ?? null);
+        $companyName = $user?->cardname ?? ($validated['CardName'] ?? null);
+
+        $docNum   = $result['DocNum'] ?? null;
+        $docEntry = $result['DocEntry'] ?? null;
+
+        $mailData = [
+            'customer_name' => $user?->name ?? $user?->email ?? ($companyName ?: ($companyCode ?: 'Customer')),
+            'customer_email' => $user?->email ?? null,
+            'customer_company_code' => $companyCode,
+            'customer_company_name' => $companyName,
+            'requested_delivery_date' => $validated['DocDueDate'] ?? null,
+            'sap_docnum' => $docNum,
+            'sap_docentry' => $docEntry,
+            'lines' => collect($validated['DocumentLines'])
+                ->map(fn ($l) => [
+                    'itemCode' => $l['ItemCode'],
+                    'quantity' => $l['Quantity'],
+                    'description' => $l['description'] ?? null,
+                ])
+                ->toArray(),
+        ];
+
+        // -------------------------------------------------
+        // ✅ SEND EMAIL AFTER SAP SUCCESS (DIFFERENT SUBJECTS)
+        // -------------------------------------------------
+        try {
+            // Sales subject
+            $subjectCompany = $companyName ?: ($companyCode ?: 'Customer');
+            $salesSubject = 'New Order - ' . $subjectCompany . ($docNum ? (' - DocNum ' . $docNum) : '');
+
+            // Customer subject
+            $customerSubject = 'Your Order Confirmation' . ($docNum ? (' - DocNum ' . $docNum) : '');
+
+            // 1) Sales team emails
+            $salesEmails = array_filter(
+                array_map('trim', explode(',', env('SALES_NOTIFY_EMAILS', ''))))
+            ;
+
+            if (!empty($salesEmails)) {
+                Mail::to($salesEmails)->send(
+                    (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($salesSubject)
+                );
+
+                \Log::info('📧 Sales notification email sent', [
+                    'emails' => $salesEmails,
+                    'subject' => $salesSubject
+                ]);
+            } else {
+                \Log::warning('⚠️ SALES_NOTIFY_EMAILS is empty, sales email not sent');
+            }
+
+            // 2) Customer email (logged-in user)
+            if (!empty($user?->email)) {
+                Mail::to($user->email)->send(
+                    (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($customerSubject)
+                );
+
+                \Log::info('📧 Customer confirmation email sent', [
+                    'email' => $user->email,
+                    'subject' => $customerSubject
+                ]);
+            } else {
+                \Log::warning('⚠️ User email empty OR not logged in, customer email not sent');
+            }
+
+        } catch (\Throwable $e) {
+            \Log::error('❌ Email sending failed', ['error' => $e->getMessage()]);
+            // don't fail order just because email failed
+        }
+
+        // -------------------------------------------------
+        // ✅ FINAL RESPONSE
+        // -------------------------------------------------
         return response()->json([
-            'status'  => 'error',
-            'message' => 'Failed to create Sales Order',
-            'details' => $result['details'] ?? $result,
-        ], $result['status'] ?? 500);
+            'status'  => 'success',
+            'message' => 'Sales Order created successfully',
+            'data'    => $result,
+        ], 201);
     }
 
-    \Log::info('✅ Sales Order created successfully', ['result' => $result]);
-
-    // -------------------------------------------------
-    // ✅ EMAIL DATA (used for BOTH sales + customer)
-    // -------------------------------------------------
-    $companyCode = $user?->cardcode ?? ($validated['CardCode'] ?? null);
-    $companyName = $user?->cardname ?? ($validated['CardName'] ?? null);
-
-    $docNum   = $result['DocNum'] ?? null;
-    $docEntry = $result['DocEntry'] ?? null;
-
-    $mailData = [
-        'customer_name' => $user?->name ?? $user?->email ?? ($companyName ?: ($companyCode ?: 'Customer')),
-        'customer_email' => $user?->email ?? null,
-        'customer_company_code' => $companyCode,
-        'customer_company_name' => $companyName,
-        'requested_delivery_date' => $validated['DocDueDate'] ?? null,
-        'sap_docnum' => $docNum,
-        'sap_docentry' => $docEntry,
-        'lines' => collect($validated['DocumentLines'])
-            ->map(fn ($l) => [
-                'itemCode' => $l['ItemCode'],
-                'quantity' => $l['Quantity'],
-                'description' => $l['description'] ?? null,
-            ])
-            ->toArray(),
-    ];
-
-    // -------------------------------------------------
-    // ✅ SEND EMAIL AFTER SAP SUCCESS (DIFFERENT SUBJECTS)
-    // -------------------------------------------------
-    try {
-        // Sales subject
-        $subjectCompany = $companyName ?: ($companyCode ?: 'Customer');
-        $salesSubject = 'New Order - ' . $subjectCompany . ($docNum ? (' - DocNum ' . $docNum) : '');
-
-        // Customer subject
-        $customerSubject = 'Your Order Confirmation' . ($docNum ? (' - DocNum ' . $docNum) : '');
-
-        // 1) Sales team emails
-        $salesEmails = array_filter(
-            array_map('trim', explode(',', env('SALES_NOTIFY_EMAILS', '')))
-        );
-
-        if (!empty($salesEmails)) {
-            Mail::to($salesEmails)->send(
-                (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($salesSubject)
-            );
-
-            \Log::info('📧 Sales notification email sent', [
-                'emails' => $salesEmails,
-                'subject' => $salesSubject
-            ]);
-        } else {
-            \Log::warning('⚠️ SALES_NOTIFY_EMAILS is empty, sales email not sent');
-        }
-
-        // 2) Customer email (logged-in user)
-        if (!empty($user?->email)) {
-            Mail::to($user->email)->send(
-                (new \App\Mail\CustomerOrderRequestMail($mailData))->subject($customerSubject)
-            );
-
-            \Log::info('📧 Customer confirmation email sent', [
-                'email' => $user->email,
-                'subject' => $customerSubject
-            ]);
-        } else {
-            \Log::warning('⚠️ User email empty OR not logged in, customer email not sent');
-        }
-
-    } catch (\Throwable $e) {
-        \Log::error('❌ Email sending failed', ['error' => $e->getMessage()]);
-        // don't fail order just because email failed
-    }
-
-    // -------------------------------------------------
-    // ✅ FINAL RESPONSE
-    // -------------------------------------------------
-    return response()->json([
-        'status'  => 'success',
-        'message' => 'Sales Order created successfully',
-        'data'    => $result,
-    ], 201);
-}
-
-     // =====================================================
+    // =====================================================
     // ------------------- GET SINGLE INVOICE DETAILS ------
     // =====================================================
     public function getInvoiceDetails($docEntry)

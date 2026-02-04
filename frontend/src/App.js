@@ -1,7 +1,7 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { LoadingProvider } from "./context/LoadingContext";
-import { Toaster } from "react-hot-toast"; 
+import { Toaster } from "react-hot-toast";
 import { CartProvider } from "./context/CartContext";
 
 // Public pages
@@ -16,20 +16,48 @@ import OrdersPage from "./components/Orders";
 import OrdersAdminPage from "./components/OrdersAdmin";
 import CartPage from "./components/OrderForm";
 import CustomerList from "./components/CustomerList";
-import InvoicesPage from "./components/Invoices"; 
-import OrderDetails from "./components/OrderDetails"; 
+import InvoicesPage from "./components/Invoices";
+import OrderDetails from "./components/OrderDetails";
 import InvoiceDetails from "./components/InvoiceDetails";
 import EditProfile from "./components/EditProfile";
 import UserList from "./components/UserList";
 import EditUser from "./components/EditUser";
-import ProductList from "./components/ProductList"
-import ProductDetails from "./components/ProductDetails"
-import UnitPriceEntry from "./components/UnitPriceEntry"
+import ProductList from "./components/ProductList";
+import ProductDetails from "./components/ProductDetails";
+import UnitPriceEntry from "./components/UnitPriceEntry";
 
-// Layout & helpers
+// Layout
 import DashboardLayout from "./components/DashboardLayout";
-import './App.css';
-import ProtectedRoute from "./components/ProtectedRoute";
+import "./App.css";
+
+// ✅ userlist-style guard for /orders (auto route to admin page if admin)
+const OrdersGuard = () => {
+  const storedRole =
+    localStorage.getItem("user_role") || sessionStorage.getItem("user_role");
+
+  if (!storedRole) return <Navigate to="/login" replace />;
+
+  if (storedRole.toLowerCase() === "admin") {
+    return <Navigate to="/orders_admin" replace />;
+  }
+
+  return <OrdersPage />;
+};
+
+// ✅ admin-only guard (same style as UserList.jsx)
+const AdminGuard = ({ children }) => {
+  const storedRole =
+    localStorage.getItem("user_role") || sessionStorage.getItem("user_role");
+
+  if (!storedRole) return <Navigate to="/login" replace />;
+
+  if (storedRole.toLowerCase() !== "admin") {
+    alert("You are not allowed to access this page.");
+    return <Navigate to="/dashboardpage" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
@@ -37,45 +65,46 @@ function App() {
       <CartProvider>
         <LoadingProvider>
           <Routes>
-          {/* Public routes */}
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgotpassword" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          {/* <Route path="/dashboardpage" element={<DashboardPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/orderform" element={<PlaceOrderPage />} />
-            <Route path="/invoices" element={<InvoicesPage />} />
-            <Route path="/orders/:id" element={<OrderDetails />} />
-            <Route path="/invoices/:id" element={<InvoiceDetails />} />
-            <Route path="/editprofile" element={<EditProfile />} />
-            <Route path="/users" element={<UserList />} />
-            <Route path="/edituser/:id" element={<EditUser />} /> */}
+            {/* Public routes */}
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgotpassword" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected Dashboard routes */}
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboardpage" element={<DashboardPage />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="/orders_admin" element={<OrdersAdminPage />} />
-            <Route path="/products" element={<ProductList />} />
-            <Route path="/orderform" element={<CartPage />} />
-            <Route path="/invoices" element={<InvoicesPage />} />
-            <Route path="/orders/:id" element={<OrderDetails />} />
-            <Route path="/invoices/:id" element={<InvoiceDetails />} />
-            <Route path="/customers" element={<CustomerList />} />
-            <Route path="/editprofile" element={<EditProfile />} />
-            <Route path="/users" element={<UserList />} />
-            <Route path="/edituser/:id" element={<EditUser />} />
-            <Route path="/products/:id" element={<ProductDetails />} /> 
-            <Route path="/pricing/:id" element={<UnitPriceEntry />} /> 
-          </Route>
+            {/* Dashboard routes */}
+            <Route element={<DashboardLayout />}>
+              <Route path="/dashboardpage" element={<DashboardPage />} />
 
+              {/* ✅ /orders auto choose based on role */}
+              <Route path="/orders" element={<OrdersGuard />} />
 
-          {/* Catch-all fallback */}
-          <Route path="*" element={<Login />} />
+              {/* ✅ /orders_admin admin-only */}
+              <Route
+                path="/orders_admin"
+                element={
+                  <AdminGuard>
+                    <OrdersAdminPage />
+                  </AdminGuard>
+                }
+              />
+
+              <Route path="/products" element={<ProductList />} />
+              <Route path="/orderform" element={<CartPage />} />
+              <Route path="/invoices" element={<InvoicesPage />} />
+              <Route path="/orders/:id" element={<OrderDetails />} />
+              <Route path="/invoices/:id" element={<InvoiceDetails />} />
+              <Route path="/customers" element={<CustomerList />} />
+              <Route path="/editprofile" element={<EditProfile />} />
+              <Route path="/users" element={<UserList />} />
+              <Route path="/edituser/:id" element={<EditUser />} />
+              <Route path="/products/:id" element={<ProductDetails />} />
+              <Route path="/pricing/:id" element={<UnitPriceEntry />} />
+            </Route>
+
+            {/* Catch-all fallback */}
+            <Route path="*" element={<Login />} />
           </Routes>
 
-          {/* ✅ Add this at the bottom so toast works globally */}
           <Toaster
             position="top-right"
             toastOptions={{

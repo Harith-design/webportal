@@ -108,6 +108,7 @@ function CartPage() {
       const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
 
       // ✅ UPDATED: include CardCode + CardName (optional)
+      // ✅ Plan A: Send WeightPerPcs + TotalWeight (KG) so backend can map into SAP UDFs
       const payload = {
         CardCode: company.cardCode,
         CardName: company.cardName,
@@ -116,7 +117,9 @@ function CartPage() {
         DocDueDate: deliveryDate, // ✅ SAP requested delivery date
         DocumentLines: cart.map((r) => ({
           ItemCode: r.sku,
-          Quantity: Number(r.quantity),
+          Quantity: Number(r.quantity),                 // PCS from UI
+          WeightPerPcs: Number(r.weight || 0),          // KG / PCS
+          TotalWeight: Number(r.totalWeight || 0),      // Total KG
           description: r.compound || "",
         })),
       };
