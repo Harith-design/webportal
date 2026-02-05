@@ -130,12 +130,20 @@ function EditProfile() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [picError, setPicError] = useState("");
 
+  // ✅ Admin check (same style as UserList.jsx)
+  const storedRole =
+    localStorage.getItem("user_role") ||
+    sessionStorage.getItem("user_role") ||
+    "";
+
+  const isAdmin = String(storedRole).toLowerCase() === "admin";
+
   // Load current user info
   useEffect(() => {
 
     // Check the token
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-  console.log("Current auth token:", token);
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    console.log("Current auth token:", token);
 
     (async () => {
       try {
@@ -146,6 +154,11 @@ function EditProfile() {
         console.log("Logged-in user from backend:", u);
         console.log("User ID we are setting in formData:", u.id);
 
+        // ✅ If backend returns role, prefer it (fallback to storedRole)
+        const backendRole = u?.role || u?.Role || u?.user_role || u?.userRole || "";
+        const resolvedIsAdmin =
+          String(backendRole || storedRole).toLowerCase() === "admin";
+
         setFormData({
           id: u.id,
           firstName: u.first_name || "",
@@ -153,9 +166,14 @@ function EditProfile() {
           name: u.name || "",
           email: u.email || "",
           contact: u.contact_no || "",
-          company: u.company || "",
-          CardCode: u.cardcode || "",
-          CardName: u.cardname || "",
+
+          // ✅ IMPORTANT:
+          // If admin, DO NOT bind admin profile to a company in UI state.
+          // (This prevents accidental re-saving company fields for admin)
+          company: resolvedIsAdmin ? "ADMIN" : (u.company || ""),
+          CardCode: resolvedIsAdmin ? "" : (u.cardcode || ""),
+          CardName: resolvedIsAdmin ? "ADMIN" : (u.cardname || ""),
+
           street: u.street || "",
           city: u.city || "",
           county: u.county || "",
@@ -165,15 +183,15 @@ function EditProfile() {
           confirmPassword: "",
           profile_picture: u.profile_picture || "",
         });
+
         // ✅ Load existing profile picture if available
-      if (u.profile_picture) 
-      setPreview(toAbsoluteUrl(u.profile_picture));
-      else setPreview(null);
+        if (u.profile_picture) setPreview(toAbsoluteUrl(u.profile_picture));
+        else setPreview(null);
       } catch (e) {
         console.error("Failed to load current user:", e);
       }
     })();
-  }, []);
+  }, [storedRole]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -238,54 +256,62 @@ function EditProfile() {
 
   // Save profile
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setMessage("");
-  setPicError("");
+    e.preventDefault();
+    setMessage("");
+    setPicError("");
 
-  if (formData.password && formData.password !== formData.confirmPassword) {
-    toast.error("Passwords do not match!");
-    return;
-  }
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
 
-  try {
-    const payload = {
-      first_name: formData.firstName || "",
-      last_name: formData.lastName || "",
-      name: formData.name || "",
-      email: formData.email || "",
-      contact_no: formData.contact || "",
-      cardcode: formData.CardCode || "",
-      cardname: formData.CardName || "",
-      street: formData.street || "",
-      city: formData.city || "",
-      county: formData.county || "",
-      postalCode: formData.postalCode || "",
-      country: formData.country || "",
-    };
+    try {
+      const payload = {
+        first_name: formData.firstName || "",
+        last_name: formData.lastName || "",
+        name: formData.name || "",
+        email: formData.email || "",
+        contact_no: formData.contact || "",
+        street: formData.street || "",
+        city: formData.city || "",
+        county: formData.county || "",
+        postalCode: formData.postalCode || "",
+        country: formData.country || "",
+      };
 
-    if (formData.password) payload.password = formData.password;
-    if (formData._file) payload.profile_picture = formData._file;
+      // ✅ IMPORTANT: only customer should save cardcode/cardname
+      // Admin should NOT update company mapping at all.
+      if (!isAdmin) {
+        payload.cardcode = formData.CardCode || "";
+        payload.cardname = formData.CardName || "";
+      }
 
-    const resp = await updateUser(formData.id, payload);
-    const u = resp.data.user;
+      if (formData.password) payload.password = formData.password;
+      if (formData._file) payload.profile_picture = formData._file;
 
-    setFormData((p) => ({
+      const resp = await updateUser(formData.id, payload);
+      const u = resp.data.user;
+
+      setFormData((p) => ({
         ...p,
         first_name: u.first_name ?? p.firstName,
         last_name: u.last_name ?? p.lastName,
         name: u.name ?? p.name,
         email: u.email ?? p.email,
         contact: u.contact_no ?? p.contact,
-        CardCode: u.cardcode ?? p.CardCode,
-        CardName: u.cardname ?? p.CardName,
-        company: u.cardname ?? p.company,
+
+        // ✅ keep admin UI as ADMIN and do not overwrite from backend company fields
+        CardCode: isAdmin ? "" : (u.cardcode ?? p.CardCode),
+        CardName: isAdmin ? "ADMIN" : (u.cardname ?? p.CardName),
+        company: isAdmin ? "ADMIN" : (u.cardname ?? p.company),
+
         profile_picture: u.profile_picture ?? p.profile_picture,
         password: "",
         confirmPassword: "",
         _file: undefined,
       }));
 
-    if (u.profile_picture) {
+      if (u.profile_picture) {
         setPreview(`${toAbsoluteUrl(u.profile_picture)}?t=${Date.now()}`);
       }
 
@@ -294,9 +320,9 @@ function EditProfile() {
       console.error("Error updating profile:", error.response || error);
       toast.error("Failed to update profile. Please try again.");
     }
-};
+  };
 
-// Decide which src to render
+  // Decide which src to render
   const imgSrc =
     preview ||
     (formData.profile_picture
@@ -306,10 +332,10 @@ function EditProfile() {
   return (
     <div className="py-4 px-10 lg:px-40 mt-1 md:px-16">
       <form className="space-y-10" onSubmit={handleSubmit}>
-        
+
         {/* Personal Info */}
         <div>
-          
+
           <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Personal Information
           </h3>

@@ -112,6 +112,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/orders/{docEntry}/price-per-kg', [SapController::class, 'updateSalesOrderPricePerKg']);
     });
 
+    /**
+     * ✅ NEW (ADMIN ONLY): read ALL orders / invoices across ALL companies
+     * This does NOT affect customer dashboard because customers keep using PUBLIC routes below.
+     *
+     * You MUST implement these methods in SapController:
+     * - getSalesOrdersAll()
+     * - getInvoicesAll()
+     */
+    Route::prefix('sap')->middleware('role:admin')->group(function () {
+        Route::get('/orders/all', [SapController::class, 'getSalesOrdersAll']);
+        Route::get('/invoices/all', [SapController::class, 'getInvoicesAll']);
+    });
+
 });
 
 // ------------------- Sales Order Routes -------------------
