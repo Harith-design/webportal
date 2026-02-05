@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
-import { getBusinessPartners, updateUser, getCurrentUser } from "../services/api";
+import { getBusinessPartners, updateUser } from "../services/api";
 import toast from "react-hot-toast";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import UserAvatar from "../components/UserAvatar";
 import axios from "axios";
 
 const BACKEND = "http://127.0.0.1:8000";
+
 // Build a safe absolute URL for images
 const toAbsoluteUrl = (path) => {
   if (!path) return "";
@@ -51,7 +51,10 @@ async function downscaleAndCompress(file) {
   }
 
   // If it's already small and an accepted type, return as-is
-  if (ACCEPTED_TYPES.includes(file.type) && file.size <= MAX_BYTES_BEFORE_COMPRESS) {
+  if (
+    ACCEPTED_TYPES.includes(file.type) &&
+    file.size <= MAX_BYTES_BEFORE_COMPRESS
+  ) {
     return file;
   }
 
@@ -99,7 +102,10 @@ async function downscaleAndCompress(file) {
 
   // Name the file sensibly
   const ext = outType === "image/webp" ? "webp" : "jpg";
-  const outFile = new File([outBlob], `profile.${ext}`, { type: outType, lastModified: Date.now() });
+  const outFile = new File([outBlob], `profile.${ext}`, {
+    type: outType,
+    lastModified: Date.now(),
+  });
   return outFile;
 }
 
@@ -127,12 +133,15 @@ function EditUser() {
     postalCode: "",
     country: "",
     status: false,
-    profile_picture: ""
+    profile_picture: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  
+
+  // ✅ NEW: track the role of the user we are editing
+  const [editingUserRole, setEditingUserRole] = useState(""); // "admin" / "user" etc.
+
   const getToken = () =>
     localStorage.getItem("token") ||
     sessionStorage.getItem("token") ||
@@ -151,60 +160,76 @@ function EditUser() {
       try {
         if (state?.user) {
           const u = state.user;
-        setFormData({
-          id: u.id,
-          firstName: u.firstName || "",
-          lastName: u.lastName || "",
-          name: u.name || "",
-          email: u.email || "",
-          contact: u.contact_no || "",
-          company: u.company || "",
-          CardCode: u.CardCode || "",
-          CardName: u.CardName || "",
-          street: u.street || "",
-          city: u.city || "",
-          county: u.county || "",
-          postalCode: u.postalCode || "",
-          country: u.country || "",
-          password: "",
-          confirmPassword: "",
-          profile_picture: u.profile_picture || "",
-          status: (u.status || "").toLowerCase() === "active",
-        });
-      // ✅ NEW: show existing profile picture in the avatar
+
+          // ✅ Determine role
+          const roleRaw = (u.role || u.user_role || "").toString().toLowerCase();
+          setEditingUserRole(roleRaw);
+
+          setFormData({
+            id: u.id,
+            firstName: u.firstName || "",
+            lastName: u.lastName || "",
+            name: u.name || "",
+            email: u.email || "",
+            contact: u.contact_no || "",
+            company: u.company || "",
+            CardCode: u.CardCode || "",
+            CardName: u.CardName || "",
+            street: u.street || "",
+            city: u.city || "",
+            county: u.county || "",
+            postalCode: u.postalCode || "",
+            country: u.country || "",
+            password: "",
+            confirmPassword: "",
+            profile_picture: u.profile_picture || "",
+            status: (u.status || "").toLowerCase() === "active",
+          });
+
+          // ✅ show existing profile picture in the avatar
           if (u.profile_picture) setPreview(toAbsoluteUrl(u.profile_picture));
           else setPreview(null);
+
+          // ✅ set default search input shown in the UI
+          setSearchTerm(u.CardName || u.company || "");
+        } else {
+          const token = getToken();
+          const res = await axios.get(`http://127.0.0.1:8000/api/users/${id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          const u = res.data || {};
+
+          // ✅ Determine role (from API)
+          const roleRaw = (u.role || u.user_role || "").toString().toLowerCase();
+          setEditingUserRole(roleRaw);
+
+          setFormData({
+            id: u.id,
+            firstName: u.firstName || "",
+            lastName: u.lastName || "",
+            name: u.name || "",
+            email: u.email || "",
+            contact: u.contact_no || "",
+            company: u.company || "",
+            CardCode: u.CardCode || "",
+            CardName: u.CardName || "",
+            street: u.street || "",
+            city: u.city || "",
+            county: u.county || "",
+            postalCode: u.postalCode || "",
+            country: u.country || "",
+            password: "",
+            confirmPassword: "",
+            profile_picture: u.profile_picture || "",
+            status: (u.status || "").toLowerCase() === "active",
+          });
+
+          // ✅ preview for fetched user
+          if (u.profile_picture) setPreview(toAbsoluteUrl(u.profile_picture));
+          else setPreview(null);
+
+          setSearchTerm(u.CardName || u.company || "");
         }
-        else {
-        const token = getToken();
-        const res = await axios.get(`http://127.0.0.1:8000/api/users/${id}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const u = res.data || {};
-        setFormData({
-          id: u.id,
-          firstName: u.firstName || "",
-          lastName: u.lastName || "",
-          name: u.name || "",
-          email: u.email || "",
-          contact: u.contact_no || "",
-          company: u.company || "",
-          CardCode: u.CardCode || "",
-          CardName: u.CardName || "",
-          street: u.street || "",
-          city: u.city || "",
-          county: u.county || "",
-          postalCode: u.postalCode || "",
-          country: u.country || "",
-          password: "",
-          confirmPassword: "",
-          profile_picture: u.profile_picture || "",
-          status: false,
-        });
-        // ✅ NEW: preview for fetched user
-        if (u.profile_picture) setPreview(toAbsoluteUrl(u.profile_picture));
-        else setPreview(null);
-      }
       } catch (e) {
         console.error("Failed to load user:", e);
         alert("Failed to load user details.");
@@ -226,17 +251,14 @@ function EditUser() {
     if (!file) return;
 
     try {
-      // Validate basic MIME first
       if (!ACCEPTED_TYPES.includes(file.type)) {
         if (REJECTED_TYPES.includes(file.type)) {
           throw new Error("HEIC/HEIF/AVIF is not supported. Please choose JPG/PNG/WebP.");
         }
-        // Some devices report empty type; still try to process
       }
 
       const processed = await downscaleAndCompress(file);
 
-      // Show preview (blob URL)
       const objectUrl = URL.createObjectURL(processed);
       setPreview(objectUrl);
 
@@ -244,7 +266,6 @@ function EditUser() {
     } catch (err) {
       console.error(err);
       setPicError(err.message || "Invalid or unsupported image file.");
-      // revert input if failed
       e.target.value = "";
     }
   };
@@ -265,10 +286,6 @@ function EditUser() {
     }
   };
 
-  const toggleStatus = () => {
-    setFormData((prev) => ({ ...prev, status: !prev.status }));
-  };
-
   const handleSelectCompany = (company) => {
     setFormData((prev) => ({
       ...prev,
@@ -285,53 +302,63 @@ function EditUser() {
     e.preventDefault();
     const token = getToken();
     setPicError("");
+
     if (!token) {
       alert("Missing auth token. Please log in again.");
       return;
     }
 
-  if (formData.password && formData.password !== formData.confirmPassword) {
-    toast.error("❌ Passwords do not match!");
-    return;
-  }
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      toast.error("❌ Passwords do not match!");
+      return;
+    }
 
-  try {
-    const payload = {
-      firstName: formData.firstName || "",
-      lastName: formData.lastName || "",
-      name: formData.name || "",
-      email: formData.email || "",
-      contact_no: formData.contact || "",
-      CardCode: formData.CardCode || "",
-      CardName: formData.CardName || "",
-      street: formData.street || "",
-      city: formData.city || "",
-      county: formData.county || "",
-      postalCode: formData.postalCode || "",
-      country: formData.country || "",
-    };
+    try {
+      setLoading(true);
 
-    if (formData.password) payload.password = formData.password;
-    if (formData._file) payload.profile_picture = formData._file;
+      const payload = {
+        firstName: formData.firstName || "",
+        lastName: formData.lastName || "",
+        name: formData.name || "",
+        email: formData.email || "",
+        contact_no: formData.contact || "",
+        CardCode: formData.CardCode || "",
+        CardName: formData.CardName || "",
+        street: formData.street || "",
+        city: formData.city || "",
+        county: formData.county || "",
+        postalCode: formData.postalCode || "",
+        country: formData.country || "",
+      };
 
-    await updateUser(formData.id, payload);
+      // ✅ IMPORTANT: if editing an ADMIN user, force clear company fields
+      // so admin is not tied to KMK or any company.
+      if ((editingUserRole || "").toLowerCase() === "admin") {
+        payload.CardCode = "";
+        payload.CardName = "";
+        payload.company = ""; // if backend uses this field too
+      }
 
-    toast.success("Profile updated successfully!");
-    navigate("/users"); // optional, redirect after success
-  } catch (error) {
-    console.error("Error updating profile:", error.response || error);
-    const msg =
-      error?.response?.data?.message ||
-      error?.response?.data?.errors?.email?.[0] ||
-      "Failed to update user. Please try again";
-    toast.error("msg");
-  }
-  finally {
+      if (formData.password) payload.password = formData.password;
+      if (formData._file) payload.profile_picture = formData._file;
+
+      await updateUser(formData.id, payload);
+
+      toast.success("Profile updated successfully!");
+      navigate("/users");
+    } catch (error) {
+      console.error("Error updating profile:", error.response || error);
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.errors?.email?.[0] ||
+        "Failed to update user. Please try again";
+      toast.error(msg);
+    } finally {
       setLoading(false);
     }
-};
+  };
 
-if (initializing) {
+  if (initializing) {
     return (
       <div className="p-6">
         <div className="text-sm text-gray-500">Loading user…</div>
@@ -345,6 +372,9 @@ if (initializing) {
     (formData.profile_picture
       ? `${toAbsoluteUrl(formData.profile_picture)}?t=${Date.now()}`
       : FALLBACK);
+
+  // ✅ NEW: admin user should NOT have company selection
+  const isEditingAdmin = (editingUserRole || "").toLowerCase() === "admin";
 
   return (
     <div className="py-4  px-10 lg:px-40 mt-1 md:px-16">
@@ -413,7 +443,7 @@ if (initializing) {
                 />
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp" // narrow to reliable types
+                  accept="image/jpeg,image/png,image/webp"
                   id="profilePicInput"
                   onChange={handlePicChange}
                   className="hidden"
@@ -440,49 +470,67 @@ if (initializing) {
           <h3 className="font-semibold text-gray-700 border-b border-gray-300 pb-2 mb-4">
             Company Information
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">
-                Search Company (from SAP)
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={handleCompanySearch}
-                placeholder="Enter company name"
-                className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
-              />
-              {loadingSearch && (
-                <p className="text-sm text-gray-500 mt-1">Searching...</p>
-              )}
-              {companyResults.length > 0 && (
-                <ul className="border rounded mt-1 max-h-40 overflow-y-auto bg-white shadow text-sm w-3/4">
-                  {companyResults.map((c) => (
-                    <li
-                      key={c.CardCode}
-                      onClick={() => handleSelectCompany(c)}
-                      className="px-2 py-1 cursor-pointer hover:bg-blue-100"
-                    >
-                      {c.CardCode} - {c.CardName}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
 
-            <div className="flex flex-col">
-              <label className="text-[80%] font-medium mb-1">
-                Selected Company
-              </label>
-              <input
-                type="text"
-                name="company"
-                value={formData.CardName || formData.company}
-                readOnly
-                className="w-3/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
-              />
+          {/* ✅ If editing admin user: NO company selection at all */}
+          {isEditingAdmin ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="flex flex-col">
+                <label className="text-[80%] font-medium mb-1">
+                  Selected Company
+                </label>
+                <input
+                  type="text"
+                  value="N/A (Admin)"
+                  readOnly
+                  className="w-3/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none bg-gray-50"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="flex flex-col">
+                <label className="text-[80%] font-medium mb-1">
+                  Search Company (from SAP)
+                </label>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={handleCompanySearch}
+                  placeholder="Enter company name"
+                  className="w-3/4 px-2 py-1 border rounded text-[80%] focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                />
+                {loadingSearch && (
+                  <p className="text-sm text-gray-500 mt-1">Searching...</p>
+                )}
+                {companyResults.length > 0 && (
+                  <ul className="border rounded mt-1 max-h-40 overflow-y-auto bg-white shadow text-sm w-3/4">
+                    {companyResults.map((c) => (
+                      <li
+                        key={c.CardCode}
+                        onClick={() => handleSelectCompany(c)}
+                        className="px-2 py-1 cursor-pointer hover:bg-blue-100"
+                      >
+                        {c.CardCode} - {c.CardName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[80%] font-medium mb-1">
+                  Selected Company
+                </label>
+                <input
+                  type="text"
+                  name="company"
+                  value={formData.CardName || formData.company}
+                  readOnly
+                  className="w-3/4 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-blue-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Company Address */}
@@ -586,9 +634,10 @@ if (initializing) {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition font-semibold"
+            disabled={loading}
+            className="bg-blue-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-60"
           >
-            Save
+            {loading ? "Saving..." : "Save"}
           </button>
         </div>
       </form>

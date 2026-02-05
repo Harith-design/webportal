@@ -51,21 +51,29 @@ function UserList() {
       const list = Array.isArray(raw) ? raw : [];
 
       const mapped = list.map((u) => {
-        // resolve company from multiple possible keys
-        const company =
+        // normalize role
+        const rawRole = u.role ?? u.Role ?? u.user_role ?? u.userRole ?? "user";
+        const role = String(rawRole).toLowerCase();
+
+        // resolve CardCode / CardName from multiple keys
+        const cardCode =
+          u.cardcode ??
+          u.CardCode ??
+          u.cardCode ??
+          u.company_code ??
+          u.companyCode ??
+          "N/A";
+
+        const cardName =
+          u.cardname ??
+          u.CardName ??
+          u.cardName ??
           u.company ??
           u.company_name ??
           u.companyName ??
-          u.cardname ??
-          u.CardName ??
           "N/A";
 
-        // resolve raw role from different API shapes, normalize to lowercase
-        const rawRole =
-          u.role ?? u.Role ?? u.user_role ?? u.userRole ?? "user";
-        const role = String(rawRole).toLowerCase();
-
-        // 🔹 derive Active/Inactive from various boolean/flag fields
+        // derive Active/Inactive from various boolean/flag fields
         const isActiveValue =
           u.is_active ??
           u.active ??
@@ -89,7 +97,6 @@ function UserList() {
           }
         }
 
-        // resolve status from multiple possible keys (e.g. Active/Inactive)
         const rawStatus =
           u.status ??
           u.Status ??
@@ -100,41 +107,45 @@ function UserList() {
           derivedStatus ??
           "";
 
-        // keep existing behaviour: role in Status column + Active/Inactive if present
         const statusParts = [];
-        // include role label (Admin | User)
         statusParts.push(role === "admin" ? "Admin" : "User");
 
-        // include Active/Inactive if present in API / derived
         const s = String(rawStatus).trim();
         if (s) {
           const lower = s.toLowerCase();
           if (lower.includes("active")) statusParts.push("Active");
           else if (lower.includes("inactive")) statusParts.push("Inactive");
-          else statusParts.push(s); // any other raw status
+          else statusParts.push(s);
         }
 
         const status = statusParts.join(" • ");
+
+        // ✅ IMPORTANT: For admin, do NOT show stored company (even if KMK exists in DB)
+        const displayCompany = role === "admin" ? "N/A (Admin)" : cardName;
+        const displayCardCode = role === "admin" ? "" : cardCode;
+        const displayCardName = role === "admin" ? "" : cardName;
 
         return {
           id: u.id,
           name:
             u.name ||
-            `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
+            `${u.firstName || u.first_name || ""} ${u.lastName || u.last_name || ""}`
+              .trim() ||
             "N/A",
           email: u.email || u.username || "N/A",
-          company,
-          company_code: u.company_code ?? u.cardCode ?? u.CardCode ?? "N/A",
           contact_no: u.contact_no ?? u.phone ?? "N/A",
           role: role === "admin" ? "admin" : "user",
-          status, // e.g. "Admin • Active"
+          status,
+          // ✅ Keep both company display + real SAP fields
+          company: displayCompany,
+          CardCode: displayCardCode,
+          CardName: displayCardName,
         };
       });
 
       setUsers(mapped);
     } catch (e) {
       console.error("Failed to load users:", e);
-      // only show error text inside the page now; no redirects
       setError("Failed to load users");
     } finally {
       setLoading(false);
@@ -148,18 +159,16 @@ function UserList() {
       sessionStorage.getItem("user_role");
 
     if (!storedRole) {
-      // not logged in or missing role -> go login
       navigate("/login");
       return;
     }
 
     if (storedRole.toLowerCase() !== "admin") {
       alert("You are not allowed to access this page.");
-      navigate(-1); // back to previous page
+      navigate(-1);
       return;
     }
 
-    // Admin -> load data
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
@@ -168,7 +177,6 @@ function UserList() {
     if (statusFilter !== "all") {
       const sf = String(statusFilter).toLowerCase();
       const us = String(u.status || u.role || "").toLowerCase();
-      // allow matching if the selected filter appears in the status string
       if (!us.includes(sf)) return false;
     }
 
@@ -176,19 +184,10 @@ function UserList() {
       const q = search.toLowerCase();
       const name = (u.name || "").toLowerCase();
       const email = (u.email || "").toLowerCase();
-      const username = (u.username || "").toLowerCase();
-      const phone = (u.contact_no || u.phone || "").toLowerCase();
+      const phone = (u.contact_no || "").toLowerCase();
       const company = (u.company || "").toLowerCase();
 
-      if (
-        !(
-          name.includes(q) ||
-          email.includes(q) ||
-          username.includes(q) ||
-          phone.includes(q) ||
-          company.includes(q)
-        )
-      ) {
+      if (!(name.includes(q) || email.includes(q) || phone.includes(q) || company.includes(q))) {
         return false;
       }
     }
@@ -196,7 +195,6 @@ function UserList() {
     return true;
   });
 
-  // reset to page 1 if search changes (optional but nice UX)
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
@@ -223,19 +221,13 @@ function UserList() {
   const indexOfLastUser = currentPage * rowsPerPage;
   const indexOfFirstUser = indexOfLastUser - rowsPerPage;
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredUsers.length / rowsPerPage)
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
 
   const renderStatus = (statusText) => {
-    // statusText might be "Admin • Active" or "User" etc.
     if (!statusText) return "N/A";
     const parts = String(statusText).split("•").map((p) => p.trim());
-
-    // first part is role (Admin / User)
     const rolePart = parts[0] || "";
-    const secondPart = parts[1] || null; // Active/Inactive or extra
+    const secondPart = parts[1] || null;
 
     const roleBadge =
       rolePart.toLowerCase() === "admin" ? (
@@ -294,8 +286,7 @@ function UserList() {
     );
   };
 
-  const handleMenuToggle = (id) =>
-    setOpenMenu(openMenu === id ? null : id);
+  const handleMenuToggle = (id) => setOpenMenu(openMenu === id ? null : id);
 
   const handleEdit = (user) => {
     setOpenMenu(null);
@@ -305,11 +296,14 @@ function UserList() {
           id: user.id,
           name: user.name,
           email: user.email,
-          company: user.company, // maps to cardname on edit screen
           role: user.role,
           status: user.status,
           contact_no: user.contact_no,
-          company_code: user.company_code,
+
+          // ✅ IMPORTANT: pass correct keys for EditUser.jsx
+          CardCode: user.CardCode || "",
+          CardName: user.CardName || "",
+          company: user.CardName || user.company || "",
         },
       },
     });
@@ -345,8 +339,7 @@ function UserList() {
       if (!e.target.closest(".user-menu")) setOpenMenu(null);
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -452,10 +445,7 @@ function UserList() {
               ))
             ) : (
               <tr>
-                <td
-                  colSpan="6"
-                  className="text-center py-4 text-gray-500"
-                >
+                <td colSpan="6" className="text-center py-4 text-gray-500">
                   {loading ? "Loading users..." : error || "No users found"}
                 </td>
               </tr>
@@ -467,9 +457,7 @@ function UserList() {
       {/* Pagination */}
       <div className="flex justify-center items-center gap-2 mt-4 shrink-0">
         <button
-          onClick={() =>
-            setCurrentPage((prev) => Math.max(prev - 1, 1))
-          }
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
           disabled={currentPage === 1}
           className="px-3 py-1 border rounded text-xs disabled:opacity-50"
         >
@@ -487,11 +475,7 @@ function UserList() {
           </button>
         ))}
         <button
-          onClick={() =>
-            setCurrentPage((prev) =>
-              Math.min(prev + 1, totalPages)
-            )
-          }
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
           className="px-3 py-1 border rounded text-xs disabled:opacity-50"
         >
@@ -506,7 +490,6 @@ function UserList() {
         newUser={newUser}
         setNewUser={setNewUser}
         onSave={() => {
-          // Modal already created the user via API; refresh list here
           setShowAddModal(false);
           loadUsers();
         }}

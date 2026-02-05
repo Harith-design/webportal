@@ -87,9 +87,36 @@ function OrdersAdminPage() {
     localStorage.getItem("auth_token") ||
     sessionStorage.getItem("auth_token");
 
-  // ✅ helper: read role fast (like UserList.jsx)
-  const getStoredRole = () =>
-    localStorage.getItem("user_role") || sessionStorage.getItem("user_role");
+  // ✅ helper: normalize role text -> "admin" / "user"
+  const normalizeRole = (raw) => {
+    const s = String(raw || "").toLowerCase();
+    // IMPORTANT: support values like "Admin • Active"
+    if (s.includes("admin")) return "admin";
+    return "user";
+  };
+
+  // ✅ helper: read role fast (like UserList.jsx) BUT more reliable
+  const getStoredRole = () => {
+    // 1) try explicit stored role
+    const r1 =
+      localStorage.getItem("user_role") || sessionStorage.getItem("user_role");
+    if (r1) return normalizeRole(r1);
+
+    // 2) try role inside stored user model
+    const userStr = localStorage.getItem("user") || sessionStorage.getItem("user");
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr || "{}");
+        const rawRole =
+          u.role ?? u.Role ?? u.user_role ?? u.userRole ?? u.status ?? u.Status ?? "";
+        if (rawRole) return normalizeRole(rawRole);
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
+    return "";
+  };
 
   // ✅ ADMIN GUARD: customer cannot open this page by typing URL
   useEffect(() => {
@@ -100,7 +127,7 @@ function OrdersAdminPage() {
       return;
     }
 
-    if (role.toLowerCase() !== "admin") {
+    if (role !== "admin") {
       alert("You are not allowed to access this page.");
       navigate(-1);
       return;
@@ -130,7 +157,7 @@ function OrdersAdminPage() {
       }
 
       const token = getToken();
-      const role = getStoredRole();
+      const role = getStoredRole(); // ✅ now reliable
 
       try {
         setLoading(true);
@@ -139,7 +166,7 @@ function OrdersAdminPage() {
         // ✅ use apiUrl if available; fallback to localhost
         const base = apiUrl || "http://127.0.0.1:8000";
 
-        // ✅ include Authorization header if token exists (safe)
+        // ✅ include Authorization header if token exists
         const res = await axios.get(`${base}/api/sap/orders`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -148,9 +175,9 @@ function OrdersAdminPage() {
           let list = res.data.data;
 
           // ✅ IMPORTANT FIX:
-          // - Admin: see ALL orders (no filtering by cardcode)
-          // - Non-admin: keep old behavior (filter by company code)
-          if (!role || role.toLowerCase() !== "admin") {
+          // - Admin: see ALL orders (NO filtering by cardcode)
+          // - Non-admin: filter by company
+          if (role !== "admin") {
             list = list.filter((o) => o.customerCode === userModel.cardcode);
           }
 
@@ -165,7 +192,7 @@ function OrdersAdminPage() {
             currency: o.currency,
             status: o.status,
             docEntry: o.docEntry,
-            customerCode: o.customerCode, // keep (useful for modal/address)
+            customerCode: o.customerCode,
             download: o.download || "#",
           }));
 
@@ -189,9 +216,7 @@ function OrdersAdminPage() {
   const fetchBpAddresses = async (cardCode, token) => {
     try {
       const res = await axios.get(
-        `${apiUrl}/api/sap/business-partners/${encodeURIComponent(
-          cardCode
-        )}/addresses`,
+        `${apiUrl}/api/sap/business-partners/${encodeURIComponent(cardCode)}/addresses`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data?.status === "success") {
@@ -311,10 +336,7 @@ function OrdersAdminPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const indexOfLastOrder = currentPage * rowsPerPage;
   const indexOfFirstOrder = indexOfLastOrder - rowsPerPage;
-  const currentOrders = filteredOrders.slice(
-    indexOfFirstOrder,
-    indexOfLastOrder
-  );
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / rowsPerPage));
 
   const renderStatus = (status) => {
@@ -360,9 +382,7 @@ function OrdersAdminPage() {
       {/* Heading section */}
       <div
         className="pt-4 px-4 mb-2 border border-gray-300 rounded-lg"
-        style={{
-          background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)",
-        }}
+        style={{ background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)" }}
       >
         {/* Filters */}
         <div className="flex flex-row items-end justify-between gap-4 mb-4">
@@ -478,7 +498,6 @@ function OrdersAdminPage() {
                       />
                       {tempDueStart && (
                         <button
-                          // ✅ FIX: was tempDueStart(null)
                           onClick={() => setTempDueStart(null)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
                           type="button"
@@ -499,7 +518,6 @@ function OrdersAdminPage() {
                       />
                       {tempDueEnd && (
                         <button
-                          // ✅ FIX: was tempDueEnd(null)
                           onClick={() => setTempDueEnd(null)}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
                           type="button"
@@ -523,7 +541,6 @@ function OrdersAdminPage() {
                           setOrderEnd(tempOrderEnd);
                           setDueStart(tempDueStart);
                           setDueEnd(tempDueEnd);
-                          // (optional) close the filter popup after apply:
                           setIsFilterOpen(false);
                         }}
                         className="px-3 py-2 rounded-lg bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
@@ -634,9 +651,7 @@ function OrdersAdminPage() {
         ))}
 
         <button
-          onClick={() =>
-            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-          }
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
           disabled={currentPage === totalPages}
           className="px-3 py-1 border rounded text-xs disabled:opacity-50"
         >
@@ -680,9 +695,7 @@ function OrdersAdminPage() {
 
                 <div className="flex flex-col gap-1">
                   <span className="font-semibold">Billed to</span>
-                  <span className="text-gray-600">
-                    {selectedOrder.customer}
-                  </span>
+                  <span className="text-gray-600">{selectedOrder.customer}</span>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -763,20 +776,15 @@ function OrdersAdminPage() {
                     <tbody>
                       {modalItems.map((item) => (
                         <tr key={item.no}>
-                          <td className="px-2 py-1 border text-center">
-                            {item.no}
-                          </td>
+                          <td className="px-2 py-1 border text-center">{item.no}</td>
                           <td className="px-2 py-1 border">{item.itemCode}</td>
                           <td className="px-2 py-1 border">{item.itemName}</td>
-                          <td className="px-2 py-1 border text-center">
-                            {item.qty}
-                          </td>
+                          <td className="px-2 py-1 border text-center">{item.qty}</td>
                           <td className="px-2 py-1 border text-center">
                             {selectedOrder.currency} {item.price.toFixed(2)}
                           </td>
                           <td className="px-2 py-1 border text-center">
-                            {selectedOrder.currency}{" "}
-                            {(item.qty * item.price).toFixed(2)}
+                            {selectedOrder.currency} {(item.qty * item.price).toFixed(2)}
                           </td>
                         </tr>
                       ))}
