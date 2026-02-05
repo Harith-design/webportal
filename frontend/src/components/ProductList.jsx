@@ -95,7 +95,12 @@ function ProductCards() {
               key={i}
               className="p-5 font-semibold text-lg rounded-sm h-60 shadow-md transition flex items-center text-center justify-center cursor-pointer hover:shadow-xl transform transition-all duration-300 ease-out hover:-translate-y-1"
               onClick={() => navigate(`/products/${p.id}`)}
-              style={{background: "radial-gradient(circle at 20% 20%, #f2baba 0%, #edf1f3 50%, #eaf4ff 40%)",
+              style={{background: `
+              radial-gradient(circle at 80% 20%, #ff9ff3 0%, transparent 50%),
+              radial-gradient(circle at 20% 80%, #ffffff 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, #fff200 0%, transparent 50%),
+              linear-gradient(100deg, #ffffff, #ffb347)
+`,
         }}
             >
               {p.name}
