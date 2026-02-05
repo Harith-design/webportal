@@ -1,16 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Minus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Minus} from "lucide-react";
 import { useCart } from "../context/CartContext";
 import {
   getCatalogOptions,
   resolveCatalogItem,
   getSapItemByCode, // ✅ W2: fetch weight from SAP by itemCode
 } from "../services/api"; // ✅ MSSQL-only (CatalogController) + SAP single item
+import { Link } from "react-router-dom";
+import { getCatalogProducts } from "../services/api";
+import { Listbox } from "@headlessui/react";
 
 function ProductDetails() {
   const { id } = useParams();
   const { addToCart } = useCart();
+  const [productList, setProductList] = useState([]);
+  const [search, setSearch] = useState("");
+
+  // logic filter for product list
+  const filteredProducts = productList.filter((p) =>
+  p.name.toLowerCase().includes(search.toLowerCase())
+);
+
+
 
   const product = useMemo(() => {
     const baseUrl = "http://localhost:8000/uploads/products";
@@ -68,6 +80,8 @@ function ProductDetails() {
   // selected specs
   const [sku, setSKU] = useState(""); // will display selected variant sku/itemcode
   const [width, setWidth] = useState(""); // ✅ Step 6: start empty
+  const [topWidth, setTopWidth] = useState(""); // ✅ Step 6: start empty
+  const [baseWidth, setBaseWidth] = useState(""); // ✅ Step 6: start empty
   const [length, setLength] = useState(""); // ✅ Step 6: start empty
   const [thickness, setThickness] = useState(""); // ✅ Step 6: start empty
 
@@ -135,6 +149,11 @@ function ProductDetails() {
     }
     return "";
   };
+
+  // toggle state for the product list sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
 
   const isAddDisabled = Boolean(validateBeforeAdd()) || loadingResolve;
 
@@ -228,7 +247,7 @@ function ProductDetails() {
       // NOTE: do not touch weight here (let user keep if they typed)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, length, thickness]);
+  }, [width, topWidth, baseWidth, length, thickness]);
 
   // ---------------------------------------------------------
   // STEP B: Resolve specs -> exact ItemCode from MSSQL
@@ -264,6 +283,8 @@ function ProductDetails() {
         const params = {
           compoundCode: id,
           width: width ? Number(width) : undefined,
+          topWidth: topWidth ? Number(topWidth) : undefined,
+          baseWidth: baseWidth ? Number(baseWidth) : undefined,
           thickness: thickness ? Number(thickness) : undefined,
           length: length ? Number(length) : undefined,
         };
@@ -352,6 +373,8 @@ function ProductDetails() {
   }, [
     id,
     width,
+    topWidth,
+    baseWidth,
     thickness,
     length,
     options.widths.length,
@@ -465,6 +488,8 @@ function ProductDetails() {
       itemCode: chosenItemCode,
       compoundSku: chosenSku,
       width: row.U_Width,
+      topWidth: row.U_TopWidth,
+      baseWidth: row.U_BaseWidth,
       thickness: row.U_Thickness,
       length: row.U_Length,
     });
@@ -482,6 +507,8 @@ function ProductDetails() {
       itemCode,
       sku: sku || itemCode || "",
       width,
+      topWidth,
+      baseWidth,
       length,
       thickness,
       quantity: Number(qty),
@@ -494,73 +521,38 @@ function ProductDetails() {
     setValidationError("");
   };
 
+  // fetch products for product list
+  useEffect(() => {
+  let alive = true;
+
+  const fetchProducts = async () => {
+    try {
+      const res = await getCatalogProducts();
+
+      const mapped = Array.isArray(res)
+        ? res
+            .map((r) => ({
+              id: r?.compoundCode ?? "",
+              name: r?.compoundCode ?? "",
+              image: `http://localhost:8000/uploads/products/${r?.compoundCode}.jpg`,
+            }))
+            .filter((p) => p.id)
+        : [];
+
+      if (alive) setProductList(mapped);
+    } catch {
+      if (alive) setProductList([]);
+    }
+  };
+
+  fetchProducts();
+  return () => (alive = false);
+}, []);
+
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* Image */}
-          <div className="flex items-center justify-center">
-            <div className="flex flex-col items-center">
-              {/* Main Image */}
-              <div className="w-full flex justify-center mb-4">
-                <img
-                  src={mainImage}
-                  alt={product.name}
-                  className="rounded-sm shadow-md object-contain max-h-[500px] w-full"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "http://localhost:8000/uploads/products/placeholder.png";
-                  }}
-                />
-              </div>
-
-              {/* Thumbnail Gallery */}
-              <div className="relative flex justify-center overflow-x-auto space-x-2 w-full px-2">
-                {product.gallery.map((img, i) => (
-                  <div
-                    key={i}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-pointer border-2 ${
-                      mainImage === img ? "border-black" : "border-transparent"
-                    }`}
-                    onClick={() => setMainImage(img)}
-                  >
-                    <img
-                      src={img}
-                      alt={`Thumbnail ${i + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "http://localhost:8000/uploads/products/placeholder.png";
-                      }}
-                    />
-                    {/* Left Arrow */}
-                    <button
-                      onClick={handlePrevImage}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-
-                    {/* Right Arrow */}
-                    <button
-                      onClick={handleNextImage}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition"
-                    >
-                      <ChevronRight size={24} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* <img
-              src={product.image}
-              alt={product.name}
-              className="rounded-xl shadow-md object-contain max-h-[500px]"
-            /> */}
-            
-          </div>
-
+      <div className="max-w-6xl mx-auto">
           <div className="space-y-6">
             <h1 className="text-3xl font-bold">{product.name}</h1>
 
@@ -580,11 +572,15 @@ function ProductDetails() {
                         const code = String(m?.U_ItemCode || "");
                         const compoundSku = String(m?.U_CompoundSKU || "");
                         const w = m?.U_Width;
+                        const tw = m?.U_TopWidth;
+                        const bw = m?.U_BaseWidth;
                         const t = m?.U_Thickness;
                         const l = m?.U_Length;
 
                         const labelParts = [];
                         if (w !== null && w !== undefined) labelParts.push(`W ${formatNum(w)}`);
+                        if (tw !== null && tw !== undefined) labelParts.push(`TW ${formatNum(tw)}`);
+                        if (bw !== null && bw !== undefined) labelParts.push(`BW ${formatNum(bw)}`);
                         if (t !== null && t !== undefined) labelParts.push(`T ${formatNum(t)}`);
                         if (l !== null && l !== undefined) labelParts.push(`L ${formatNum(l)}`);
 
@@ -607,6 +603,8 @@ function ProductDetails() {
                 </select>
               </div>
 
+                  
+              {/* Width */}
               <div>
                 <label className="block text-gray-500 mb-1">Width</label>
                 <select
@@ -615,7 +613,7 @@ function ProductDetails() {
                     setWidth(e.target.value);
                     setValidationError("");
                   }}
-                  className="w-full border rounded-xl px-3 py-2"
+                  className="w-full border rounded-xl px-3 py-2 max-h-40 overflow-y-auto"
                 >
                   <option value="">{loadingOptions ? "Loading..." : "-- Select Width --"}</option>
 
@@ -627,6 +625,49 @@ function ProductDetails() {
                 </select>
               </div>
 
+              {/* Top Width */}
+              <div>
+                <label className="block text-gray-500 mb-1">Top Width</label>
+                <select
+                  value={topWidth}
+                  onChange={(e) => {
+                    setTopWidth(e.target.value);
+                    setValidationError("");
+                  }}
+                  className="w-full border rounded-xl px-3 py-2"
+                >
+                  <option value="">{loadingOptions ? "Loading..." : "-- Select Top Width --"}</option>
+
+                  {options.topWidths.map((tw, i) => (
+                    <option key={i} value={String(tw)}>
+                      {formatNum(tw)} mm
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Base Width */}
+              <div>
+                <label className="block text-gray-500 mb-1">Base Width</label>
+                <select
+                  value={baseWidth}
+                  onChange={(e) => {
+                    setBaseWidth(e.target.value);
+                    setValidationError("");
+                  }}
+                  className="w-full border rounded-xl px-3 py-2"
+                >
+                  <option value="">{loadingOptions ? "Loading..." : "-- Select Base Width --"}</option>
+
+                  {options.baseWidths.map((bw, i) => (
+                    <option key={i} value={String(bw)}>
+                      {formatNum(bw)} mm
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Length */}
               <div>
                 <label className="block text-gray-500 mb-1">Length</label>
                 <select
@@ -647,6 +688,7 @@ function ProductDetails() {
                 </select>
               </div>
 
+              {/* Thickness */}
               <div>
                 <label className="block text-gray-500 mb-1">Thickness</label>
                 <select
@@ -673,6 +715,7 @@ function ProductDetails() {
                 </select>
               </div>
 
+              {/* Quantity */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-500 mb-1">Quantity</label>
@@ -712,6 +755,7 @@ function ProductDetails() {
                   </div>
                 </div>
 
+                {/* Weight */}
                 <div>
                   <label className="block text-gray-500 mb-1">Weight (kg)</label>
                   <input
@@ -726,6 +770,7 @@ function ProductDetails() {
                 </div>
               </div>
 
+              {/* Total Weight */}
               <div>
                 <label className="block text-gray-500 mb-1">Total Weight (kg)</label>
                 <input
@@ -748,7 +793,6 @@ function ProductDetails() {
                 <i class="fi fi-rs-shopping-cart-add"></i>
                 Add to Cart
               </button>
-            </div>
           </div>
         </div>
       </div>

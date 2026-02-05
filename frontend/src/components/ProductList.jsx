@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { getCatalogProducts } from "../services/api"; // ✅ FIXED PATH
+import { Link } from "react-router-dom";
+import { ShoppingCartIcon } from "lucide-react";
 
 function ProductCards() {
   const [search, setSearch] = useState("");
@@ -65,7 +67,10 @@ function ProductCards() {
   return (
     <div className="py-8 px-6 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        <div className="relative mb-6 flex justify-end sticky top-20 z-50">
+        <div className={`
+    sticky top-20 z-50 mb-6 flex justify-end
+    ${scrolled ? "bg-white/20 backdrop-blur-2xl shadow-lg" : "bg-transparent"}
+  `}>
           <Search
             size={16}
             className="absolute right-3 z-10 top-1/2 -translate-y-1/2 text-gray-500"
@@ -75,10 +80,7 @@ function ProductCards() {
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={`
-              w-full max-w-md px-2 py-2 backdrop-blur-md border rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm shadow-sm
-              ${scrolled ? "backdrop-blur-md bg-white/50 border-white/50" : "bg-white/90"}
-            `}
+            className= "w-full max-w-md px-2 py-2 border bg-white/70 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm shadow-sm"
           />
         </div>
 
@@ -91,23 +93,18 @@ function ProductCards() {
           {filteredProducts.map((p, i) => (
             <div
               key={i}
-              className="bg-transparent rounded-sm h-60 shadow-md transition flex items-center text-center justify-center cursor-pointer hover:shadow-xl transform transition-all duration-300 ease-out hover:-translate-y-1"
+              className="p-5 font-semibold text-lg rounded-sm h-60 shadow-md transition flex items-center text-center justify-center cursor-pointer hover:shadow-xl transform transition-all duration-300 ease-out hover:-translate-y-1"
               onClick={() => navigate(`/products/${p.id}`)}
+              style={{background: "radial-gradient(circle at 20% 20%, #f2baba 0%, #edf1f3 50%, #eaf4ff 40%)",
+        }}
             >
-              <img
-                src={p.image}
-                alt={p.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "http://localhost:8000/uploads/products/placeholder.png"; // fallback image
-                  e.target.className = "w-full h-full object-cover"; // ensures fallback fills card
-                }}
-              />
-              {/* Overlay for product name */}
-              <div className="absolute bottom-0 left-0 w-full text-black text-left p-2 font-semibold text-xs" style={{background: "radial-gradient(circle at 10% 60%, rgba(255,238,238,0.5), rgba(168,197,254,0.5))",}}>
-                {p.name}
-              </div>
+              {p.name}
+                {/* Add to cart */}
+                <div className="absolute bottom-0 left-0 w-full flex p-2">
+                  <div className="flex w-full justify-center items-center gap-2 px-4 py-2 text-black border rounded-lg border-black  text-xs hover:bg-black hover:text-white transition font-semibold">
+                    <ShoppingCartIcon size={16}/> Add to Cart
+                  </div>
+                </div>
             </div>
           ))}
         </div>
