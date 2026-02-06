@@ -7,6 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
 import { formatDate } from "../utils/formatDate";
 import { useParams, useLocation } from "react-router-dom";
+import Loader from "../components/Loader";
 
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -64,6 +65,29 @@ function OrdersPage() {
     setDueEnd(null);
     setSearchQuery("");
   };
+
+  // query param highlight with the order's docentry
+  const location = useLocation();
+  const [highlightDocEntry, setHighlightDocEntry] = useState(null);
+
+  // initialize from URL 
+  useEffect(() => {
+  const searchParams = new URLSearchParams(location.search);
+  const docEntry = searchParams.get("highlight");
+
+  if (docEntry) {
+    setHighlightDocEntry(docEntry);
+
+    // Remove highlight after 5 seconds
+    const timer = setTimeout(() => {
+      setHighlightDocEntry(null);
+    }, 4000);
+
+    return () => clearTimeout(timer); // cleanup
+  }
+}, [location.search]);
+
+
 
   // 🔹 Table container ref for dynamic rows
   const tableContainerRef = useRef(null);
@@ -260,13 +284,14 @@ useEffect(() => {
 
 
   const renderStatus = (status) => {
+    const base =
+    "inline-flex items-center gap-1 rounded-xl px-2 leading-none font-medium whitespace-nowrap";
+
     switch (status) {
       case "Open":
-        return <span className="inline-flex items-center rounded-xl  text-[#007edf] px-2 font-medium" style={{ background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)" }}><PackageOpen size={16} className="mr-1"/> {status}</span>;
+        return <span className={`${base} text-[#007edf]`} style={{ background: "radial-gradient(circle at 30% 70%, #b2faffff, #afc9ffff)" }}><PackageOpen size={16} className="mr-1"/> {status}</span>;
       case "Closed":
-        return <span className="inline-flex items-center rounded-xl  text-[#16aa3dff] px-2 font-medium" style={{ background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)" }}><Truck size={16} className="mr-1" />Delivered</span>;
-      case "In Transit":
-        return <span className="flex items-center text-orange-600"><Clock size={16} className="mr-1" /> {status}</span>;
+        return <span className={`${base} text-[#16aa3dff]`} style={{ background: "radial-gradient(circle at 20% 80%, #c9ffa4ff, #89fdbdff)" }}><Truck size={16} className="mr-1" />Delivered</span>;
       default:
         return status;
     }
@@ -312,8 +337,21 @@ useEffect(() => {
                 <ListFilter size={16} /> Filter
               </button>
               {isFilterOpen && (
-                <div className="absolute left-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-50 p-4">
-                  <div className="flex flex-col gap-2">
+                <div className="absolute left-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-50">
+                   {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50 rounded-t-lg">
+                      <span className="text-xs font-semibold">Filters</span>
+
+                      <button
+                        onClick={() => setIsFilterOpen(false)}
+                        className="p-1 rounded-md hover:bg-gray-200 transition"
+                        type="button"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {/* Content */}
+                  <div className="flex flex-col gap-2 p-4">
                     <div className="flex items-center gap-1">
                       <ClipboardList className="w-4 h-4 text-gray-700 mr-1"/>
                       <label className="text-xs font-medium">Status</label>
@@ -422,7 +460,7 @@ useEffect(() => {
                     <div className="flex justify-end gap-1 mt-2 font-semibold">
                       <button
                         onClick={clearFilters}
-                        className="px-3 py-2 rounded-lg text-xs hover:bg-gray-200"
+                        className="px-3 py-2 rounded-lg text-xs hover:bg-black hover:text-white bg-gray-100"
                       >
                         Clear Filters
                       </button>
@@ -435,7 +473,7 @@ useEffect(() => {
                           setDueEnd(tempDueEnd);
                           }
                           }
-                        className="px-3 py-2 rounded-lg bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                        className="px-3 py-2 rounded-lg bg-black text-white rounded text-xs hover:bg-gray-100 hover:text-black"
                       >
                         Apply
                       </button>
@@ -449,8 +487,8 @@ useEffect(() => {
           {/* Add Order */}
           <div className="flex justify-end">
             <Link 
-            to="/orderform"
-            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black text-white text-xs hover:bg-blue-700 transition font-semibold">
+            to="/products"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black text-white text-xs hover:bg-gray-100 hover:text-black transition font-semibold">
               <PackagePlus size={16}/> New Order
             </Link>
           </div>
@@ -476,7 +514,11 @@ useEffect(() => {
           <tbody className="text-xs">
             {currentOrders.length > 0 ? (
               currentOrders.map((order) => (
-                <tr key={order.id} className="even:bg-gray-50">
+                <tr key={order.id} className={`even:bg-gray-50 ${
+                      highlightDocEntry && highlightDocEntry.toString() === order.docEntry.toString()
+                        ? "bg-yellow-100 even:bg-yellow-100 animate-pulse"
+                        : ""
+                    }`}>
                   <td className="px-4 py-2 font-semibold">
                     <button
                     onClick={async () => {
@@ -533,7 +575,7 @@ useEffect(() => {
                   <td className="px-4 py-2">{formatDate(order.dueDate)}</td>
                   <td className="px-4 py-2">{Number(order.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   <td className="text-center px-4 py-2">{order.currency}</td>
-                  <td className="px-4 py-2 justify-center">{renderStatus(order.status)}</td>
+                  <td className="px-4 py-2 items-center justify-center">{renderStatus(order.status)}</td>
                   <td className="px-4 py-2 flex justify-center">
                     <a href={order.download} target="_blank" rel="noopener noreferrer">
                       <img
@@ -548,7 +590,16 @@ useEffect(() => {
             ) : (
               <tr>
                 <td colSpan="9" className="text-center py-4 text-gray-500">
-                  {loading ? "Loading orders..." : error || "No orders found"}
+                  {loading ? (
+                    <div className="flex justify-center items-center">
+                      {/* Replace with your loader component */}
+                      <Loader imageSrc="/loader.png" size={60} />
+                    </div>
+                  ) : error ? (
+                    error
+                  ) : (
+                    "No orders found"
+                  )}
                 </td>
               </tr>
             )}
@@ -570,7 +621,7 @@ useEffect(() => {
           <button
             key={i + 1}
             onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-blue-500 text-white" : ""}`}
+            className={`px-3 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-black text-white" : ""}`}
           >
             {i + 1}
           </button>

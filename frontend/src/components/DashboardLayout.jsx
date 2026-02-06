@@ -71,7 +71,7 @@ function DashboardLayout() {
   // Page titles
   const pageTitles = {
     "/dashboardpage": "Dashboard",
-    "/orders": "Orders",
+    "/orders": "Order History",
     "/orders_admin": "Orders",
     "/orders/:id": "Order #{id}",
     "/orderform": "Place an Order",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Receipt, FileCheck, Clock, Search, Calendar, X, ListFilter, ClipboardList, CalendarArrowUp, CalendarClock} from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
@@ -94,6 +94,28 @@ function InvoicesPage() {
     setDueEnd(null);
     setSearchQuery("");
   };
+
+  // query param highlight with the order's docentry
+  const location = useLocation();
+  const [highlightDocEntry, setHighlightDocEntry] = useState(null);
+
+   // initialize from URL 
+    useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const docEntry = searchParams.get("highlight");
+  
+    if (docEntry) {
+      setHighlightDocEntry(docEntry);
+  
+      // Remove highlight after 5 seconds
+      const timer = setTimeout(() => {
+        setHighlightDocEntry(null);
+      }, 4000);
+  
+      return () => clearTimeout(timer); // cleanup
+    }
+  }, [location.search]);
+  
 
   // 🔹 Table container ref for dynamic rows
   const tableContainerRef = useRef(null);
@@ -391,10 +413,14 @@ function InvoicesPage() {
           <tbody className="text-xs">
             {currentInvoices.length > 0 ? (
               currentInvoices.map((inv) => (
-                <tr key={inv.id} className="even:bg-gray-50">
+                <tr key={inv.id} className={`even:bg-gray-50 ${
+                      highlightDocEntry && highlightDocEntry.toString() === inv.docEntry.toString()
+                        ? "bg-yellow-100 even:bg-yellow-100 animate-pulse"
+                        : ""
+                    }`}>
                   <td className="px-4 py-2 text-blue-600 hover:underline">
                     <Link
-                      to={`/invoices/${inv.invoiceNo}`}
+                      to={`/invoices?highlight=${inv.docEntry}`}
                       state={{
                         invoice: {
                           id: inv.invoiceNo,

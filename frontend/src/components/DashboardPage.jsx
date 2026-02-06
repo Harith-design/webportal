@@ -17,6 +17,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import StatusBadge from "../components/StatusBadge";
+import Loader from "../components/Loader";
 // import { formatDate } from "../utils/formatDate";
 
 function DashboardPage() {
@@ -119,7 +121,7 @@ function DashboardPage() {
             const sorted = [...formatted].sort(
               (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
             );
-            setRecentOrders(sorted.slice(0, 4));
+            setRecentOrders(sorted.slice(0, 5));
             setPurchasesData(buildMonthlySeries(formatted));
   
             // Due Soon (Open orders due within window)
@@ -271,42 +273,53 @@ function DashboardPage() {
         {/* Right side - Chart (from orders) */}
 <div className="bg-white p-4 rounded-md border overflow-hidden h-full flex flex-col">
   <h3 className="text-sm mb-4">Your Purchases in the Last 12 Months</h3>
-  <div className="flex-1 min-h-52">
-  <ResponsiveContainer width="100%" height="100%">
-    <LineChart
-      data={purchasesData}
-      margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-    >
-      {/* <CartesianGrid strokeDasharray="3 3" /> */}
-      <XAxis 
-        dataKey="month" 
-        tick={{ fontSize: 12 }}
-        axisLine={false} 
-        tickLine={false}/>
-      <YAxis 
-        tick={{ fontSize: 12 }} 
-        axisLine={false} 
-        tickLine={false}/>
-      <Tooltip
-        formatter={(value) =>
-                    new Intl.NumberFormat("en-MY", {
-                      style: "currency",
-                      currency: "MYR",
-                    }).format(Number(value))
-                  }
-                  contentStyle={{ fontSize: "14px" }}
-      />
-      <Line
-        type="monotone"
-        dataKey="amount"
-        stroke="#ff2268"
-        strokeWidth={2}
-        dot={{ r: 4, fill: "#ffeff2" }}
-        activeDot={{ r: 6 }}
-      />
-    </LineChart>
-  </ResponsiveContainer>
-</div>
+  {loading ? (
+    /* centered loader like other cards */
+    <div className="flex-1 flex items-center justify-center">
+      <Loader imageSrc="/loader.png" size={60} />
+    </div>
+  ) : (
+    <div className="flex-1 min-h-52">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={purchasesData}
+          margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+        >
+          <XAxis
+            dataKey="month"
+            tick={{ fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          <YAxis
+            tick={{ fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+
+          <Tooltip
+            formatter={(value) =>
+              new Intl.NumberFormat("en-MY", {
+                style: "currency",
+                currency: "MYR",
+              }).format(Number(value))
+            }
+            contentStyle={{ fontSize: "14px" }}
+          />
+
+          <Line
+            type="monotone"
+            dataKey="amount"
+            stroke="#ff2268"
+            strokeWidth={2}
+            dot={{ r: 4, fill: "#ffeff2" }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )}
 
 
 </div>
@@ -319,42 +332,62 @@ function DashboardPage() {
         <div className="bg-white p-6 rounded-md overflow-x-auto border">
           <h3 className="text-lg mb-4">Recent Orders</h3>
           <div className="min-w-[400px]">
-            <table className="table-auto w-full border-collapse">
-              <thead>
-                <tr className="text-left text-xs text-gray-500">
-                  <th className="px-4 py-2 font-normal">Sales Number</th>
-                  <th className="px-4 py-2 font-normal">Order Date</th>
-                  <th className="px-4 py-2 font-normal">Status</th>
-                </tr>
-              </thead>
-                <tbody className="text-xs">
-                  {recentOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td className="px-4 py-2">
-                      <Link
-                        to={`/orders/${order.id}?de=${order.docEntry}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {order.id}
-                      </Link>
-                      </td>
-                      <td className="px-4 py-2">{new Date(order.orderDate).toLocaleDateString("en-GB")}</td>
-                      <td className="px-4 py-2 flex items-center gap-2">
-                        {order.status.toLowerCase() === "delivered" ? (
-                          <span className="text-green-600 flex items-center gap-1">
-                            <Truck size={16} /> {order.status}
-                          </span>
-                        ) : (
-                          <span className="text-blue-600 flex items-center gap-1">
-                            <PackageOpen size={16} /> {order.status}
-                          </span>
-                        )}
-                      </td>
+            {loading ? (
+              /* Center loader inside the card */
+              <div className="flex-1 flex items-center justify-center">
+                <Loader imageSrc="/loader.png" size={60} />
+              </div>
+            ) : (
+              <div className="min-w-[400px]">
+                <table className="table-auto w-full border-collapse">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500">
+                      <th className="px-4 py-2 font-normal">Sales Number</th>
+                      <th className="px-4 py-2 font-normal">Order Date</th>
+                      <th className="px-4 py-2 font-normal">Status</th>
                     </tr>
-                  ))}
-                </tbody>
+                  </thead>
 
-            </table>
+                  <tbody className="text-xs">
+                    {recentOrders.length ? (
+                      recentOrders.map((order) => {
+                        const statusText =
+                          order.status === "Open" || order.DocumentStatus === "bost_Open"
+                            ? "Open"
+                            : order.status || "Closed";
+
+                        return (
+                          <tr key={order.id}>
+                            <td className="px-4 py-2">
+                              <Link
+                                to={`/orders?highlight=${order.docEntry}`}
+                                className="text-black font-semibold hover:underline"
+                              >
+                                {order.id}
+                              </Link>
+                            </td>
+
+                            <td className="px-4 py-2">
+                              {new Date(order.orderDate).toLocaleDateString("en-GB")}
+                            </td>
+
+                            <td className="px-4 py-2 flex items-center gap-2">
+                              <StatusBadge status={statusText} />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="text-center py-6 text-gray-500">
+                          No recent orders
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -362,47 +395,57 @@ function DashboardPage() {
         <div className="bg-white p-6 rounded-md border overflow-x-auto">
           <h3 className="text-lg mb-4">Outstanding Payments</h3>
           <div className="min-w-[400px]">
-            <table className="table-auto w-full border-collapse">
-              <thead>
-                <tr className="text-left text-xs text-gray-500">
-                  <th className="px-4 py-2 font-normal">Invoice Number</th>
-                  <th className="px-4 py-2 font-normal">Due Date</th>
-                  <th className="px-4 py-2 font-normal">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="text-xs">
-                {outstanding.length ? (
-                outstanding.map((inv) => (
-                  <tr key={inv.id}>
-                    <td className="px-4 py-2">
-                      <Link
-                        to={`/invoices/${inv.id}?de=${inv.docEntry}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {inv.id}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2">
-                      {inv.dueDate
-                        ? new Date(
-                            inv.dueDate.replace(/-/g, "/")
-                          ).toLocaleDateString("en-GB")
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {fmtMYR(inv.total, inv.currency)}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-4 py-2 text-gray-500">
-                    {loading ? "Loading…" : "No outstanding invoices"}
-                  </td>
-                </tr>
-              )}
-              </tbody>
-            </table>
+            {loading ? (
+    /* same centered loader */
+    <div className="flex-1 flex items-center justify-center">
+      <Loader imageSrc="/loader.png" size={60} />
+    </div>
+  ) : (
+    <div className="min-w-[400px]">
+      <table className="table-auto w-full border-collapse">
+        <thead>
+          <tr className="text-left text-xs text-gray-500">
+            <th className="px-4 py-2 font-normal">Invoice Number</th>
+            <th className="px-4 py-2 font-normal">Due Date</th>
+            <th className="px-4 py-2 font-normal">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody className="text-xs">
+          {outstanding.length ? (
+            outstanding.map((inv) => (
+              <tr key={inv.id}>
+                <td className="px-4 py-2">
+                  <Link
+                    to={`/invoices?highlight=${inv.docEntry}`}
+                    className="text-black font-semibold hover:underline"
+                  >
+                    {inv.id}
+                  </Link>
+                </td>
+
+                <td className="px-4 py-2">
+                  {inv.dueDate
+                    ? new Date(inv.dueDate.replace(/-/g, "/")).toLocaleDateString("en-GB")
+                    : "-"}
+                </td>
+
+                <td className="px-4 py-2">
+                  {fmtMYR(inv.total, inv.currency)}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={3} className="text-center py-6 text-gray-500">
+                No outstanding invoices
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )}
           </div>
         </div>
       </div>

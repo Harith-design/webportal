@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { getCatalogProducts } from "../services/api"; // ✅ FIXED PATH
 import { Link } from "react-router-dom";
 import { ShoppingCartIcon } from "lucide-react";
+import Loader from "../components/Loader";
 
 function ProductCards() {
   const [search, setSearch] = useState("");
@@ -85,11 +86,15 @@ function ProductCards() {
         </div>
 
         {loading && (
-          <div className="text-sm text-gray-500 mb-4">Loading products...</div>
-        )}
+            <Loader
+              imageSrc="/loader.png"
+              size={70}
+              className="h-screen"
+            />
+          )}
         {error && <div className="text-sm text-red-600 mb-4">{error}</div>}
 
-        <div className="grid grid-cols-4 gap-4 justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-between">
           {filteredProducts.map((p, i) => (
             <div
               key={i}
