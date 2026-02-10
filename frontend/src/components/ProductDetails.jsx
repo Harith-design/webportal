@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Minus} from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import {
   getCatalogOptions,
   resolveCatalogItem,
   getSapItemByCode, // ✅ W2: fetch weight from SAP by itemCode
+  getCatalogProducts,
 } from "../services/api"; // ✅ MSSQL-only (CatalogController) + SAP single item
 import { Link } from "react-router-dom";
-import { getCatalogProducts } from "../services/api";
 import { Listbox } from "@headlessui/react";
 
 function ProductDetails() {
@@ -19,19 +19,17 @@ function ProductDetails() {
 
   // logic filter for product list
   const filteredProducts = productList.filter((p) =>
-  p.name.toLowerCase().includes(search.toLowerCase())
-);
-
-
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   const product = useMemo(() => {
     const baseUrl = "http://localhost:8000/uploads/products";
     const galleryImages = [
-    `${baseUrl}/${id}.jpg`,
-    `${baseUrl}/${id}-1.jpg`,
-    `${baseUrl}/${id}-2.jpg`,
-    `${baseUrl}/${id}-3.jpg`,
-  ];
+      `${baseUrl}/${id}.jpg`,
+      `${baseUrl}/${id}-1.jpg`,
+      `${baseUrl}/${id}-2.jpg`,
+      `${baseUrl}/${id}-3.jpg`,
+    ];
     return {
       name: id,
       image: `${baseUrl}/${id}.jpg`, // main image
@@ -54,10 +52,10 @@ function ProductDetails() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-  // whenever product changes, reset index
-  setCurrentIndex(0);
-  setMainImage(product.image);
-}, [product]);
+    // whenever product changes, reset index
+    setCurrentIndex(0);
+    setMainImage(product.image);
+  }, [product]);
 
   // navigation handlers (image)
   const handlePrevImage = () => {
@@ -75,7 +73,6 @@ function ProductDetails() {
       return newIndex;
     });
   };
-
 
   // selected specs
   const [sku, setSKU] = useState(""); // will display selected variant sku/itemcode
@@ -154,7 +151,6 @@ function ProductDetails() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-
   const isAddDisabled = Boolean(validateBeforeAdd()) || loadingResolve;
 
   // ---------------------------------------------------------
@@ -179,6 +175,8 @@ function ProductDetails() {
 
         // ✅ Step 6: do NOT preset defaults; reset selects to empty
         setWidth("");
+        setTopWidth(""); // ✅ FIX: reset topWidth
+        setBaseWidth(""); // ✅ FIX: reset baseWidth
         setLength("");
         setThickness("");
 
@@ -273,7 +271,10 @@ function ProductDetails() {
         // ✅ Step 6: require selection before resolving
         if (options.widths.length > 0 && (!width || String(width).trim() === ""))
           return;
-        if (options.lengths.length > 0 && (!length || String(length).trim() === ""))
+        if (
+          options.lengths.length > 0 &&
+          (!length || String(length).trim() === "")
+        )
           return;
 
         setLoadingResolve(true);
@@ -290,7 +291,11 @@ function ProductDetails() {
         };
 
         Object.keys(params).forEach((k) => {
-          if (params[k] === undefined || params[k] === null || params[k] === "") {
+          if (
+            params[k] === undefined ||
+            params[k] === null ||
+            params[k] === ""
+          ) {
             delete params[k];
           }
         });
@@ -460,7 +465,9 @@ function ProductDetails() {
     }
 
     // value is the selected itemCode
-    const row = variantMatches.find((m) => String(m?.U_ItemCode) === String(value));
+    const row = variantMatches.find(
+      (m) => String(m?.U_ItemCode) === String(value)
+    );
 
     if (!row) {
       setSKU(value);
@@ -475,8 +482,14 @@ function ProductDetails() {
     setItemCode(chosenItemCode);
     setSKU(chosenSku);
 
-    if (row.U_Width !== null && row.U_Width !== undefined) setWidth(String(row.U_Width));
-    if (row.U_Length !== null && row.U_Length !== undefined) setLength(String(row.U_Length));
+    if (row.U_Width !== null && row.U_Width !== undefined)
+      setWidth(String(row.U_Width));
+    if (row.U_TopWidth !== null && row.U_TopWidth !== undefined)
+      setTopWidth(String(row.U_TopWidth));
+    if (row.U_BaseWidth !== null && row.U_BaseWidth !== undefined)
+      setBaseWidth(String(row.U_BaseWidth));
+    if (row.U_Length !== null && row.U_Length !== undefined)
+      setLength(String(row.U_Length));
     if (row.U_Thickness !== null && row.U_Thickness !== undefined)
       setThickness(String(row.U_Thickness));
 
@@ -523,276 +536,302 @@ function ProductDetails() {
 
   // fetch products for product list
   useEffect(() => {
-  let alive = true;
+    let alive = true;
 
-  const fetchProducts = async () => {
-    try {
-      const res = await getCatalogProducts();
+    const fetchProducts = async () => {
+      try {
+        const res = await getCatalogProducts();
 
-      const mapped = Array.isArray(res)
-        ? res
-            .map((r) => ({
-              id: r?.compoundCode ?? "",
-              name: r?.compoundCode ?? "",
-              image: `http://localhost:8000/uploads/products/${r?.compoundCode}.jpg`,
-            }))
-            .filter((p) => p.id)
-        : [];
+        const mapped = Array.isArray(res)
+          ? res
+              .map((r) => ({
+                id: r?.compoundCode ?? "",
+                name: r?.compoundCode ?? "",
+                image: `http://localhost:8000/uploads/products/${r?.compoundCode}.jpg`,
+              }))
+              .filter((p) => p.id)
+          : [];
 
-      if (alive) setProductList(mapped);
-    } catch {
-      if (alive) setProductList([]);
-    }
-  };
+        if (alive) setProductList(mapped);
+      } catch {
+        if (alive) setProductList([]);
+      }
+    };
 
-  fetchProducts();
-  return () => (alive = false);
-}, []);
-
+    fetchProducts();
+    return () => (alive = false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
-          <div className="space-y-6">
-            <h1 className="text-3xl font-bold">{product.name}</h1>
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">{product.name}</h1>
 
-            <div className="space-y-4 text-xs">
-              {/* SKU No (acts as variant picker if multiple matches) */}
-              <div>
-                <label className="block text-gray-500 mb-1">SKU No</label>
-                <select
-                  value={variantMatches.length > 0 ? itemCode || "" : sku || ""}
-                  onChange={(e) => handleSkuChange(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  {variantMatches.length > 0 ? (
-                    <>
-                      <option value="">-- Select SKU --</option>
-                      {variantMatches.map((m, i) => {
-                        const code = String(m?.U_ItemCode || "");
-                        const compoundSku = String(m?.U_CompoundSKU || "");
-                        const w = m?.U_Width;
-                        const tw = m?.U_TopWidth;
-                        const bw = m?.U_BaseWidth;
-                        const t = m?.U_Thickness;
-                        const l = m?.U_Length;
+          <div className="space-y-4 text-xs">
+            {/* SKU No (acts as variant picker if multiple matches) */}
+            <div>
+              <label className="block text-gray-500 mb-1">SKU No</label>
+              <select
+                value={
+                  variantMatches.length > 0
+                    ? itemCode || ""
+                    : sku || itemCode || ""
+                }
+                onChange={(e) => handleSkuChange(e.target.value)}
+                className="w-full border rounded-xl px-3 py-2"
+                disabled={variantMatches.length === 0} // ✅ display-only unless multiple matches
+              >
+                {variantMatches.length > 0 ? (
+                  <>
+                    <option value="">-- Select SKU --</option>
+                    {variantMatches.map((m, i) => {
+                      const code = String(m?.U_ItemCode || "");
+                      const compoundSku = String(m?.U_CompoundSKU || "");
+                      const w = m?.U_Width;
+                      const tw = m?.U_TopWidth;
+                      const bw = m?.U_BaseWidth;
+                      const t = m?.U_Thickness;
+                      const l = m?.U_Length;
 
-                        const labelParts = [];
-                        if (w !== null && w !== undefined) labelParts.push(`W ${formatNum(w)}`);
-                        if (tw !== null && tw !== undefined) labelParts.push(`TW ${formatNum(tw)}`);
-                        if (bw !== null && bw !== undefined) labelParts.push(`BW ${formatNum(bw)}`);
-                        if (t !== null && t !== undefined) labelParts.push(`T ${formatNum(t)}`);
-                        if (l !== null && l !== undefined) labelParts.push(`L ${formatNum(l)}`);
+                      const labelParts = [];
+                      if (w !== null && w !== undefined)
+                        labelParts.push(`W ${formatNum(w)}`);
+                      if (tw !== null && tw !== undefined)
+                        labelParts.push(`TW ${formatNum(tw)}`);
+                      if (bw !== null && bw !== undefined)
+                        labelParts.push(`BW ${formatNum(bw)}`);
+                      if (t !== null && t !== undefined)
+                        labelParts.push(`T ${formatNum(t)}`);
+                      if (l !== null && l !== undefined)
+                        labelParts.push(`L ${formatNum(l)}`);
 
-                        const label = `${compoundSku ? compoundSku : code}${
-                          labelParts.length ? " — " + labelParts.join(", ") : ""
-                        }`;
+                      // ✅ include itemCode so label is never “blank/duplicate”
+                      const label = `${compoundSku || ""}${
+                        compoundSku ? " / " : ""
+                      }${code}${labelParts.length ? " — " + labelParts.join(", ") : ""}`;
 
-                        return (
-                          <option key={i} value={code}>
-                            {label}
-                          </option>
-                        );
-                      })}
-                    </>
-                  ) : (
-                    <>
-                      <option value="">{sku || itemCode || ""}</option>
-                    </>
-                  )}
-                </select>
-              </div>
-
-                  
-              {/* Width */}
-              <div>
-                <label className="block text-gray-500 mb-1">Width</label>
-                <select
-                  value={width}
-                  onChange={(e) => {
-                    setWidth(e.target.value);
-                    setValidationError("");
-                  }}
-                  className="w-full border rounded-xl px-3 py-2 max-h-40 overflow-y-auto"
-                >
-                  <option value="">{loadingOptions ? "Loading..." : "-- Select Width --"}</option>
-
-                  {options.widths.map((w, i) => (
-                    <option key={i} value={String(w)}>
-                      {formatNum(w)} mm
+                      return (
+                        <option key={i} value={code}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    {/* ✅ FIX: option value must match select value */}
+                    <option value={sku || itemCode || ""}>
+                      {sku || itemCode || ""}
                     </option>
-                  ))}
-                </select>
-              </div>
+                  </>
+                )}
+              </select>
+            </div>
 
-              {/* Top Width */}
-              <div>
-                <label className="block text-gray-500 mb-1">Top Width</label>
-                <select
-                  value={topWidth}
-                  onChange={(e) => {
-                    setTopWidth(e.target.value);
-                    setValidationError("");
-                  }}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  <option value="">{loadingOptions ? "Loading..." : "-- Select Top Width --"}</option>
+            {/* Width */}
+            <div>
+              <label className="block text-gray-500 mb-1">Width</label>
+              <select
+                value={width}
+                onChange={(e) => {
+                  setWidth(e.target.value);
+                  setValidationError("");
+                }}
+                className="w-full border rounded-xl px-3 py-2 max-h-40 overflow-y-auto"
+              >
+                <option value="">
+                  {loadingOptions ? "Loading..." : "-- Select Width --"}
+                </option>
 
-                  {options.topWidths.map((tw, i) => (
-                    <option key={i} value={String(tw)}>
-                      {formatNum(tw)} mm
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Base Width */}
-              <div>
-                <label className="block text-gray-500 mb-1">Base Width</label>
-                <select
-                  value={baseWidth}
-                  onChange={(e) => {
-                    setBaseWidth(e.target.value);
-                    setValidationError("");
-                  }}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  <option value="">{loadingOptions ? "Loading..." : "-- Select Base Width --"}</option>
-
-                  {options.baseWidths.map((bw, i) => (
-                    <option key={i} value={String(bw)}>
-                      {formatNum(bw)} mm
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Length */}
-              <div>
-                <label className="block text-gray-500 mb-1">Length</label>
-                <select
-                  value={length}
-                  onChange={(e) => {
-                    setLength(e.target.value);
-                    setValidationError("");
-                  }}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  <option value="">{loadingOptions ? "Loading..." : "-- Select Length --"}</option>
-
-                  {options.lengths.map((l, i) => (
-                    <option key={i} value={String(l)}>
-                      {formatNum(l)} mm
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Thickness */}
-              <div>
-                <label className="block text-gray-500 mb-1">Thickness</label>
-                <select
-                  value={thickness}
-                  onChange={(e) => {
-                    setThickness(e.target.value);
-                    setValidationError("");
-                  }}
-                  className="w-full border rounded-xl px-3 py-2"
-                >
-                  <option value="">
-                    {loadingOptions
-                      ? "Loading..."
-                      : options.thicknesses.length
-                      ? "-- Select Thickness --"
-                      : "No options"}
+                {options.widths.map((w, i) => (
+                  <option key={i} value={String(w)}>
+                    {formatNum(w)} mm
                   </option>
+                ))}
+              </select>
+            </div>
 
-                  {options.thicknesses.map((t, i) => (
-                    <option key={i} value={String(t)}>
-                      {formatNum(t)} mm
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Top Width */}
+            <div>
+              <label className="block text-gray-500 mb-1">Top Width</label>
+              <select
+                value={topWidth}
+                onChange={(e) => {
+                  setTopWidth(e.target.value);
+                  setValidationError("");
+                }}
+                className="w-full border rounded-xl px-3 py-2"
+              >
+                <option value="">
+                  {loadingOptions ? "Loading..." : "-- Select Top Width --"}
+                </option>
 
-              {/* Quantity */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-500 mb-1">Quantity</label>
-                  <div className="flex items-center border rounded-xl overflow-hidden shadow-sm w-full bg-white">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQty((q) => Math.max(1, q - 1));
-                        setValidationError("");
-                      }}
-                      className="px-3 py-2 bg-black"
-                    >
-                      <Minus size={16} className="text-white" />
-                    </button>
+                {options.topWidths.map((tw, i) => (
+                  <option key={i} value={String(tw)}>
+                    {formatNum(tw)} mm
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                    <input
-                      type="number"
-                      min="1"
-                      value={qty}
-                      onChange={(e) => {
-                        setQty(e.target.value);
-                        setValidationError("");
-                      }}
-                      className="w-full text-center outline-none"
-                    />
+            {/* Base Width */}
+            <div>
+              <label className="block text-gray-500 mb-1">Base Width</label>
+              <select
+                value={baseWidth}
+                onChange={(e) => {
+                  setBaseWidth(e.target.value);
+                  setValidationError("");
+                }}
+                className="w-full border rounded-xl px-3 py-2"
+              >
+                <option value="">
+                  {loadingOptions ? "Loading..." : "-- Select Base Width --"}
+                </option>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQty((q) => q + 1);
-                        setValidationError("");
-                      }}
-                      className="px-3 py-2 bg-black"
-                    >
-                      <Plus size={16} className="text-white" />
-                    </button>
-                  </div>
-                </div>
+                {options.baseWidths.map((bw, i) => (
+                  <option key={i} value={String(bw)}>
+                    {formatNum(bw)} mm
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                {/* Weight */}
-                <div>
-                  <label className="block text-gray-500 mb-1">Weight (kg)</label>
-                  <input
-                    type="number"
-                    value={weight}
-                    onChange={(e) => {
-                      setWeight(e.target.value);
+            {/* Length */}
+            <div>
+              <label className="block text-gray-500 mb-1">Length</label>
+              <select
+                value={length}
+                onChange={(e) => {
+                  setLength(e.target.value);
+                  setValidationError("");
+                }}
+                className="w-full border rounded-xl px-3 py-2"
+              >
+                <option value="">
+                  {loadingOptions ? "Loading..." : "-- Select Length --"}
+                </option>
+
+                {options.lengths.map((l, i) => (
+                  <option key={i} value={String(l)}>
+                    {formatNum(l)} mm
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Thickness */}
+            <div>
+              <label className="block text-gray-500 mb-1">Thickness</label>
+              <select
+                value={thickness}
+                onChange={(e) => {
+                  setThickness(e.target.value);
+                  setValidationError("");
+                }}
+                className="w-full border rounded-xl px-3 py-2"
+              >
+                <option value="">
+                  {loadingOptions
+                    ? "Loading..."
+                    : options.thicknesses.length
+                    ? "-- Select Thickness --"
+                    : "No options"}
+                </option>
+
+                {options.thicknesses.map((t, i) => (
+                  <option key={i} value={String(t)}>
+                    {formatNum(t)} mm
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quantity */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-500 mb-1">Quantity</label>
+                <div className="flex items-center border rounded-xl overflow-hidden shadow-sm w-full bg-white">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQty((q) => Math.max(1, q - 1));
                       setValidationError("");
                     }}
-                    className="w-full border rounded-xl px-3 py-2"
+                    className="px-3 py-2 bg-black"
+                  >
+                    <Minus size={16} className="text-white" />
+                  </button>
+
+                  <input
+                    type="number"
+                    min="1"
+                    value={qty}
+                    onChange={(e) => {
+                      setQty(e.target.value);
+                      setValidationError("");
+                    }}
+                    className="w-full text-center outline-none"
                   />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQty((q) => q + 1);
+                      setValidationError("");
+                    }}
+                    className="px-3 py-2 bg-black"
+                  >
+                    <Plus size={16} className="text-white" />
+                  </button>
                 </div>
               </div>
 
-              {/* Total Weight */}
+              {/* Weight */}
               <div>
-                <label className="block text-gray-500 mb-1">Total Weight (kg)</label>
+                <label className="block text-gray-500 mb-1">Weight (kg)</label>
                 <input
                   type="number"
-                  value={totalWeight}
-                  readOnly
-                  className="w-full border rounded-xl px-3 py-2 bg-gray-100 font-semibold cursor-not-allowed"
+                  value={weight}
+                  onChange={(e) => {
+                    setWeight(e.target.value);
+                    setValidationError("");
+                  }}
+                  className="w-full border rounded-xl px-3 py-2"
                 />
               </div>
+            </div>
 
-              {error && <div className="text-red-600 text-xs">{error}</div>}
-              {validationError && <div className="text-red-600 text-xs">{validationError}</div>}
-              {loadingResolve && <div className="text-gray-500 text-xs">Resolving item...</div>}
+            {/* Total Weight */}
+            <div>
+              <label className="block text-gray-500 mb-1">
+                Total Weight (kg)
+              </label>
+              <input
+                type="number"
+                value={totalWeight}
+                readOnly
+                className="w-full border rounded-xl px-3 py-2 bg-gray-100 font-semibold cursor-not-allowed"
+              />
+            </div>
 
-              <button
-                onClick={handleSubmit}
-                className="flex justify-center items-center gap-2 w-full bg-black text-white text-sm rounded-xl py-3 font-semibold hover:bg-gray-200 hover:text-black transition"
-                disabled={isAddDisabled}
-              >
-                <i class="fi fi-rs-shopping-cart-add"></i>
-                Add to Cart
-              </button>
+            {error && <div className="text-red-600 text-xs">{error}</div>}
+            {validationError && (
+              <div className="text-red-600 text-xs">{validationError}</div>
+            )}
+            {loadingResolve && (
+              <div className="text-gray-500 text-xs">Resolving item...</div>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              className="flex justify-center items-center gap-2 w-full bg-black text-white text-sm rounded-xl py-3 font-semibold hover:bg-gray-200 hover:text-black transition"
+              disabled={isAddDisabled}
+            >
+              <i className="fi fi-rs-shopping-cart-add"></i>
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>

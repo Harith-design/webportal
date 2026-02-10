@@ -1176,122 +1176,301 @@ class SapController extends Controller
         }
     }
 
-    // =====================================================
-    // ------------------- SALES ORDER PDF -----------------
-    // =====================================================
-    public function salesOrderPdf($docEntry)
-    {
-        try {
-            if (!class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'PDF engine not installed. Run: composer require barryvdh/laravel-dompdf',
-                ], 501);
-            }
+   // ==============================
+// Helpers for PDF address fallback
+// ==============================
+private function buildAddressTextFromAddressExtension(array $ae, string $prefix): string
+{
+    // $prefix = 'ShipTo' or 'BillTo'
+    $street   = $ae[$prefix . 'Street']   ?? '';
+    $zip      = $ae[$prefix . 'ZipCode']  ?? '';
+    $city     = $ae[$prefix . 'City']     ?? '';
+    $county   = $ae[$prefix . 'County']   ?? '';
+    $country  = $ae[$prefix . 'Country']  ?? '';
 
-            // 🔹 Single call: full order (header + DocumentLines)
-            $header = $this->callServiceLayer('get', "Orders({$docEntry})");
-            if (isset($header['error'])) {
-                return response()->json([
-                    'status'  => 'error',
-                    'message' => 'Failed to fetch sales order header',
-                    'details' => $header['details'] ?? $header,
-                ], 500);
-            }
+    $lines = [];
 
-            // AddressExtension → text
-            $ae = $header['AddressExtension'] ?? [];
-            $shipLines = [];
-            if (!empty($ae['ShipToStreet']))  $shipLines[] = $ae['ShipToStreet'];
-            if (!empty($ae['ShipToZipCode']) || !empty($ae['ShipToCity'])) {
-                $shipLines[] = trim(($ae['ShipToZipCode'] ?? '') . ' ' . ($ae['ShipToCity'] ?? ''));
-            }
-            if (!empty($ae['ShipToCounty']) || !empty($ae['ShipToCountry'])) {
-                $county  = trim($ae['ShipToCounty']  ?? '');
-                $country = trim($ae['ShipToCountry'] ?? '');
-                $shipLines[] = trim($county . (strlen($county) && strlen($country) ? ', ' : '') . $country);
-            }
-            $shipToText = implode("\n", array_filter($shipLines));
+    if (!empty($street)) {
+        $lines[] = $street;
+    }
 
-            $billLines = [];
-            if (!empty($ae['BillToStreet']))  $billLines[] = $ae['BillToStreet'];
-            if (!empty($ae['BillToZipCode']) || !empty($ae['BillToCity'])) {
-                $billLines[] = trim(($ae['BillToZipCode'] ?? '') . ' ' . ($ae['BillToCity'] ?? ''));
-            }
-            if (!empty($ae['BillToCounty']) || !empty($ae['BillToCountry'])) {
-                $county  = trim($ae['BillToCounty']  ?? '');
-                $country = trim($ae['BillToCountry'] ?? '');
-                $billLines[] = trim($county . (strlen($county) && strlen($country) ? ', ' : '') . $country);
-            }
-            $billToText = implode("\n", array_filter($billLines));
+    if (!empty($zip) || !empty($city)) {
+        $lines[] = trim($zip . ' ' . $city);
+    }
 
-            // 🔹 Lines directly from DocumentLines
-            $rawLines = $header['DocumentLines'] ?? [];
-            $lines = collect($rawLines)->map(function ($l, $i) {
-                $qty   = (float)($l['Quantity']   ?? 0);
-                $price = (float)($l['UnitPrice']  ?? ($l['Price'] ?? 0));
-                $total = isset($l['LineTotal']) ? (float)$l['LineTotal'] : $qty * $price;
+    if (!empty($county) || !empty($country)) {
+        $county  = trim($county);
+        $country = trim($country);
+        $lines[] = trim($county . (strlen($county) && strlen($country) ? ', ' : '') . $country);
+    }
 
-                return [
-                    'no'          => $i + 1,
-                    'ItemCode'    => $l['ItemCode'] ?? '-',
-                    'Description' => $l['ItemDescription'] ?? ($l['Text'] ?? '-'),
-                    'Quantity'    => $qty,
-                    'UnitPrice'   => $price,
-                    'LineTotal'   => $total,
-                ];
-            })->values()->toArray();
+    return implode("\n", array_filter($lines));
+}
 
-            if (!count($lines)) {
-                $lines = [[
-                    'no'          => 1,
-                    'ItemCode'    => '-',
-                    'Description' => 'Item details not available',
-                    'Quantity'    => 1,
-                    'UnitPrice'   => (float)($header['DocTotal'] ?? 0),
-                    'LineTotal'   => (float)($header['DocTotal'] ?? 0),
-                ]];
-            }
+private function formatBpAddress(array $a): string
+{
+    // Match your frontend approach as close as possible
+    $lines = [];
 
-            $subtotal = array_reduce($lines, fn($s, $r) => $s + (float)$r['LineTotal'], 0.0);
-            $discount = 0.0;
-            $vat      = 0.0;
-            $grand    = $subtotal - $discount + $vat;
+    $line2 = trim(implode(', ', array_filter([
+        $a['Building'] ?? null,
+        $a['Street'] ?? null,
+    ])));
+    if ($line2) $lines[] = $line2;
 
-            $data = [
-                'DocEntry'   => $header['DocEntry']   ?? '',
-                'DocNum'     => $header['DocNum']     ?? '',
-                'CardCode'   => $header['CardCode']   ?? '',
-                'Customer'   => $header['CardName']   ?? '',
-                'DocDate'    => substr($header['DocDate']    ?? '', 0, 10),
-                'DocDueDate' => substr($header['DocDueDate'] ?? '', 0, 10),
-                'PONum'      => $header['NumAtCard']  ?? '-',
-                'Status'     => (($header['DocumentStatus'] ?? '') === 'bost_Open') ? 'Open' : 'Closed',
-                'Currency'   => $header['DocCurrency'] ?? 'MYR',
-                'ShipToCode' => $header['ShipToCode'] ?? '',
-                'PayToCode'  => $header['PayToCode']  ?? '',
-                'ShipToText' => $shipToText,
-                'BillToText' => $billToText,
-                'Lines'      => $lines,
-                'Subtotal'   => $subtotal,
-                'Discount'   => $discount,
-                'VAT'        => $vat,
-                'Grand'      => $grand,
-            ];
+    $line3 = trim(implode(' ', array_filter([
+        $a['ZipCode'] ?? null,
+        $a['City'] ?? null,
+    ])));
+    if ($line3) $lines[] = $line3;
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.order', $data)->setPaper('a4');
-            $filename = "SalesOrder_{$data['DocNum']}.pdf";
-            return $pdf->stream($filename);
+    $line4 = trim(implode(', ', array_filter([
+        $a['County'] ?? null,
+        $a['Country'] ?? null,
+    ])));
+    if ($line4) $lines[] = $line4;
 
-        } catch (\Throwable $e) {
-            \Log::error('salesOrderPdf error', ['docEntry' => $docEntry, 'ex' => $e->getMessage()]);
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Failed to generate sales order PDF',
-                'details' => $e->getMessage(),
-            ], 500);
+    return implode("\n", array_filter($lines));
+}
+
+private function fetchBpAddressesPack(string $cardCode): array
+{
+    $safe = str_replace("'", "''", $cardCode);
+
+    // header to know defaults (optional)
+    $bp = $this->callServiceLayer('get', "BusinessPartners('{$safe}')");
+    $shipDefault = is_array($bp) ? ($bp['ShipToDefault'] ?? $bp['ShipToDef'] ?? null) : null;
+    $billDefault = is_array($bp) ? ($bp['BillToDefault'] ?? $bp['BillToDef'] ?? null) : null;
+
+    $res = $this->callServiceLayer('get', "BusinessPartners('{$safe}')/BPAddresses");
+
+    $rows = [];
+    if (is_array($res) && isset($res['BPAddresses']) && is_array($res['BPAddresses'])) {
+        $rows = $res['BPAddresses'];
+    } elseif (is_array($res) && isset($res['value']) && is_array($res['value'])) {
+        // some SL versions return { value: [...] }
+        $rows = $res['value'];
+    }
+
+    $shipTo = [];
+    $billTo = [];
+
+    foreach ($rows as $r) {
+        $type = strtoupper($r['AddressType'] ?? '');
+
+        $mapped = [
+            'AddressName' => $r['AddressName'] ?? '',
+            'Street'      => $r['Street'] ?? '',
+            'City'        => $r['City'] ?? '',
+            'ZipCode'     => $r['ZipCode'] ?? '',
+            'County'      => $r['County'] ?? '',
+            'Country'     => $r['Country'] ?? '',
+            'Building'    => $r['BuildingFloorRoom'] ?? ($r['Building'] ?? ''),
+            'AddressType' => $type,
+            'IsDefault'   => false,
+        ];
+
+        if (in_array($type, ['BO_SHIPTO', 'SHIPTO', 'S'], true)) {
+            $mapped['IsDefault'] = $shipDefault && ($mapped['AddressName'] === $shipDefault);
+            $shipTo[] = $mapped;
+        } elseif (in_array($type, ['BO_BILLTO', 'BILLTO', 'B'], true)) {
+            $mapped['IsDefault'] = $billDefault && ($mapped['AddressName'] === $billDefault);
+            $billTo[] = $mapped;
         }
     }
+
+    if ($shipTo && !array_filter($shipTo, fn($x) => $x['IsDefault'])) $shipTo[0]['IsDefault'] = true;
+    if ($billTo && !array_filter($billTo, fn($x) => $x['IsDefault'])) $billTo[0]['IsDefault'] = true;
+
+    return [
+        'shipTo' => $shipTo,
+        'billTo' => $billTo,
+        'defaults' => [
+            'shipTo' => $shipDefault,
+            'billTo' => $billDefault,
+        ],
+    ];
+}
+
+private function resolveAddressFromBpPack(array $pack, string $code, string $type): ?array
+{
+    $list = $type === 'ship' ? ($pack['shipTo'] ?? []) : ($pack['billTo'] ?? []);
+
+    if ($code) {
+        foreach ($list as $a) {
+            if (($a['AddressName'] ?? '') === $code) return $a;
+        }
+    }
+
+    foreach ($list as $a) {
+        if (!empty($a['IsDefault'])) return $a;
+    }
+
+    return $list[0] ?? null;
+}
+
+// =====================================================
+// ------------------- SALES ORDER PDF -----------------
+// =====================================================
+public function salesOrderPdf($docEntry)
+{
+    try {
+        if (!class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'PDF engine not installed. Run: composer require barryvdh/laravel-dompdf',
+            ], 501);
+        }
+
+        // 1) Get Sales Order from SAP
+        $header = $this->callServiceLayer('get', "Orders({$docEntry})");
+        if (isset($header['error'])) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to fetch sales order header',
+                'details' => $header['details'] ?? $header,
+            ], 500);
+        }
+
+        // 2) Build Ship/Bill text (same as your current code)
+        $ae = $header['AddressExtension'] ?? [];
+
+        $shipLines = [];
+        if (!empty($ae['ShipToStreet']))  $shipLines[] = $ae['ShipToStreet'];
+        if (!empty($ae['ShipToZipCode']) || !empty($ae['ShipToCity'])) {
+            $shipLines[] = trim(($ae['ShipToZipCode'] ?? '') . ' ' . ($ae['ShipToCity'] ?? ''));
+        }
+        if (!empty($ae['ShipToCounty']) || !empty($ae['ShipToCountry'])) {
+            $county  = trim($ae['ShipToCounty']  ?? '');
+            $country = trim($ae['ShipToCountry'] ?? '');
+            $shipLines[] = trim($county . (strlen($county) && strlen($country) ? ', ' : '') . $country);
+        }
+        $shipToText = implode("\n", array_filter($shipLines));
+
+        $billLines = [];
+        if (!empty($ae['BillToStreet']))  $billLines[] = $ae['BillToStreet'];
+        if (!empty($ae['BillToZipCode']) || !empty($ae['BillToCity'])) {
+            $billLines[] = trim(($ae['BillToZipCode'] ?? '') . ' ' . ($ae['BillToCity'] ?? ''));
+        }
+        if (!empty($ae['BillToCounty']) || !empty($ae['BillToCountry'])) {
+            $county  = trim($ae['BillToCounty']  ?? '');
+            $country = trim($ae['BillToCountry'] ?? '');
+            $billLines[] = trim($county . (strlen($county) && strlen($country) ? ', ' : '') . $country);
+        }
+        $billToText = implode("\n", array_filter($billLines));
+
+        // 3) Lines
+        $rawLines = $header['DocumentLines'] ?? [];
+        $lines = collect($rawLines)->map(function ($l, $i) {
+            $qty   = (float)($l['Quantity']   ?? 0);
+            $price = (float)($l['UnitPrice']  ?? ($l['Price'] ?? 0));
+            $total = isset($l['LineTotal']) ? (float)$l['LineTotal'] : $qty * $price;
+
+            return [
+                'no'          => $i + 1,
+                'ItemCode'    => $l['ItemCode'] ?? '-',
+                'Description' => $l['ItemDescription'] ?? ($l['Text'] ?? '-'),
+                'Quantity'    => $qty,
+                'UnitPrice'   => $price,
+                'LineTotal'   => $total,
+            ];
+        })->values()->toArray();
+
+        if (!count($lines)) {
+            $lines = [[
+                'no'          => 1,
+                'ItemCode'    => '-',
+                'Description' => 'Item details not available',
+                'Quantity'    => 1,
+                'UnitPrice'   => (float)($header['DocTotal'] ?? 0),
+                'LineTotal'   => (float)($header['DocTotal'] ?? 0),
+            ]];
+        }
+
+        $subtotal = array_reduce($lines, fn($s, $r) => $s + (float)$r['LineTotal'], 0.0);
+        $discount = 0.0;
+        $vat      = 0.0;
+        $grand    = $subtotal - $discount + $vat;
+
+        // 4) ✅ LOGO: Embed Base64 (DOMPDF-safe)
+        // Try multiple possible locations so you don't get stuck.
+        $logoCandidates = [
+            public_path('images/giib-logo.png'), // recommended
+            public_path('giib-logo.png'),
+            public_path('logo.png'),
+            public_path('images/logo.png'),
+        ];
+
+        $logoDataUri = null;
+        $logoPicked = null;
+
+        foreach ($logoCandidates as $p) {
+            if (is_file($p)) {
+                $logoPicked = $p;
+                $logoDataUri = 'data:image/png;base64,' . base64_encode(file_get_contents($p));
+                break;
+            }
+        }
+
+        \Log::info('🖼️ PDF logo debug', [
+            'docEntry' => $docEntry,
+            'candidates' => $logoCandidates,
+            'picked' => $logoPicked,
+            'exists_picked' => $logoPicked ? is_file($logoPicked) : false,
+        ]);
+
+        // 5) Data for blade
+        $data = [
+            'DocEntry'   => $header['DocEntry']   ?? '',
+            'DocNum'     => $header['DocNum']     ?? '',
+            'CardCode'   => $header['CardCode']   ?? '',
+            'Customer'   => $header['CardName']   ?? '',
+            'DocDate'    => substr($header['DocDate']    ?? '', 0, 10),
+            'DocDueDate' => substr($header['DocDueDate'] ?? '', 0, 10),
+            'PONum'      => $header['NumAtCard']  ?? '-',
+            'Status'     => (($header['DocumentStatus'] ?? '') === 'bost_Open') ? 'Open' : 'Closed',
+            'Currency'   => $header['DocCurrency'] ?? ($header['DocCurrencyCode'] ?? ''),
+
+            'ShipToCode' => $header['ShipToCode'] ?? '',
+            'PayToCode'  => $header['PayToCode']  ?? '',
+            'ShipToText' => $shipToText,
+            'BillToText' => $billToText,
+
+            'Lines'      => $lines,
+            'Subtotal'   => $subtotal,
+            'Discount'   => $discount,
+            'VAT'        => $vat,
+            'Grand'      => $grand,
+
+            // ✅ pass logo into blade
+            'LogoDataUri' => $logoDataUri,
+        ];
+
+        // 6) Render PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.order', $data)
+            ->setPaper('a4')
+            // These options help some environments (even if using base64)
+            ->setOption('isRemoteEnabled', true)
+            ->setOption('isHtml5ParserEnabled', true);
+
+        $filename = "SalesOrder_{$data['DocNum']}.pdf";
+
+        // ✅ Stream inline (open in browser, not forced download)
+        return $pdf->stream($filename, ['Attachment' => 0]);
+
+    } catch (\Throwable $e) {
+        \Log::error('salesOrderPdf error', [
+            'docEntry' => $docEntry,
+            'ex'       => $e->getMessage(),
+        ]);
+
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Failed to generate sales order PDF',
+            'details' => $e->getMessage(),
+        ], 500);
+    }
+}
 
     // =====================================================
     // ------------------- INVOICE PDF (with addresses) ----
@@ -1401,7 +1580,8 @@ class SapController extends Controller
             ];
 
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.invoice', $data)->setPaper('a4');
-            return $pdf->stream("Invoice_{$data['DocNum']}.pdf");
+            return $pdf->download("Invoice_{$data['DocNum']}.pdf");
+
 
         } catch (\Throwable $e) {
             Log::error('invoicePdf error', ['docEntry' => $docEntry, 'ex' => $e->getMessage()]);

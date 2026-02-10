@@ -52,11 +52,11 @@ class CatalogController extends Controller
             return is_string($v) ? trim($v) : $v;
         };
 
-        $widths = $rows->pluck('U_Width')->map($clean)->filter()->unique()->values();
-        $topWidths = $rows->pluck('U_TopWidth')->map($clean)->filter()->unique()->values();
-        $baseWidths = $rows->pluck('U_BaseWidth')->map($clean)->filter()->unique()->values();
+        $widths      = $rows->pluck('U_Width')->map($clean)->filter()->unique()->values();
+        $topWidths   = $rows->pluck('U_TopWidth')->map($clean)->filter()->unique()->values();
+        $baseWidths  = $rows->pluck('U_BaseWidth')->map($clean)->filter()->unique()->values();
         $thicknesses = $rows->pluck('U_Thickness')->map($clean)->filter()->unique()->values();
-        $lengths = $rows->pluck('U_Length')->map($clean)->filter()->unique()->values();
+        $lengths     = $rows->pluck('U_Length')->map($clean)->filter()->unique()->values();
 
         // Sort numeric-like values nicely (handles "26.0" etc.)
         $sortNumeric = function ($collection) {
@@ -68,11 +68,11 @@ class CatalogController extends Controller
         return response()->json([
             'compoundCode' => $compoundCode,
             'options' => [
-                'widths' => $sortNumeric($widths),
-                'topWidths' => $sortNumeric($topWidths),
-                'baseWidths' => $sortNumeric($baseWidths),
+                'widths'      => $sortNumeric($widths),
+                'topWidths'   => $sortNumeric($topWidths),
+                'baseWidths'  => $sortNumeric($baseWidths),
                 'thicknesses' => $sortNumeric($thicknesses),
-                'lengths' => $sortNumeric($lengths),
+                'lengths'     => $sortNumeric($lengths),
             ],
         ]);
     }
@@ -94,11 +94,11 @@ class CatalogController extends Controller
         }
 
         // Read specs from query. They might come as "26.0" strings.
-        $width = $request->query('width');
-        $topWidth = $request->query('topWidth');
+        $width     = $request->query('width');
+        $topWidth  = $request->query('topWidth');
         $baseWidth = $request->query('baseWidth');
         $thickness = $request->query('thickness');
-        $length = $request->query('length');
+        $length    = $request->query('length');
 
         // Normalize numeric string -> float (so "26.0" matches DB numeric)
         $toNumber = function ($v) {
@@ -116,7 +116,6 @@ class CatalogController extends Controller
                 'U_BaseWidth',
                 'U_Thickness',
                 'U_Length',
-                'U_CompoundSKU',
             ])
             ->where('U_IsVisible', 'Y')
             ->where('U_CompoundCode', $compoundCode);
@@ -146,28 +145,35 @@ class CatalogController extends Controller
                 'error' => 'No matching item found for selected specs',
                 'input' => [
                     'compoundCode' => $compoundCode,
-                    'width' => $width,
-                    'topWidth' => $topWidth,
-                    'baseWidth' => $baseWidth,
-                    'thickness' => $thickness,
-                    'length' => $length,
+                    'width'        => $width,
+                    'topWidth'     => $topWidth,
+                    'baseWidth'    => $baseWidth,
+                    'thickness'    => $thickness,
+                    'length'       => $length,
                 ],
             ], 404);
         }
 
         // If multiple matches, return them so frontend can show "please refine"
+        // ✅ Important: your DB has no U_CompoundSKU column, so we inject it as ItemCode
+        // so your React code that reads m.U_CompoundSKU still works.
         if ($matches->count() > 1) {
+            $mapped = $matches->map(function ($m) {
+                $m->U_CompoundSKU = $m->U_ItemCode; // injected field for frontend
+                return $m;
+            });
+
             return response()->json([
                 'error' => 'Multiple items matched. Please select more specs to narrow down.',
                 'input' => [
                     'compoundCode' => $compoundCode,
-                    'width' => $width,
-                    'topWidth' => $topWidth,
-                    'baseWidth' => $baseWidth,
-                    'thickness' => $thickness,
-                    'length' => $length,
+                    'width'        => $width,
+                    'topWidth'     => $topWidth,
+                    'baseWidth'    => $baseWidth,
+                    'thickness'    => $thickness,
+                    'length'       => $length,
                 ],
-                'matches' => $matches,
+                'matches' => $mapped,
             ], 409);
         }
 
@@ -177,13 +183,14 @@ class CatalogController extends Controller
             'itemCode' => $item->U_ItemCode,
             'compoundCode' => $item->U_CompoundCode,
             'spec' => [
-                'width' => $item->U_Width,
-                'topWidth' => $item->U_TopWidth,
+                'width'     => $item->U_Width,
+                'topWidth'  => $item->U_TopWidth,
                 'baseWidth' => $item->U_BaseWidth,
                 'thickness' => $item->U_Thickness,
-                'length' => $item->U_Length,
+                'length'    => $item->U_Length,
             ],
-            'compoundSku' => $item->U_CompoundSKU,
+            // ✅ since no U_CompoundSKU in DB, use ItemCode as SKU
+            'compoundSku' => $item->U_ItemCode,
         ]);
     }
 
@@ -203,7 +210,6 @@ class CatalogController extends Controller
                 'U_BaseWidth',
                 'U_Thickness',
                 'U_Length',
-                'U_CompoundSKU',
                 'U_IsVisible',
             ])
             ->where('U_IsVisible', 'Y')
@@ -221,13 +227,14 @@ class CatalogController extends Controller
             'itemCode' => $row->U_ItemCode,
             'compoundCode' => $row->U_CompoundCode,
             'spec' => [
-                'width' => $row->U_Width,
-                'topWidth' => $row->U_TopWidth,
+                'width'     => $row->U_Width,
+                'topWidth'  => $row->U_TopWidth,
                 'baseWidth' => $row->U_BaseWidth,
                 'thickness' => $row->U_Thickness,
-                'length' => $row->U_Length,
+                'length'    => $row->U_Length,
             ],
-            'compoundSku' => $row->U_CompoundSKU,
+            // ✅ since no U_CompoundSKU in DB, use ItemCode as SKU
+            'compoundSku' => $row->U_ItemCode,
         ]);
     }
 }
