@@ -369,7 +369,7 @@ function InvoicesPage() {
                   />
                   {tempDueStart && (
                     <button
-                      onClick={() => tempDueStart(null)}
+                      onClick={() =>setTempDueStart(null)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
                       type="button"
                     >
@@ -389,7 +389,7 @@ function InvoicesPage() {
                   />
                   {tempDueEnd && (
                     <button
-                      onClick={() => tempDueEnd(null)}
+                      onClick={() => setTempDueEnd(null)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
                       type="button"
                     >

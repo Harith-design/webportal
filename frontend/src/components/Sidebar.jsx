@@ -7,7 +7,8 @@ import {
   ShoppingCart,
   LogOut,
   UserRoundCog,
-  Store
+  Store,
+  PackageSearch
 } from "lucide-react";
 import { useLoading } from "../context/LoadingContext";
 import { performLogout } from "../helpers/logout";
@@ -81,6 +82,15 @@ function Sidebar({ sidebarOpen }) {
         
         
         {/* 🔒 Admin-only link */}
+
+        {role === "admin" && (
+          <SidebarLink
+            to="/uploadproducts"
+            icon={<PackageSearch size={32} />}
+            label="Upload Products"
+          />
+        )}
+        
         {role === "admin" && (
           <SidebarLink
             to="/users"

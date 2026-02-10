@@ -25,6 +25,7 @@ import EditUser from "./components/EditUser";
 import ProductList from "./components/ProductList";
 import ProductDetails from "./components/ProductDetails";
 import UnitPriceEntry from "./components/UnitPriceEntry";
+import UploadProducts from "./components/UploadProducts";
 
 // Layout
 import DashboardLayout from "./components/DashboardLayout";
@@ -99,6 +100,7 @@ function App() {
               <Route path="/edituser/:id" element={<EditUser />} />
               <Route path="/products/:id" element={<ProductDetails />} />
               <Route path="/pricing/:id" element={<UnitPriceEntry />} />
+              <Route path="/uploadproducts" element={<UploadProducts />} />
             </Route>
 
             {/* Catch-all fallback */}
