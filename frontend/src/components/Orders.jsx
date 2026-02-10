@@ -314,7 +314,7 @@ useEffect(() => {
                 placeholder="Search orders..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 py-1 text-xs  border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500"
+                className="w-full pl-8 py-1 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder-gray-500"
               />
               {searchQuery && (
                 <button
@@ -644,16 +644,16 @@ useEffect(() => {
 
       {/* Header */}
 
-      <div className="sticky top-0 z-50">
+      <div className="sticky top-0">
          
-      <h2 className="text-2xl flex justify-between items-center font-semibold p-5 border border-b border-gray-300" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
-        <div  className="flex gap-2">Order #{selectedOrder.id}</div>
+      <h2 className="text-2xl flex justify-between items-center font-semibold p-5 border border-b" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+        Order #{selectedOrder.id}
       {/* Close button */}
       <button
         onClick={() => setIsModalOpen(false)}
-        className="text-white hover:text-black hover:bg-gray-100 bg-black rounded-2xl"
+        className="text-white hover:text-black hover:bg-gray-100 bg-black rounded-xl p-1"
       >
-        <X size={18} />
+        <X size={16} />
       </button>
       </h2>
       </div>
@@ -664,9 +664,8 @@ useEffect(() => {
       <h2 className="text-2xl flex font-semibold pt-3 pb-1 mb-2 border-b border-gray-300 bg-white">
         Order Summary
       </h2>
-      <div className="grid grid-cols-2 text-xs bg-white gap-3">
-
-            <div className="flex flex-col gap-1">
+      <div className="grid grid-cols-2 text-xs gap-3">
+        <div className="flex flex-col gap-1">
         <span className="font-semibold">Sales No</span>
         <span className="text-gray-600">{selectedOrder.id}</span>
       </div>
@@ -724,9 +723,9 @@ useEffect(() => {
       </div>
 
     {modalLoading ? (
-      <p className="text-xs text-gray-500 py-4">Loading items...</p>
+      <p className="text-xs text-gray-500 py-4 text-center">Loading items...</p>
     ) : modalItems.length === 0 ? (
-      <p className="text-xs text-gray-500 py-4">No items found.</p>
+      <p className="text-xs text-gray-500 py-4 text-center">No items found.</p>
     ) : (
       <div className="overflow-x-auto mt-7 border border-black rounded-lg">
         <table className="min-w-full text-xs font-light">

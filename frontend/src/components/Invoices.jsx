@@ -6,12 +6,21 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./DatePicker.css";
 import { formatDate } from "../utils/formatDate";
+import Loader from "../components/Loader";
 
 function InvoicesPage() {
   
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const apiUrl = process.env.REACT_APP_BACKEND_API_URL;
+
+  // Modal states for Order Summary window
+    const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    // State for modal items
+    const [modalItems, setModalItems] = useState([]);
+    const [modalLoading, setModalLoading] = useState(false);
 
   // 🔹 Fetch invoices
   useEffect(() => {
@@ -29,7 +38,6 @@ function InvoicesPage() {
 
           const formatted = filtered.map((v) => ({
             id: v.invoiceNo,
-            invoiceNo: v.invoiceNo,
             poNo: v.poNo,
             customer: v.customer,
             orderDate: v.postingDate,
@@ -223,13 +231,23 @@ function InvoicesPage() {
     }
   };
 
+  const Info = ({ label, value }) => (
+  <div className="flex flex-col gap-1">
+    <span className="font-semibold">{label}</span>
+    <span className="text-gray-600">{value || "-"}</span>
+  </div>
+);
+
+
   return (
     <div className="px-6 pt-2 flex flex-col h-[calc(100vh-6rem)] w-full overflow-hidden">
+      {/* Heading section */}
+      <div className="pt-4 px-4 mb-2 border border-gray-300 rounded-lg" style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
       {/* Filters */}
       <div className="flex flex-row items-end justify-between gap-4 mb-4 py-1">
         <div className="flex flex-wrap gap-3 items-center">
           {/* Search */}
-          <div className="relative w-64 bg-white rounded-xl">
+          <div className="relative w-64 rounded-xl">
             <Search size={16} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500"/>
             <input
               type="text"
@@ -259,8 +277,22 @@ function InvoicesPage() {
               <ListFilter size={16} /> Filter
             </button>
             {isFilterOpen && (
-              <div className="absolute left-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-50 p-4">
-                <div className="flex flex-col gap-2">
+              <div className="absolute left-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-50">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50 rounded-t-lg">
+                  <span className="text-xs font-semibold">Filters</span>
+
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="p-1 rounded-md hover:bg-gray-200 transition"
+                    type="button"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex flex-col gap-2 p-4">
                   <div className="flex items-center gap-1">
                     <ClipboardList className="w-4 h-4 text-gray-700 mr-1"/>
                     <label className="text-xs font-medium">Status</label>
@@ -369,7 +401,7 @@ function InvoicesPage() {
                   <div className="flex justify-end gap-1 mt-2 font-semibold">
                     <button
                       onClick={clearFilters}
-                      className="px-3 py-2 rounded-lg text-xs hover:bg-gray-200"
+                      className="px-3 py-2 rounded-lg text-xs hover:bg-black hover:text-white bg-gray-100"
                     >
                       Clear Filters
                     </button>
@@ -382,7 +414,7 @@ function InvoicesPage() {
                         setDueEnd(tempDueEnd);
                         }
                         }
-                      className="px-3 py-2 rounded-lg bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                      className="px-3 py-2 rounded-lg bg-black text-white rounded text-xs hover:bg-gray-100 hover:text-black"
                     >
                       Apply
                     </button>
@@ -393,10 +425,11 @@ function InvoicesPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Invoices Table */}
       <div ref={tableContainerRef} className="rounded-xl overflow-x-auto border border-gray-300 flex-1">
-        <table className="table-auto  min-w-max w-full">
+        <table className="table-auto min-w-max w-full">
           <thead>
             <tr className="text-left text-xs border-b font-medium">
               <th className="px-4 py-2">Invoice No.</th>
@@ -404,7 +437,7 @@ function InvoicesPage() {
               <th className="px-4 py-2">PO No.</th>
               <th className="px-4 py-2">Posting Date</th>
               <th className="px-4 py-2">Due Date</th>
-              <th className="px-4 py-2">Total</th>
+              <th className="px-4 py-2">Amount</th>
               <th className="text-center px-4 py-2">Currency</th>
               <th className="px-4 py-2">Status</th>
               <th className="text-center px-4 py-2">Download</th>
@@ -418,28 +451,45 @@ function InvoicesPage() {
                         ? "bg-yellow-100 even:bg-yellow-100 animate-pulse"
                         : ""
                     }`}>
-                  <td className="px-4 py-2 text-blue-600 hover:underline">
-                    <Link
-                      to={`/invoices?highlight=${inv.docEntry}`}
-                      state={{
-                        invoice: {
-                          id: inv.invoiceNo,
-                          ponum: inv.poNo,
-                          customer: inv.customer,
-                          invoiceDate: inv.orderDate,
-                          dueDate: inv.dueDate,
-                          status: inv.status,
-                          currency: inv.currency,
-                          items: inv.items,
-                          discount: inv.discount,
-                          vat: inv.vat,
-                          billTo: inv.billTo,
-                          shipTo: inv.shipTo,
-                        },
+                  <td className="px-4 py-2 font-semibold hover:underline">
+                    <button
+                      onClick={async () => {
+                        setIsModalOpen(true);
+                        setModalLoading(true);
+                        setSelectedInvoice(inv);
+
+                        try {
+                          const res = await axios.get(`${apiUrl}/api/sap/invoices/${inv.docEntry}/details`);
+                          const fullInvoice = res.data?.data;
+                          console.log("FULL INVOICE →", fullInvoice);
+                          const lines =
+                          fullInvoice?.DocumentLines ||
+                          fullInvoice?.Lines ||
+                          fullInvoice?.documentLines ||
+                          [];
+
+                        const rawItems = lines.map((line, index) => ({
+                          no: index + 1,
+                          itemCode: line.ItemCode || "-",
+                          itemName: line.ItemName || line.Description || line.Text || "-",
+                          qty: Number(line.Quantity ?? 0),
+                          price: Number(line.UnitPrice ?? line.Price ?? 0),
+                        }));
+
+                        setModalItems(rawItems);
+
+                        } catch (err) {
+                          console.error("Failed loading invoice:", err);
+                          setModalItems([]);
+                        } finally {
+                          setModalLoading(false);
+                        }
                       }}
+                      className="hover:underline font-semibold"
                     >
-                      {inv.invoiceNo}
-                    </Link>
+                      {inv.id}
+                    </button>
+
                   </td>
                   <td className="px-4 py-2">{inv.customer}</td>
                   <td className="px-4 py-2">{inv.poNo}</td>
@@ -462,7 +512,17 @@ function InvoicesPage() {
             ) : (
               <tr>
                 <td colSpan="9" className="text-center py-4 text-gray-500">
-                  {loading ? "Loading invoices..." : error || "No invoices found"}
+                  {loading ? 
+                  (
+                    <div className="flex justify-center items-center">
+                      {/* Replace with your loader component */}
+                      <Loader imageSrc="/loader.png" size={60} />
+                    </div>
+                  ) : error ? (
+                    error
+                  ) : (
+                    "No invoices found"
+                  )}
                 </td>
               </tr>
             )}
@@ -484,7 +544,7 @@ function InvoicesPage() {
           <button
             key={i + 1}
             onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-blue-500 text-white" : ""}`}
+            className={`px-3 py-1 border rounded text-xs ${currentPage === i + 1 ? "bg-black text-white" : ""}`}
           >
             {i + 1}
           </button>
@@ -498,6 +558,109 @@ function InvoicesPage() {
           Next
         </button>
       </div>
+
+      {isModalOpen && selectedInvoice && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+
+    <div className="bg-white rounded-xl shadow-xl w-full sm:w-[80vw] md:w-[60vw] lg:w-[50vw] overflow-y-auto relative">
+
+      {/* Header */}
+      <div className="sticky top-0">
+        <h2 className="text-2xl flex justify-between items-center p-5 font-semibold border-b"
+            style={{background: "radial-gradient(circle at 10% 60%, #ffeeee, #a8c5fe)"}}>
+          Invoice #{selectedInvoice.id}
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="bg-black text-white rounded-xl p-1 hover:text-black hover:bg-gray-100"
+          >
+            <X size={16} />
+          </button>
+        </h2>
+      </div>
+
+      {/* Content */}
+      <div className="px-6">
+        <h2 className="text-2xl flex font-semibold pt-3 pb-1 mb-2 border-b border-gray-300 bg-white">
+          Invoice Summary
+        </h2>
+          {/* Summary */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <Info label="Invoice No" value={selectedInvoice.id} />
+            <Info label="Billed to" value={selectedInvoice.customer} />
+            <Info label="Posting Date" value={formatDate(selectedInvoice.orderDate)} />
+            <Info label="Due Date" value={formatDate(selectedInvoice.dueDate)} />
+            <Info label="PO No" value={selectedInvoice.poNo} />
+            <Info label="Status" value={selectedInvoice.status} />
+            <Info
+              label="Total"
+              value={Number(selectedInvoice.total).toLocaleString(undefined,{
+                minimumFractionDigits:2,
+                maximumFractionDigits:2
+              })}
+            />
+            <Info label="Currency" value={selectedInvoice.currency} />
+          </div>
+
+          {/* Items */}
+          {modalLoading ? (
+            <p className="text-xs text-gray-500 py-4 text-center">Loading items...</p>
+          ) : modalItems.length === 0 ? (
+            <p className="text-xs text-gray-500 py-4 text-center">No items found.</p>
+          ) : (
+            <div className="overflow-x-auto mt-7 border border-black rounded-lg">
+              <table className="min-w-full text-xs font-light">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1 border font-semibold">#</th>
+                    <th className="px-2 py-1 border font-semibold">Item Code</th>
+                    <th className="px-2 py-1 border font-semibold">Description</th>
+                    <th className="px-2 py-1 border font-semibold">Qty</th>
+                    <th className="px-2 py-1 border font-semibold">Unit Price</th>
+                    <th className="px-2 py-1 border font-semibold">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalItems.map((item) => (
+                    <tr key={item.no}>
+                      <td className="px-2 py-1 border text-center">{item.no}</td>
+                      <td className="px-2 py-1 border">{item.itemCode}</td>
+                      <td className="px-2 py-1 border">{item.itemName}</td>
+                      <td className="px-2 py-1 border text-center">{item.qty}</td>
+                      <td className="px-2 py-1 border text-center">
+                        {selectedInvoice.currency} {item.price.toFixed(2)}
+                      </td>
+                      <td className="px-2 py-1 border text-center">
+                        {selectedInvoice.currency} {(item.qty * item.price).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        </div>
+
+          {/* Footer */}
+      <div className="flex justify-between mt-5 px-6 pb-2 font-semibold">
+        <a
+          href={selectedInvoice.download}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 bg-black text-white rounded-2xl text-xs hover:bg-gray-100 hover:text-black"
+        >
+          Download PDF
+        </a>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="px-4 py-2 bg-black text-white rounded-2xl text-xs hover:bg-gray-100 hover:text-black"
+        >
+          Close
+        </button>
+      </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

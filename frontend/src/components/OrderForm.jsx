@@ -242,10 +242,10 @@ function CartPage() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-black text-white text-xs hover:bg-blue-700 transition font-semibold"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-black text-white text-xs hover:bg-gray-200 hover:text-black transition font-semibold"
             >
               <Sparkles size={16} />
-              Submit Order
+              Place Order
             </button>
           </div>
 
